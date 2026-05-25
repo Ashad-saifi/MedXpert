@@ -18,7 +18,7 @@ let screenStream = null;
 let currentReplyIndex = 0;
 
 const doctorChatReplies = [
-  "Hello! I am reviewing your health records. How have you been feeling since your last appointment?",
+  "Hello! I am reviewing Your health records. How have you been feeling since your last appointment?",
   "I see. Have you been experiencing any other symptoms, like headache, fever, or shortness of breath?",
   "Let's review your recent lab test results. They look quite stable, but I'd like to check your daily vitals.",
   "I will update your prescriptions list. Please take the Metformin twice daily with meals.",
@@ -71,9 +71,9 @@ function initEventListeners() {
   document.getElementById('btn-end-video-call')?.addEventListener('click', closeVideoCall);
   document.getElementById('btn-p-connect-now')?.addEventListener('click', () => openVideoCall('Doctor'));
   document.querySelector('.btn-start-consult')?.addEventListener('click', () => openVideoCall('Patient'));
-  
+
   // Custom video toggles
-  document.querySelector('.mic-toggle')?.addEventListener('click', function() {
+  document.querySelector('.mic-toggle')?.addEventListener('click', function () {
     if (localStream) {
       const audioTrack = localStream.getAudioTracks()[0];
       if (audioTrack) {
@@ -89,14 +89,14 @@ function initEventListeners() {
       notify(this.style.opacity == '0.5' ? 'Microphone muted' : 'Microphone unmuted', '');
     }
   });
-  document.querySelector('.camera-toggle')?.addEventListener('click', function() {
+  document.querySelector('.camera-toggle')?.addEventListener('click', function () {
     if (localStream) {
       const videoTrack = localStream.getVideoTracks()[0];
       if (videoTrack) {
         videoTrack.enabled = !videoTrack.enabled;
         const isDisabled = !videoTrack.enabled;
         this.style.opacity = isDisabled ? '0.5' : '1';
-        
+
         const localVideo = document.getElementById('localVideo');
         const placeholder = document.getElementById('localVideoPlaceholder');
         if (localVideo) {
@@ -105,7 +105,7 @@ function initEventListeners() {
         if (placeholder) {
           placeholder.style.display = isDisabled ? 'inline' : 'none';
         }
-        
+
         notify(isDisabled ? 'Camera disabled' : 'Camera enabled', '');
       } else {
         notify('No active camera found', 'error');
@@ -117,10 +117,10 @@ function initEventListeners() {
   });
 
   // Custom video screen share and chat triggers
-  document.querySelector('.screen-share-toggle')?.addEventListener('click', function() {
+  document.querySelector('.screen-share-toggle')?.addEventListener('click', function () {
     toggleScreenShare(this);
   });
-  document.querySelector('.chat-toggle')?.addEventListener('click', function() {
+  document.querySelector('.chat-toggle')?.addEventListener('click', function () {
     toggleVideoChat(this);
   });
   document.getElementById('btn-close-video-chat')?.addEventListener('click', () => {
@@ -264,7 +264,7 @@ function openLogin(role) {
   const titles = { patient: 'Patient Login', doctor: 'Doctor Login', admin: 'Admin Login' };
   const subtitleEl = document.getElementById('loginSubtitle');
   if (subtitleEl) subtitleEl.textContent = titles[role] || 'Login';
-  
+
   // Prefill credentials based on role
   const emailInput = document.getElementById('loginEmail');
   const pwdInput = document.getElementById('loginPwd');
@@ -278,7 +278,7 @@ function openLogin(role) {
     }
     pwdInput.value = 'password123';
   }
-  
+
   const loginOverlay = document.getElementById('loginOverlay');
   if (loginOverlay) loginOverlay.style.display = 'flex';
 }
@@ -291,26 +291,26 @@ function closeLogin() {
 async function doLogin() {
   const email = document.getElementById('loginEmail')?.value;
   const password = document.getElementById('loginPwd')?.value;
-  
+
   try {
     const res = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password, role: currentRole })
     });
-    
+
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Server error during login');
-    
+
     currentUser = data.user;
     closeLogin();
-    
+
     // Hide all panel screens
     document.getElementById('landing').style.display = 'none';
     document.getElementById('patientPanel').style.display = 'none';
     document.getElementById('doctorPanel').style.display = 'none';
     document.getElementById('adminPanel').style.display = 'none';
-    
+
     // Display dashboard
     if (currentRole === 'patient') {
       document.getElementById('patientPanel').style.display = 'flex';
@@ -325,7 +325,7 @@ async function doLogin() {
       await loadAdminData();
       showPage('a', 'aDashboard', document.querySelector('#admin-nav [data-page="aDashboard"]'));
     }
-    
+
     notify(data.message, 'success');
   } catch (err) {
     notify(err.message, 'error');
@@ -343,15 +343,15 @@ function goLanding() {
 
 async function showPage(prefix, pageId, el) {
   const panel = prefix === 'p' ? 'patientPanel' : prefix === 'd' ? 'doctorPanel' : 'adminPanel';
-  
+
   // Toggle screens
   document.querySelectorAll(`#${panel} .page`).forEach(p => p.classList.remove('active'));
   document.getElementById(pageId)?.classList.add('active');
-  
+
   // Highlight active nav
   document.querySelectorAll(`#${panel} .nav-item`).forEach(n => n.classList.remove('active'));
   if (el) el.classList.add('active');
-  
+
   // Update header text
   const titles = {
     pDashboard: 'Dashboard', pAppointments: 'My Appointments', pDoctors: 'Find Doctors',
@@ -366,7 +366,7 @@ async function showPage(prefix, pageId, el) {
   if (titleEl && titles[pageId]) {
     titleEl.textContent = titles[pageId];
   }
-  
+
   // Refresh content on navigate
   if (prefix === 'p') {
     await loadPatientData();
@@ -381,23 +381,23 @@ async function showPage(prefix, pageId, el) {
 async function openVideoCall(partnerName = 'Doctor') {
   const overlay = document.getElementById('videoCallOverlay');
   if (!overlay) return;
-  
+
   const timer = document.getElementById('callTimer');
   const partnerEl = document.getElementById('video-partner-name');
   const partnerSub = document.getElementById('video-partner-sub');
   const pulseRing = document.getElementById('videoPulseRing');
-  
+
   if (partnerEl) {
     partnerEl.textContent = `${partnerName} · Connecting...`;
     setTimeout(() => {
       partnerEl.textContent = `${partnerName} (Connected)`;
     }, 1500);
   }
-  
+
   overlay.style.display = 'flex';
   callSeconds = 0;
   if (timer) timer.textContent = '00:00';
-  
+
   if (callInterval) clearInterval(callInterval);
   callInterval = setInterval(() => {
     callSeconds++;
@@ -415,7 +415,7 @@ async function openVideoCall(partnerName = 'Doctor') {
   currentReplyIndex = 0;
   const chatPanel = document.getElementById('videoChatPanel');
   if (chatPanel) chatPanel.style.display = 'none';
-  
+
   const chatMessages = document.getElementById('videoChatMessages');
   if (chatMessages) {
     chatMessages.innerHTML = `
@@ -424,13 +424,13 @@ async function openVideoCall(partnerName = 'Doctor') {
       </div>
     `;
   }
-  
+
   const chatToggle = document.querySelector('.chat-toggle');
   if (chatToggle) {
     chatToggle.style.background = '';
     chatToggle.style.opacity = '1';
   }
-  
+
   // Reset screen share button
   const screenToggle = document.querySelector('.screen-share-toggle');
   if (screenToggle) {
@@ -442,7 +442,7 @@ async function openVideoCall(partnerName = 'Doctor') {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
     localStream = stream;
-    
+
     const localVideo = document.getElementById('localVideo');
     const placeholder = document.getElementById('localVideoPlaceholder');
     if (localVideo) {
@@ -452,7 +452,7 @@ async function openVideoCall(partnerName = 'Doctor') {
     if (placeholder) {
       placeholder.style.display = 'none';
     }
-    
+
     // Reset control buttons visually
     const camBtn = document.querySelector('.camera-toggle');
     const micBtn = document.querySelector('.mic-toggle');
@@ -467,11 +467,11 @@ async function openVideoCall(partnerName = 'Doctor') {
 function closeVideoCall() {
   document.getElementById('videoCallOverlay').style.display = 'none';
   clearInterval(callInterval);
-  
+
   const timer = document.getElementById('callTimer');
   const durationText = timer ? timer.textContent : '00:00';
   notify(`Consultation ended. Duration: ${durationText}`, 'success');
-  
+
   // Stop screen sharing if active
   if (screenStream) {
     stopScreenShare();
@@ -482,7 +482,7 @@ function closeVideoCall() {
     localStream.getTracks().forEach(track => track.stop());
     localStream = null;
   }
-  
+
   const localVideo = document.getElementById('localVideo');
   const placeholder = document.getElementById('localVideoPlaceholder');
   if (localVideo) {
@@ -511,12 +511,12 @@ async function toggleScreenShare(btn) {
       screenStream = stream;
       btn.style.opacity = '1';
       btn.style.background = '#14b8a6';
-      
+
       const screenVideo = document.getElementById('mainScreenShareVideo');
       const pulseRing = document.getElementById('videoPulseRing');
       const partnerName = document.getElementById('video-partner-name');
       const partnerSub = document.getElementById('video-partner-sub');
-      
+
       if (screenVideo) {
         screenVideo.srcObject = stream;
         screenVideo.style.display = 'block';
@@ -524,12 +524,12 @@ async function toggleScreenShare(btn) {
       if (pulseRing) pulseRing.style.display = 'none';
       if (partnerName) partnerName.style.display = 'none';
       if (partnerSub) partnerSub.style.display = 'none';
-      
+
       // Auto-cleanup on end of screen share (browser native toolbar button click)
       stream.getVideoTracks()[0].onended = () => {
         stopScreenShare();
       };
-      
+
       notify('Screen sharing started', 'success');
     } catch (err) {
       console.warn("Screen share permission denied or unavailable:", err);
@@ -545,17 +545,17 @@ function stopScreenShare() {
     screenStream.getTracks().forEach(track => track.stop());
     screenStream = null;
   }
-  
+
   const btn = document.querySelector('.screen-share-toggle');
   if (btn) {
     btn.style.background = '';
   }
-  
+
   const screenVideo = document.getElementById('mainScreenShareVideo');
   const pulseRing = document.getElementById('videoPulseRing');
   const partnerName = document.getElementById('video-partner-name');
   const partnerSub = document.getElementById('video-partner-sub');
-  
+
   if (screenVideo) {
     screenVideo.srcObject = null;
     screenVideo.style.display = 'none';
@@ -569,11 +569,11 @@ function stopScreenShare() {
 function toggleVideoChat(btn) {
   const panel = document.getElementById('videoChatPanel');
   if (!panel) return;
-  
+
   const isOpen = panel.style.display === 'flex';
   panel.style.display = isOpen ? 'none' : 'flex';
   btn.style.background = isOpen ? '' : '#14b8a6';
-  
+
   if (!isOpen) {
     const input = document.getElementById('videoChatInput');
     if (input) input.focus();
@@ -585,22 +585,22 @@ function toggleVideoChat(btn) {
 function appendChatMessage(sender, text, type) {
   const container = document.getElementById('videoChatMessages');
   if (!container) return;
-  
+
   const msgEl = document.createElement('div');
   msgEl.className = `chat-msg ${type}`;
-  
+
   if (type !== 'system') {
     const senderEl = document.createElement('span');
     senderEl.className = 'sender';
     senderEl.textContent = sender;
     msgEl.appendChild(senderEl);
   }
-  
+
   const textEl = document.createElement('span');
   textEl.className = 'text';
   textEl.textContent = text;
   msgEl.appendChild(textEl);
-  
+
   container.appendChild(msgEl);
   container.scrollTop = container.scrollHeight;
 }
@@ -608,25 +608,25 @@ function appendChatMessage(sender, text, type) {
 function sendVideoChatMessage() {
   const input = document.getElementById('videoChatInput');
   if (!input) return;
-  
+
   const text = input.value.trim();
   if (!text) return;
-  
+
   const myName = currentRole === 'doctor' ? 'Dr. Sarah Johnson' : 'Alex Smith';
   appendChatMessage(myName, text, 'self');
   input.value = '';
-  
+
   // Trigger simulated response after 2 seconds
   setTimeout(() => {
     const isDoctor = currentRole === 'doctor';
     const replies = isDoctor ? patientChatReplies : doctorChatReplies;
     const partnerName = isDoctor ? 'Alex Smith' : 'Dr. Sarah Johnson';
-    
+
     const replyText = replies[currentReplyIndex % replies.length];
     currentReplyIndex++;
-    
+
     appendChatMessage(partnerName, replyText, 'other');
-    
+
     // If chat side panel is hidden, notify user via notification bubble
     const panel = document.getElementById('videoChatPanel');
     if (panel && panel.style.display === 'none') {
@@ -642,27 +642,27 @@ async function loadPatientData() {
     const resPat = await fetch(`${API_BASE}/patients/P-10421`);
     patientData = await resPat.json();
     updatePatientProfileUI();
-    
+
     // 2. Load appointments
     const resAppt = await fetch(`${API_BASE}/appointments`);
     appointmentsData = await resAppt.json();
     renderPatientAppointments();
-    
+
     // 3. Load prescriptions
     const resRx = await fetch(`${API_BASE}/prescriptions`);
     prescriptionsData = await resRx.json();
     renderPatientPrescriptions();
-    
+
     // 4. Load reports
     const resRep = await fetch(`${API_BASE}/reports`);
     reportsData = await resRep.json();
     renderPatientReports();
-    
+
     // 5. Load doctors for lists
     const resDocs = await fetch(`${API_BASE}/doctors`);
     doctorsData = await resDocs.json();
     renderDoctorsList();
-    
+
   } catch (err) {
     console.error("Error loading patient data", err);
   }
@@ -670,25 +670,25 @@ async function loadPatientData() {
 
 function updatePatientProfileUI() {
   if (!patientData) return;
-  
+
   // Dashboard stats
   const activeRx = prescriptionsData.filter(rx => rx.patientId === patientData.id && rx.status === 'Active').length;
   const upcomingAppts = appointmentsData.filter(a => a.patientId === patientData.id && a.status === 'Confirmed').length;
-  
+
   const statRxEl = document.getElementById('p-stat-prescriptions');
   const statApptEl = document.getElementById('p-stat-upcoming');
   const statRepEl = document.getElementById('p-stat-lab-reports');
-  
+
   if (statRxEl) statRxEl.textContent = activeRx;
   if (statApptEl) statApptEl.textContent = upcomingAppts;
   if (statRepEl) statRepEl.textContent = reportsData.filter(r => r.patientId === patientData.id).length;
-  
+
   // Profile displays
   const profName = document.getElementById('p-profile-name');
   const profId = document.getElementById('p-profile-id');
   if (profName) profName.textContent = patientData.name;
   if (profId) profId.textContent = `Patient ID: ${patientData.id}`;
-  
+
   // Profile detailed parameters
   const detailsContainer = document.getElementById('p-profile-details');
   if (detailsContainer) {
@@ -700,7 +700,7 @@ function updatePatientProfileUI() {
       <div class="flex justify-between"><span class="text-muted">📍 City</span><span>${patientData.city}</span></div>
     `;
   }
-  
+
   // Emergency contacts & insurance
   const emergencyContainer = document.getElementById('p-profile-emergency');
   if (emergencyContainer) {
@@ -710,7 +710,7 @@ function updatePatientProfileUI() {
       <div class="flex justify-between"><span class="text-muted">Phone</span><span>${patientData.emergencyContact.phone}</span></div>
     `;
   }
-  
+
   const insuranceContainer = document.getElementById('p-profile-insurance');
   if (insuranceContainer) {
     insuranceContainer.innerHTML = `
@@ -738,19 +738,19 @@ function renderPatientAppointments() {
   const tableBody = document.getElementById('p-appointments-table-body');
   const dashboardContainer = document.getElementById('p-dashboard-appts');
   const videoApptList = document.getElementById('p-video-appts-list');
-  
+
   if (tableBody) tableBody.innerHTML = '';
   if (dashboardContainer) dashboardContainer.innerHTML = '';
   if (videoApptList) videoApptList.innerHTML = '';
-  
+
   const patId = patientData ? patientData.id : "P-10421";
   const myAppts = appointmentsData.filter(a => a.patientId === patId);
-  
+
   myAppts.forEach(appt => {
-    const formattedDate = new Date(appt.dateTime).toLocaleString([], {month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute:'2-digit'});
+    const formattedDate = new Date(appt.dateTime).toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
     const badgeClass = appt.type === 'Video' ? 'badge-blue' : 'badge-teal';
     const statusBadge = appt.status === 'Confirmed' ? 'badge-green' : appt.status === 'Cancelled' ? 'badge-red' : 'badge-gray';
-    
+
     // Append to appointments page table
     if (tableBody && appt.status !== 'Completed') {
       const tr = document.createElement('tr');
@@ -760,23 +760,23 @@ function renderPatientAppointments() {
         <td><span class="badge ${badgeClass}">${appt.type}</span></td>
         <td><span class="badge ${statusBadge}">${appt.status}</span></td>
         <td>
-          ${appt.status === 'Confirmed' && appt.type === 'Video' 
-            ? `<button class="btn btn-sm btn-primary" onclick="window.joinVideoRoom('${appt.doctorName}')">Join Call</button>`
-            : appt.status === 'Confirmed' 
-              ? `<button class="btn btn-sm btn-ghost" onclick="window.cancelAppointment('${appt.id}')">Cancel</button>` 
-              : `–`}
+          ${appt.status === 'Confirmed' && appt.type === 'Video'
+          ? `<button class="btn btn-sm btn-primary" onclick="window.joinVideoRoom('${appt.doctorName}')">Join Call</button>`
+          : appt.status === 'Confirmed'
+            ? `<button class="btn btn-sm btn-ghost" onclick="window.cancelAppointment('${appt.id}')">Cancel</button>`
+            : `–`}
         </td>
       `;
       tableBody.appendChild(tr);
     }
-    
+
     // Append to dashboard page upcoming panel (max 2)
     if (dashboardContainer && appt.status === 'Confirmed') {
       const div = document.createElement('div');
       div.className = 'appt-card';
-      const time = new Date(appt.dateTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-      const dateLabel = new Date(appt.dateTime).toLocaleDateString([], {month: 'short', day: 'numeric'});
-      
+      const time = new Date(appt.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const dateLabel = new Date(appt.dateTime).toLocaleDateString([], { month: 'short', day: 'numeric' });
+
       div.innerHTML = `
         <div class="appt-time">
           <div class="time">${time}</div>
@@ -790,12 +790,12 @@ function renderPatientAppointments() {
       `;
       dashboardContainer.appendChild(div);
     }
-    
+
     // Append to scheduled video consultations page list
     if (videoApptList && appt.type === 'Video' && appt.status === 'Confirmed') {
-      const time = new Date(appt.dateTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-      const dateLabel = new Date(appt.dateTime).toLocaleDateString([], {month: 'short', day: 'numeric'});
-      
+      const time = new Date(appt.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const dateLabel = new Date(appt.dateTime).toLocaleDateString([], { month: 'short', day: 'numeric' });
+
       const div = document.createElement('div');
       div.className = 'appt-card';
       div.innerHTML = `
@@ -818,20 +818,20 @@ function renderPatientPrescriptions() {
   const activeList = document.getElementById('p-prescriptions-active-list');
   const dashList = document.getElementById('p-dashboard-prescriptions');
   const histTable = document.getElementById('p-prescriptions-history-table');
-  
+
   if (activeList) activeList.innerHTML = '';
   if (dashList) dashList.innerHTML = '';
   if (histTable) histTable.innerHTML = '';
-  
+
   const patId = patientData ? patientData.id : "P-10421";
   const myRx = prescriptionsData.filter(rx => rx.patientId === patId);
-  
+
   myRx.forEach(rx => {
     if (rx.status === 'Active' || rx.status === 'Refill Soon') {
       const badgeClass = rx.status === 'Active' ? 'badge-green' : 'badge-yellow';
       const borderStyle = rx.status === 'Active' ? 'border-left:3px solid var(--primary-light)' : 'border-left:3px solid var(--warning)';
       const progressPercent = Math.min(100, Math.floor((rx.refillsUsed / rx.refillsTotal) * 100));
-      
+
       // Page representation
       if (activeList) {
         const item = document.createElement('div');
@@ -848,7 +848,7 @@ function renderPatientPrescriptions() {
         `;
         activeList.appendChild(item);
       }
-      
+
       // Dashboard representation (simple summary)
       if (dashList) {
         const item = document.createElement('div');
@@ -880,17 +880,17 @@ function renderPatientPrescriptions() {
 function renderPatientReports() {
   const docTable = document.getElementById('p-documents-table-body');
   const repTable = document.getElementById('p-reports-table-body');
-  
+
   if (docTable) docTable.innerHTML = '';
   if (repTable) repTable.innerHTML = '';
-  
+
   const patId = patientData ? patientData.id : "P-10421";
   const myReports = reportsData.filter(r => r.patientId === patId);
-  
+
   myReports.forEach(rep => {
-    const formattedDate = new Date(rep.date).toLocaleDateString([], {month: 'short', day: 'numeric', year: 'numeric'});
+    const formattedDate = new Date(rep.date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
     const badgeClass = rep.result.includes('Borderline') || rep.result.includes('Low') ? 'badge-yellow' : 'badge-green';
-    
+
     // Main medical records uploads table
     if (docTable) {
       const tr = document.createElement('tr');
@@ -903,7 +903,7 @@ function renderPatientReports() {
       `;
       docTable.appendChild(tr);
     }
-    
+
     // Reports sub-tab table
     if (repTable) {
       const tr = document.createElement('tr');
@@ -922,10 +922,10 @@ function renderPatientReports() {
 function renderDoctorsList() {
   const listContainer = document.getElementById('p-doctors-list');
   const bookSelect = document.getElementById('book-appt-doctor-select');
-  
+
   if (listContainer) listContainer.innerHTML = '';
   if (bookSelect) bookSelect.innerHTML = '';
-  
+
   doctorsData.forEach(doc => {
     // 1. Select options for booking appointment
     if (bookSelect && doc.status === 'Active') {
@@ -934,14 +934,14 @@ function renderDoctorsList() {
       opt.textContent = `${doc.name} – ${doc.specialty}`;
       bookSelect.appendChild(opt);
     }
-    
+
     // 2. Direct card generation on page
     if (listContainer) {
       const initials = doc.name.split(' ').slice(1).map(n => n[0]).join('');
       const statusBadge = doc.availability.includes('Today') || doc.status === 'Active' ? 'badge-green' : 'badge-yellow';
       const statusText = doc.status === 'Active' ? 'Available Today' : 'Tomorrow';
       const borderClass = doc.specialty === 'General Medicine' ? 'avatar-teal' : doc.specialty === 'Cardiology' ? 'avatar-blue' : 'avatar-orange';
-      
+
       const card = document.createElement('div');
       card.className = 'card';
       card.innerHTML = `
@@ -986,12 +986,12 @@ async function submitBookAppointment() {
   const date = document.getElementById('book-appt-date').value;
   const time = document.getElementById('book-appt-time').value;
   const reason = document.getElementById('book-appt-reason').value;
-  
+
   if (!date) {
     notify('Please select an appointment date', 'error');
     return;
   }
-  
+
   try {
     const res = await fetch(`${API_BASE}/appointments/book`, {
       method: 'POST',
@@ -999,14 +999,14 @@ async function submitBookAppointment() {
       body: JSON.stringify({
         doctorId,
         patientId: 'P-10421',
-        dateTime: `${date}T${time.includes('AM') ? time.replace(' AM','') : (parseInt(time.replace(' PM',''))+12)}:00:00`,
+        dateTime: `${date}T${time.includes('AM') ? time.replace(' AM', '') : (parseInt(time.replace(' PM', '')) + 12)}:00:00`,
         type,
         reason
       })
     });
-    
+
     if (!res.ok) throw new Error('Booking failed');
-    
+
     closeModal('bookApptModal');
     notify('Appointment booked successfully!', 'success');
     await loadPatientData();
@@ -1030,7 +1030,7 @@ async function cancelAppointment(id) {
 async function triggerReportUpload() {
   const testName = prompt("Enter Test Name to upload:", "CBC Blood Test");
   if (!testName) return;
-  
+
   try {
     const res = await fetch(`${API_BASE}/reports/upload`, {
       method: 'POST',
@@ -1053,7 +1053,7 @@ async function savePatientProfile() {
   const phone = prompt("Update Phone Number:", patientData.phone);
   const city = prompt("Update City:", patientData.city);
   if (!phone && !city) return;
-  
+
   try {
     const res = await fetch(`${API_BASE}/patients/P-10421/profile`, {
       method: 'PUT',
@@ -1075,13 +1075,13 @@ function viewDocument(name) {
 function filterDoctors() {
   const q = document.getElementById('p-doctors-search').value.toLowerCase();
   const spec = document.getElementById('p-doctors-specialty-filter').value;
-  
+
   document.querySelectorAll('#p-doctors-list .card').forEach(card => {
     const name = card.querySelector('.font-semibold').textContent.toLowerCase();
     const specialtyText = card.querySelector('.text-muted').textContent;
     const matchQ = name.includes(q) || specialtyText.toLowerCase().includes(q);
     const matchSpec = spec === 'All Specialties' || specialtyText.includes(spec);
-    
+
     card.style.display = matchQ && matchSpec ? 'block' : 'none';
   });
 }
@@ -1093,22 +1093,22 @@ async function loadDoctorData() {
     const resAppt = await fetch(`${API_BASE}/appointments`);
     appointmentsData = await resAppt.json();
     renderDoctorAppointments();
-    
+
     // 2. Fetch all patients
     const resPat = await fetch(`${API_BASE}/patients`);
     const patientsList = await resPat.json();
     renderDoctorPatients(patientsList);
-    
+
     // 3. Fetch all prescriptions
     const resRx = await fetch(`${API_BASE}/prescriptions`);
     prescriptionsData = await resRx.json();
     renderDoctorPrescriptions();
-    
+
     // 4. Fetch reports
     const resRep = await fetch(`${API_BASE}/reports`);
     reportsData = await resRep.json();
     renderDoctorReports();
-    
+
   } catch (err) {
     console.error("Error loading doctor data", err);
   }
@@ -1118,23 +1118,23 @@ function renderDoctorAppointments() {
   const scheduleList = document.getElementById('d-dashboard-schedule');
   const tableBody = document.getElementById('d-appointments-table-body');
   const consultQueue = document.getElementById('d-consultation-queue');
-  
+
   if (scheduleList) scheduleList.innerHTML = '';
   if (tableBody) tableBody.innerHTML = '';
   if (consultQueue) consultQueue.innerHTML = '';
-  
+
   let myAppts = appointmentsData.filter(a => a.doctorId === 'D-101');
-  
+
   // Update nav badge count
   const countBadge = document.getElementById('d-badge-appt-count');
   if (countBadge) countBadge.textContent = myAppts.length;
-  
+
   myAppts.forEach(appt => {
-    const time = new Date(appt.dateTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-    const formattedDate = new Date(appt.dateTime).toLocaleString([], {month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'});
+    const time = new Date(appt.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const formattedDate = new Date(appt.dateTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
     const badgeClass = appt.type === 'Video' ? 'badge-blue' : 'badge-teal';
     const statusClass = appt.status === 'Completed' ? 'badge-gray' : appt.status === 'Confirmed' ? 'badge-green' : 'badge-yellow';
-    
+
     // Render Today Schedule on Dashboard
     if (scheduleList) {
       const item = document.createElement('div');
@@ -1143,7 +1143,7 @@ function renderDoctorAppointments() {
       if (appt.status === 'Confirmed' && appt.type === 'Video') {
         actionEl = `<button class="btn btn-primary btn-sm" onclick="window.joinVideoRoom('${appt.patientName}')">Join</button>`;
       }
-      
+
       item.innerHTML = `
         <div class="appt-time">
           <div class="time">${time}</div>
@@ -1157,7 +1157,7 @@ function renderDoctorAppointments() {
       `;
       scheduleList.appendChild(item);
     }
-    
+
     // Render Appointments page list
     if (tableBody) {
       const tr = document.createElement('tr');
@@ -1169,17 +1169,17 @@ function renderDoctorAppointments() {
         <td><span class="badge ${statusClass}">${appt.status}</span></td>
         <td>
           ${appt.status === 'Confirmed' && appt.type === 'Video'
-            ? `<button class="btn btn-sm btn-primary" onclick="window.joinVideoRoom('${appt.patientName}')">Join</button>`
-            : appt.status === 'Confirmed'
-              ? `<button class="btn btn-sm btn-ghost" onclick="window.cancelAppointment('${appt.id}')">Cancel</button>`
-              : appt.status === 'Completed'
-                ? `<button class="btn btn-sm btn-ghost" onclick="window.openPrescriptionModal('${appt.patientId}')">Add Rx</button>`
-                : `–`}
+          ? `<button class="btn btn-sm btn-primary" onclick="window.joinVideoRoom('${appt.patientName}')">Join</button>`
+          : appt.status === 'Confirmed'
+            ? `<button class="btn btn-sm btn-ghost" onclick="window.cancelAppointment('${appt.id}')">Cancel</button>`
+            : appt.status === 'Completed'
+              ? `<button class="btn btn-sm btn-ghost" onclick="window.openPrescriptionModal('${appt.patientId}')">Add Rx</button>`
+              : `–`}
         </td>
       `;
       tableBody.appendChild(tr);
     }
-    
+
     // Render Queue in consultation room
     if (consultQueue && appt.type === 'Video' && appt.status !== 'Completed') {
       const item = document.createElement('div');
@@ -1204,7 +1204,7 @@ function renderDoctorPatients(list) {
   const tableBody = document.getElementById('d-patients-table-body');
   if (!tableBody) return;
   tableBody.innerHTML = '';
-  
+
   list.forEach(pat => {
     const avatarInit = pat.name.split(' ').map(n => n[0]).join('');
     const tr = document.createElement('tr');
@@ -1232,7 +1232,7 @@ function renderDoctorPrescriptions() {
   const tableBody = document.getElementById('d-prescriptions-table-body');
   if (!tableBody) return;
   tableBody.innerHTML = '';
-  
+
   prescriptionsData.forEach(rx => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -1251,11 +1251,11 @@ function renderDoctorReports() {
   const tableBody = document.getElementById('d-reports-table-body');
   if (!tableBody) return;
   tableBody.innerHTML = '';
-  
+
   reportsData.forEach(rep => {
     const pat = patients.find(p => p.id === rep.patientId) || { name: 'Alex Smith' };
     const badgeClass = rep.result.includes('Normal') ? 'badge-green' : 'badge-yellow';
-    
+
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td class="font-semibold">${pat.name}</td>
@@ -1281,7 +1281,7 @@ function openPrescriptionModal(patientId) {
 function addRxRow() {
   const rxList = document.getElementById('rxList');
   if (!rxList) return;
-  
+
   const row = document.createElement('div');
   row.className = 'form-row flex-rx-row';
   row.style.alignItems = 'end';
@@ -1296,31 +1296,31 @@ async function submitIssuePrescription() {
   const patientId = document.getElementById('presc-patient-select').value;
   const diagnosis = document.getElementById('presc-diagnosis').value;
   const duration = document.getElementById('presc-duration').value;
-  
+
   const medNames = document.querySelectorAll('.rx-med-name');
   const medDoses = document.querySelectorAll('.rx-med-dose');
-  
+
   const medicines = [];
   medNames.forEach((el, index) => {
     if (el.value) {
       medicines.push({ name: el.value, dosage: medDoses[index]?.value || '1 tablet daily' });
     }
   });
-  
+
   if (medicines.length === 0) {
     notify('Please input at least one medicine', 'error');
     return;
   }
-  
+
   try {
     const res = await fetch(`${API_BASE}/prescriptions/issue`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ patientId, diagnosis, duration, medicines })
     });
-    
+
     if (!res.ok) throw new Error('Prescription issuance failed');
-    
+
     closeModal('prescModal');
     notify('Prescription issued and sent to patient', 'success');
     await loadDoctorData();
@@ -1341,14 +1341,14 @@ function viewEhrDetails(id) {
 function filterPatients() {
   const q = document.getElementById('d-patient-search').value.toLowerCase();
   const condition = document.getElementById('d-patient-condition-filter').value;
-  
+
   document.querySelectorAll('#d-patients-table-body tr').forEach(tr => {
     const name = tr.querySelector('.font-semibold').textContent.toLowerCase();
     const condText = tr.querySelector('.badge').textContent;
-    
+
     const matchQ = name.includes(q);
     const matchCond = condition === 'All Conditions' || condText.includes(condition);
-    
+
     tr.style.display = matchQ && matchCond ? 'table-row' : 'none';
   });
 }
@@ -1358,30 +1358,30 @@ async function loadAdminData() {
   try {
     const res = await fetch(`${API_BASE}/admin/logs`);
     const data = await res.json();
-    
+
     // Update stats counters
     const statPat = document.getElementById('a-stat-patients');
     const statDoc = document.getElementById('a-stat-doctors');
     if (statPat) statPat.textContent = data.stats.totalPatients.toLocaleString();
     if (statDoc) statDoc.textContent = data.stats.activeDoctors.toLocaleString();
-    
+
     // Render logs
     renderAdminLogs(data.logs);
-    
+
     // Fetch users for list
     const resUsers = await fetch(`${API_BASE}/patients`);
     const patientsList = await resUsers.json();
     const resDocs = await fetch(`${API_BASE}/doctors`);
     doctorsData = await resDocs.json();
-    
+
     renderAdminUsersList(patientsList, doctorsData);
     renderAdminDoctorsTable(doctorsData);
-    
+
     // Fetch appointments for admin list
     const resAppt = await fetch(`${API_BASE}/appointments`);
     appointmentsData = await resAppt.json();
     renderAdminAppointments();
-    
+
   } catch (err) {
     console.error("Error loading admin data", err);
   }
@@ -1390,10 +1390,10 @@ async function loadAdminData() {
 function renderAdminLogs(logs) {
   const dbLogs = document.getElementById('a-dashboard-logs');
   const pageLogs = document.getElementById('a-activity-table-body');
-  
+
   if (dbLogs) dbLogs.innerHTML = '';
   if (pageLogs) pageLogs.innerHTML = '';
-  
+
   logs.forEach((log, index) => {
     // 1. Dashboard summary (max 4)
     if (dbLogs && index < 4) {
@@ -1408,7 +1408,7 @@ function renderAdminLogs(logs) {
       `;
       dbLogs.appendChild(item);
     }
-    
+
     // 2. Main page table logs
     if (pageLogs) {
       const badgeClass = log.status === 'Success' ? 'badge-green' : 'badge-red';
@@ -1429,7 +1429,7 @@ function renderAdminUsersList(patientsList, docsList) {
   const tableBody = document.getElementById('a-users-table-body');
   if (!tableBody) return;
   tableBody.innerHTML = '';
-  
+
   // Render patients
   patientsList.forEach(pat => {
     const tr = document.createElement('tr');
@@ -1453,12 +1453,12 @@ function renderAdminUsersList(patientsList, docsList) {
   docsList.forEach(doc => {
     const initials = doc.name.split(' ').slice(1).map(n => n[0]).join('');
     const tr = document.createElement('tr');
-    const actionCell = doc.status === 'Pending' 
+    const actionCell = doc.status === 'Pending'
       ? `<button class="btn btn-sm btn-primary" onclick="window.approveDoctor('${doc.id}')">Approve</button>
          <button class="btn btn-sm btn-danger" onclick="window.rejectDoctor('${doc.id}')">Reject</button>`
       : `<button class="btn btn-sm btn-ghost" onclick="window.editUser('${doc.id}')">Edit</button>
          <button class="btn btn-sm btn-danger" onclick="window.suspendUser('${doc.id}')">Suspend</button>`;
-         
+
     tr.innerHTML = `
       <td><div class="flex items-center gap-2"><div class="avatar avatar-blue" style="width:32px;height:32px;font-size:.72rem;">${initials}</div><div class="font-semibold">${doc.name}</div></div></td>
       <td><span class="badge badge-blue">Doctor</span></td>
@@ -1475,7 +1475,7 @@ function renderAdminDoctorsTable(docsList) {
   const tableBody = document.getElementById('a-doctors-table-body');
   if (!tableBody) return;
   tableBody.innerHTML = '';
-  
+
   docsList.forEach(doc => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -1494,12 +1494,12 @@ function renderAdminAppointments() {
   const tableBody = document.getElementById('a-appointments-table-body');
   if (!tableBody) return;
   tableBody.innerHTML = '';
-  
+
   appointmentsData.forEach(appt => {
-    const formattedDate = new Date(appt.dateTime).toLocaleString([], {month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'});
+    const formattedDate = new Date(appt.dateTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
     const badgeClass = appt.type === 'Video' ? 'badge-blue' : 'badge-teal';
     const statusClass = appt.status === 'Completed' ? 'badge-gray' : appt.status === 'Confirmed' ? 'badge-green' : 'badge-yellow';
-    
+
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${appt.patientName}</td>
@@ -1557,12 +1557,12 @@ async function submitAddUser() {
   const email = document.getElementById('addUser-email').value;
   const role = document.getElementById('addUser-role').value;
   const phone = document.getElementById('addUser-phone').value;
-  
+
   if (!firstName || !lastName || !email) {
     notify('Please input name and email address', 'error');
     return;
   }
-  
+
   try {
     const res = await fetch(`${API_BASE}/admin/users/add`, {
       method: 'POST',
@@ -1570,7 +1570,7 @@ async function submitAddUser() {
       body: JSON.stringify({ firstName, lastName, email, role, phone })
     });
     if (!res.ok) throw new Error('Add user failed');
-    
+
     closeModal('addUserModal');
     notify('User added and invitation sent', 'success');
     await loadAdminData();
@@ -1584,7 +1584,7 @@ async function saveAdminSettings() {
   const supportEmail = document.getElementById('a-setting-email').value;
   const defaultDuration = document.getElementById('a-setting-duration').value;
   const maxPatientsPerDay = document.getElementById('a-setting-max-patients').value;
-  
+
   try {
     const res = await fetch(`${API_BASE}/admin/settings`, {
       method: 'PUT',
