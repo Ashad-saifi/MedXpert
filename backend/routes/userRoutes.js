@@ -1,7 +1,7 @@
-const express = require("express");
+import express from "express";
 const router = express.Router();
-const { registerUser, loginUser, getUserProfile } = require("../controllers/userController");
-const protect = require("../middleware/authMiddleware");
+import { registerUser, loginUser, getUserProfile } from "../controllers/userController.js";
+import protect from "../middleware/authMiddleware.js";
 
 // Route for User Registration
 router.post("/register", registerUser);
@@ -15,4 +15,4 @@ router.get("/profile", protect, getUserProfile);
 // Stub for testing routes
 router.get("/test", (req, res) => res.json({ message: "Auth routes placeholder" }));
 
-module.exports = router;
+export default router;

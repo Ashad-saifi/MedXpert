@@ -1,8 +1,8 @@
-const User = require("../models/User");
-const Doctor = require("../models/Doctor");
-const Patient = require("../models/Patient");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
+import User from "../models/User.js";
+import Doctor from "../models/Doctor.js";
+import Patient from "../models/Patient.js";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 
 // Generate JWT Helper
 const generateToken = (id) => {
@@ -156,7 +156,7 @@ const getUserProfile = async (req, res) => {
     }
 };
 
-module.exports = {
+export {
     registerUser,
     loginUser,
     getUserProfile

@@ -1,10 +1,17 @@
-require("dotenv").config({ path: require("path").resolve(__dirname, "../.env") });
-const mongoose = require("mongoose");
-const bcrypt = require("bcryptjs");
-const User = require("../models/User");
-const Doctor = require("../models/Doctor");
-const Patient = require("../models/Patient");
-const Appointment = require("../models/Appointment");
+import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
+import mongoose from "mongoose";
+import bcrypt from "bcryptjs";
+import User from "../models/User.js";
+import Doctor from "../models/Doctor.js";
+import Patient from "../models/Patient.js";
+import Appointment from "../models/Appointment.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
 const seedDatabase = async () => {
     try {
