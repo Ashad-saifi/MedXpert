@@ -1,6 +1,11 @@
 import mongoose from "mongoose";
 
 const patientSchema = new mongoose.Schema({
+    id: {
+        type: String,
+        required: true,
+        unique: true
+    },
     user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
@@ -40,6 +45,14 @@ const patientSchema = new mongoose.Schema({
     },
     insurance: {
         type: String
+    },
+    clinicalNotes: {
+        type: String,
+        default: ""
+    },
+    chiefComplaint: {
+        type: String,
+        default: ""
     }
 }, {
     timestamps: true

@@ -1,7 +1,15 @@
 import express from "express";
+import { getAppointments, bookAppointment, cancelAppointment } from "../controllers/appointmentController.js";
+
 const router = express.Router();
 
-// Stubs for Day 3 scheduling routes
-router.get("/test", (req, res) => res.json({ message: "Appointment routes placeholder" }));
+// GET all appointments
+router.get("/", getAppointments);
+
+// POST book new appointment
+router.post("/book", bookAppointment);
+
+// POST cancel appointment
+router.post("/cancel/:id", cancelAppointment);
 
 export default router;

@@ -1,7 +1,15 @@
 import express from "express";
+import { getDoctors, approveDoctor, rejectDoctor } from "../controllers/doctorController.js";
+
 const router = express.Router();
 
-// Stubs for Day 3 doctor dashboard routes
-router.get("/test", (req, res) => res.json({ message: "Doctor routes placeholder" }));
+// GET all doctors
+router.get("/", getDoctors);
+
+// Approve a doctor's credentials
+router.post("/approve/:id", approveDoctor);
+
+// Reject a doctor's credentials
+router.post("/reject/:id", rejectDoctor);
 
 export default router;
