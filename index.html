@@ -807,6 +807,9 @@
         <!-- Remote Participant Webcam Image Simulation -->
         <img id="partnerVideoImage" style="width: 100%; height: 100%; object-fit: cover; border-radius: inherit; display: none; position: absolute; inset: 0; z-index: 1;" alt="Consultation Live Video Feed">
         
+        <!-- Remote Peer Live Video Feed -->
+        <video id="remoteVideo" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover; border-radius: inherit; display: none; position: absolute; inset: 0; z-index: 1; background: #000;"></video>
+        
         <!-- Screen Share Viewport -->
         <video id="mainScreenShareVideo" autoplay playsinline style="width: 100%; height: 100%; object-fit: contain; border-radius: inherit; display: none; position: absolute; inset: 0; z-index: 2; background: #000;"></video>
         
@@ -966,6 +969,7 @@
     </div>
   </div>
 
+  <script src="/socket.io/socket.io.js"></script>
   <script type="module" src="./src/main.js"></script>
 </body>
 </html>
