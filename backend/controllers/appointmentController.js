@@ -137,9 +137,39 @@ const verifyRoomAccess = async (req, res) => {
     }
 };
 
+// @desc    Update appointment status
+// @route   PUT /api/appointments/:id/status
+// @access  Private
+const updateAppointmentStatus = async (req, res) => {
+    try {
+        const { status } = req.body;
+        if (!status) {
+            return res.status(400).json({ error: "Status field is required" });
+        }
+
+        const appt = await Appointment.findOneAndUpdate(
+            { id: req.params.id },
+            { status },
+            { new: true }
+        );
+
+        if (!appt) {
+            return res.status(404).json({ error: "Appointment not found" });
+        }
+
+        await addLog(appt.patientName, `Updated appointment slot ID: ${appt.id} status to: ${status}`);
+
+        const allAppointments = await Appointment.find({});
+        res.json({ success: true, message: `Appointment status updated to ${status}`, appointments: allAppointments });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 export {
     getAppointments,
     bookAppointment,
     cancelAppointment,
-    verifyRoomAccess
+    verifyRoomAccess,
+    updateAppointmentStatus
 };
