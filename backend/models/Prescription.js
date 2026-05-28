@@ -56,6 +56,10 @@ const prescriptionSchema = new mongoose.Schema({
         type: String,
         enum: ["Active", "Refill Soon", "Expired", "Completed"],
         default: "Active"
+    },
+    signature: {
+        type: String,
+        required: false
     }
 }, {
     timestamps: true

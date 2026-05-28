@@ -1091,6 +1091,11 @@ function renderPatientPrescriptions() {
             <div class="flex justify-between text-sm mb-1"><span>Refills left</span><span>${rx.refillsTotal - rx.refillsUsed} of ${rx.refillsTotal}</span></div>
             <div class="progress-bar"><div class="progress-fill" style="width:${progressPercent}%"></div></div>
           </div>
+          <div style="margin-top:.75rem; display:flex; justify-content:flex-end;">
+            <a href="/api/prescriptions/${rx.id}/download" class="btn btn-sm btn-ghost" download style="color:var(--primary-light); display:flex; align-items:center; gap:0.25rem;">
+              <span>📥</span> Download Signed PDF
+            </a>
+          </div>
         `;
         activeList.appendChild(item);
       }
@@ -1116,6 +1121,11 @@ function renderPatientPrescriptions() {
           <td><div class="font-semibold">${rx.medicineName}</div><div class="text-muted">${rx.doctorName}</div></td>
           <td>${rx.date}</td>
           <td><span class="badge badge-gray">${rx.status}</span></td>
+          <td style="text-align:right;">
+            <a href="/api/prescriptions/${rx.id}/download" class="btn btn-sm btn-ghost" download style="color:var(--text3);">
+              📥 PDF
+            </a>
+          </td>
         `;
         histTable.appendChild(tr);
       }
@@ -1488,6 +1498,11 @@ function renderDoctorPrescriptions() {
       <td>${rx.duration}</td>
       <td>${rx.date}</td>
       <td><span class="badge badge-green">${rx.status}</span></td>
+      <td style="text-align:right;">
+        <a href="/api/prescriptions/${rx.id}/download" class="btn btn-sm btn-ghost" download style="color:var(--primary-light);">
+          📥 PDF
+        </a>
+      </td>
     `;
     tableBody.appendChild(tr);
   });
