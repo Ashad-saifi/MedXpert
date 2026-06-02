@@ -284,7 +284,7 @@
             <div class="section-hd"><h3>Prescription History</h3></div>
             <div class="table-wrap">
               <table>
-                <thead><tr><th>Medicine</th><th>Prescribed</th><th>Status</th></tr></thead>
+                <thead><tr><th>Medicine</th><th>Prescribed</th><th>Status</th><th style="text-align:right;">Action</th></tr></thead>
                 <tbody id="p-prescriptions-history-table">
                   <!-- Dynamically populated -->
                 </tbody>
@@ -496,7 +496,7 @@
           <div class="section-hd"><h3>Issued Prescriptions</h3></div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Patient</th><th>Medicine</th><th>Dosage</th><th>Duration</th><th>Date</th><th>Status</th></tr></thead>
+              <thead><tr><th>Patient</th><th>Medicine</th><th>Dosage</th><th>Duration</th><th>Date</th><th>Status</th><th style="text-align:right;">Action</th></tr></thead>
               <tbody id="d-prescriptions-table-body">
                 <!-- Dynamically populated -->
               </tbody>
@@ -1002,6 +1002,41 @@
 
     <!-- Main call screen tile (matches screenshot) -->
     <div class="video-main">
+      <div class="video-feed">
+        <!-- Remote Participant Webcam Image Simulation -->
+        <img id="partnerVideoImage" style="width: 100%; height: 100%; object-fit: cover; border-radius: inherit; display: none; position: absolute; inset: 0; z-index: 1;" alt="Consultation Live Video Feed">
+        
+        <!-- Remote Peer Live Video Feed -->
+        <video id="remoteVideo" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover; border-radius: inherit; display: none; position: absolute; inset: 0; z-index: 1; background: #000;"></video>
+        
+        <!-- Screen Share Viewport -->
+        <video id="mainScreenShareVideo" autoplay playsinline style="width: 100%; height: 100%; object-fit: contain; border-radius: inherit; display: none; position: absolute; inset: 0; z-index: 2; background: #000;"></video>
+        
+        <!-- Recording Overlay Badge -->
+        <div class="rec-indicator" id="recIndicatorBadge" style="display: none; align-items: center; gap: 0.4rem; background: rgba(0,0,0,0.6); padding: 0.35rem 0.65rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700; color: white; position: absolute; top: 1rem; left: 1rem; z-index: 4;">
+          <span style="width: 8px; height: 8px; border-radius: 50%; background: #ef4444;" class="rec-dot"></span>
+          <span>REC</span>
+          <span id="recTimer">00:00</span>
+        </div>
+        
+        <!-- Emoji Reactions Animation Layer -->
+        <div class="reactions-layer" id="videoReactionsLayer" style="position: absolute; inset: 0; pointer-events: none; z-index: 5; overflow: hidden;"></div>
+        
+        <div class="pulse-ring" id="videoPulseRing"></div>
+        <div style="display: flex; align-items: center; gap: 0.5rem; color: rgba(255,255,255,0.7); z-index: 3;" id="video-partner-name-wrapper">
+          <span id="video-partner-name">Dr. Sarah Johnson · Connecting...</span>
+          <div class="audio-indicator-bars" id="partner-audio-bars" style="display: none; align-items: flex-end; gap: 2px; height: 12px; width: 14px;">
+            <div class="audio-bar" style="height: 4px; width: 2px; background: #22c55e;"></div>
+            <div class="audio-bar" style="height: 8px; width: 2px; background: #22c55e;"></div>
+            <div class="audio-bar" style="height: 6px; width: 2px; background: #22c55e;"></div>
+            <div class="audio-bar" style="height: 10px; width: 2px; background: #22c55e;"></div>
+          </div>
+        </div>
+        <div style="color:rgba(255,255,255,.4);font-size:.8rem;margin-top:.5rem; z-index: 3;" id="video-partner-sub">Secure end-to-end encrypted call</div>
+        
+        <div class="video-self" style="z-index: 3;">
+          <video id="localVideo" autoplay muted playsinline style="width: 100%; height: 100%; object-fit: cover; border-radius: inherit; transform: scaleX(-1); display: none;"></video>
+          <span id="localVideoPlaceholder">You (Camera Off)</span>
       <div class="video-feed-wrapper">
         <div class="video-feed meet-main-tile">
           <!-- The main participant video feed (camera active) -->
@@ -1228,6 +1263,7 @@
     </div>
   </div>
 
+  <script src="/socket.io/socket.io.js"></script>
   <script type="module" src="./src/main.js"></script>
 </body>
 </html>

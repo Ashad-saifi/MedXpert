@@ -1,10 +1,30 @@
 import express from "express";
-import { getDoctors, approveDoctor, rejectDoctor } from "../controllers/doctorController.js";
+import { 
+    getDoctors, 
+    getDoctorById, 
+    addDoctor, 
+    updateDoctor, 
+    deleteDoctor, 
+    approveDoctor, 
+    rejectDoctor 
+} from "../controllers/doctorController.js";
 
 const router = express.Router();
 
 // GET all doctors
 router.get("/", getDoctors);
+
+// GET single doctor by string ID or ObjectId
+router.get("/:id", getDoctorById);
+
+// POST add new doctor
+router.post("/", addDoctor);
+
+// PUT update doctor profile
+router.put("/:id", updateDoctor);
+
+// DELETE doctor profile
+router.delete("/:id", deleteDoctor);
 
 // Approve a doctor's credentials
 router.post("/approve/:id", approveDoctor);

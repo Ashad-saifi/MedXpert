@@ -173,8 +173,66 @@ const getUserProfile = async (req, res) => {
     }
 };
 
+/**
+ * @desc    Update user details
+ * @route   PUT /api/users/profile
+ * @access  Private
+ */
+const updateUserProfile = async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id);
+
+        if (user) {
+            user.name = req.body.name || user.name;
+            user.email = req.body.email || user.email;
+            user.phone = req.body.phone || user.phone;
+
+            if (req.body.password) {
+                const salt = await bcrypt.genSalt(10);
+                user.password = await bcrypt.hash(req.body.password, salt);
+            }
+
+            const updatedUser = await user.save();
+
+            // Find and update associated role profile
+            let profile = null;
+            if (updatedUser.role === "doctor") {
+                profile = await Doctor.findOneAndUpdate(
+                    { user: updatedUser._id },
+                    { name: updatedUser.name, email: updatedUser.email, phone: updatedUser.phone },
+                    { new: true }
+                );
+            } else if (updatedUser.role === "patient") {
+                profile = await Patient.findOneAndUpdate(
+                    { user: updatedUser._id },
+                    { name: updatedUser.name, email: updatedUser.email, phone: updatedUser.phone },
+                    { new: true }
+                );
+            }
+
+            res.json({
+                user: {
+                    id: updatedUser._id,
+                    name: updatedUser.name,
+                    email: updatedUser.email,
+                    role: updatedUser.role,
+                    phone: updatedUser.phone
+                },
+                profile,
+                token: generateToken(updatedUser._id)
+            });
+        } else {
+            res.status(404).json({ message: "User not found" });
+        }
+    } catch (error) {
+        console.error("Update User Profile Error:", error);
+        res.status(500).json({ message: error.message });
+    }
+};
+
 export {
     registerUser,
     loginUser,
-    getUserProfile
+    getUserProfile,
+    updateUserProfile
 };

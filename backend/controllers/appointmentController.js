@@ -101,8 +101,76 @@ const cancelAppointment = async (req, res) => {
     }
 };
 
+// @desc    Verify if patient/doctor has a valid slot for signaling token
+// @route   POST /api/appointments/verify-room
+// @access  Private
+const verifyRoomAccess = async (req, res) => {
+    try {
+        const { appointmentId, userId, role } = req.body;
+        if (!appointmentId || !userId || !role) {
+            return res.status(400).json({ error: "Missing required verification fields (appointmentId, userId, role)" });
+        }
+
+        const appt = await Appointment.findOne({ id: appointmentId });
+        if (!appt) {
+            return res.status(404).json({ error: "No appointment scheduled with this ID" });
+        }
+
+        if (appt.status !== 'Confirmed') {
+            return res.status(400).json({ error: `Appointment session is ${appt.status}. Can only join confirmed slots.` });
+        }
+
+        // Verify user ID role bound permissions
+        if (role === 'patient' && appt.patientId !== userId) {
+            return res.status(403).json({ error: "Unauthorized access: You are not the scheduled patient for this slot." });
+        }
+        if (role === 'doctor' && appt.doctorId !== userId) {
+            return res.status(403).json({ error: "Unauthorized access: You are not the scheduled doctor for this slot." });
+        }
+
+        res.json({
+            success: true,
+            token: `token_webrtc_${appointmentId}_${userId}_${Date.now()}`,
+            message: "Appointment room session verified and access granted."
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Update appointment status
+// @route   PUT /api/appointments/:id/status
+// @access  Private
+const updateAppointmentStatus = async (req, res) => {
+    try {
+        const { status } = req.body;
+        if (!status) {
+            return res.status(400).json({ error: "Status field is required" });
+        }
+
+        const appt = await Appointment.findOneAndUpdate(
+            { id: req.params.id },
+            { status },
+            { new: true }
+        );
+
+        if (!appt) {
+            return res.status(404).json({ error: "Appointment not found" });
+        }
+
+        await addLog(appt.patientName, `Updated appointment slot ID: ${appt.id} status to: ${status}`);
+
+        const allAppointments = await Appointment.find({});
+        res.json({ success: true, message: `Appointment status updated to ${status}`, appointments: allAppointments });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 export {
     getAppointments,
     bookAppointment,
-    cancelAppointment
+    cancelAppointment,
+    verifyRoomAccess,
+    updateAppointmentStatus
 };

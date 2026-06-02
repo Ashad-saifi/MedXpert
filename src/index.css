@@ -1936,4 +1936,33 @@ select.form-control {
   }
 }
 
+/* ── TELEHEALTH FLOATING REACTION EMOJIS ── */
+.floating-emoji {
+  position: absolute;
+  bottom: -50px;
+  font-size: 2.5rem;
+  pointer-events: none;
+  z-index: 99;
+  animation: floatUp 3s ease-in-out forwards;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+}
+
+@keyframes floatUp {
+  0% {
+    transform: translateY(0) scale(0.5) rotate(0deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(-50px) scale(1.1) rotate(5deg);
+  }
+  50% {
+    transform: translateY(-150px) scale(1.0) rotate(-10deg) translateX(-15px);
+  }
+  100% {
+    transform: translateY(-350px) scale(0.8) rotate(15deg) translateX(15px);
+    opacity: 0;
+  }
+}
+
 

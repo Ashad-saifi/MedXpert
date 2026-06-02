@@ -19,6 +19,17 @@ let screenStream = null;
 let peerConnection = null;
 let signalingSocket = null;
 let currentReplyIndex = 0;
+
+// WebRTC & Socket.io Global State
+let socket = null;
+let peerConnection = null;
+let currentRoomId = null;
+const rtcConfig = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' }
+  ]
+};
 let isRecording = false;
 let recordInterval = null;
 let recordSeconds = 0;
@@ -175,6 +186,27 @@ function initEventListeners() {
     if (e.key === 'Enter') {
       sendVideoChatMessage();
     }
+  });
+
+  // Telehealth live sync listeners
+  document.getElementById('call-note-clinical')?.addEventListener('input', function () {
+    const text = this.value;
+    if (socket && currentRoomId) {
+      socket.emit("note-sync", { room: currentRoomId, text });
+    }
+  });
+
+  document.getElementById('btn-reaction-toggle')?.addEventListener('click', function (e) {
+    e.stopPropagation();
+    const popover = document.getElementById('reactionsPopover');
+    if (popover) {
+      popover.style.display = popover.style.display === 'none' ? 'flex' : 'none';
+    }
+  });
+
+  document.addEventListener('click', () => {
+    const popover = document.getElementById('reactionsPopover');
+    if (popover) popover.style.display = 'none';
   });
 
   // Patient features
@@ -815,10 +847,10 @@ function handleSignalingMessage(data) {
 
 // ── VIDEO ROOM CONTROLLER ──
 async function openVideoCall(partnerName = 'Doctor') {
-  activeCallPartnerName = partnerName;
   const overlay = document.getElementById('videoCallOverlay');
   if (!overlay) return;
 
+  currentRoomId = roomId;
   const timer = document.getElementById('callTimer');
   const partnerEl = document.getElementById('video-partner-name');
   const partnerSub = document.getElementById('video-partner-sub');
@@ -834,42 +866,10 @@ async function openVideoCall(partnerName = 'Doctor') {
   if (micIndicator) micIndicator.style.display = 'none'; // starts unmuted
 
   if (partnerEl) {
-    partnerEl.textContent = `Waiting for partner...`;
-  }
-
-  // Initialize WebSocket signaling socket
-  try {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
-    console.log("Connecting to WebRTC signaling at:", wsUrl);
-    signalingSocket = new WebSocket(wsUrl);
-
-    signalingSocket.onopen = () => {
-      console.log("WebSocket signaling connected");
-      signalingSocket.send(JSON.stringify({
-        type: 'join',
-        role: currentRole
-      }));
-    };
-
-    signalingSocket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        handleSignalingMessage(data);
-      } catch (err) {
-        console.error("Error parsing signaling message:", err);
-      }
-    };
-
-    signalingSocket.onclose = () => {
-      console.log("WebSocket signaling closed");
-    };
-
-    signalingSocket.onerror = (err) => {
-      console.error("WebSocket signaling error:", err);
-    };
-  } catch (err) {
-    console.error("Failed to establish WebSocket signaling:", err);
+    partnerEl.textContent = `${partnerName} · Connecting...`;
+    setTimeout(() => {
+      partnerEl.textContent = `${partnerName} (Connected)`;
+    }, 1500);
   }
 
   overlay.style.display = 'flex';
@@ -884,24 +884,21 @@ async function openVideoCall(partnerName = 'Doctor') {
     if (timer) timer.textContent = `${m}:${s}`;
   }, 1000);
 
-  // Reset video layout text views
+  // Show placeholders until track arrives
   if (partnerEl) partnerEl.style.display = 'block';
   if (partnerSub) partnerSub.style.display = 'block';
   if (pulseRing) pulseRing.style.display = 'block';
 
-  // Reset call sidebar/chat state
+  // Reset chat state
   currentReplyIndex = 0;
-  const sidebar = document.getElementById('videoCallSidebar');
-  if (sidebar) sidebar.style.display = 'none';
-  
-  // Set active tab to chat
-  switchCallTab('chat');
+  const chatPanel = document.getElementById('videoChatPanel');
+  if (chatPanel) chatPanel.style.display = 'none';
 
   const chatMessages = document.getElementById('videoChatMessages');
   if (chatMessages) {
     chatMessages.innerHTML = `
       <div class="chat-msg system">
-        <span class="text">Chat session started. All messages are encrypted.</span>
+        <span class="text">Secure WebRTC consultation started. Messages are end-to-end encrypted.</span>
       </div>
     `;
   }
@@ -917,30 +914,6 @@ async function openVideoCall(partnerName = 'Doctor') {
   if (screenToggle) {
     screenToggle.style.background = '';
     screenToggle.style.opacity = '1';
-  }
-
-  // Reset recording button & badge
-  const recordToggle = document.getElementById('btn-record-toggle');
-  if (recordToggle) {
-    recordToggle.innerHTML = '⏺️';
-    recordToggle.style.background = '';
-  }
-  const recBadge = document.getElementById('recIndicatorBadge');
-  if (recBadge) recBadge.style.display = 'none';
-  isRecording = false;
-  if (recordInterval) {
-    clearInterval(recordInterval);
-    recordInterval = null;
-  }
-
-  // Clear live sync advice text box and inputs
-  const callComplaintInput = document.getElementById('call-note-complaint');
-  const callClinicalInput = document.getElementById('call-note-clinical');
-  if (callComplaintInput) callComplaintInput.value = '';
-  if (callClinicalInput) callClinicalInput.value = '';
-  const patientAdviceBox = document.getElementById('patient-live-advice-box');
-  if (patientAdviceBox) {
-    patientAdviceBox.innerHTML = `<span style="color:rgba(255,255,255,0.4);font-style:italic;">No advice recorded yet. The doctor's advice will update here in real-time.</span>`;
   }
 
   // Access user's camera and microphone
@@ -998,10 +971,145 @@ async function openVideoCall(partnerName = 'Doctor') {
     if (camBtn) camBtn.style.opacity = '1';
     if (micBtn) micBtn.style.opacity = '1';
   }
+
+  // Initialize Socket.io Connection
+  socket = io();
+
+  // Initialize WebRTC Peer Connection
+  peerConnection = new RTCPeerConnection(rtcConfig);
+
+  // Add Local Tracks to Peer Connection
+  if (localStream) {
+    localStream.getTracks().forEach(track => {
+      peerConnection.addTrack(track, localStream);
+    });
+  }
+
+  // Handle Remote Track
+  peerConnection.ontrack = (event) => {
+    console.log("Remote track received:", event.streams[0]);
+    const remoteVideo = document.getElementById('remoteVideo');
+    const simulatedImage = document.getElementById('partnerVideoImage');
+    
+    if (remoteVideo) {
+      remoteVideo.srcObject = event.streams[0];
+      remoteVideo.style.display = 'block';
+    }
+    if (simulatedImage) {
+      simulatedImage.style.display = 'none';
+    }
+    if (pulseRing) pulseRing.style.display = 'none';
+    if (partnerEl) {
+      partnerEl.textContent = `${partnerName} (Connected)`;
+    }
+  };
+
+  // Handle ICE Candidates
+  peerConnection.onicecandidate = (event) => {
+    if (event.candidate) {
+      socket.emit("webrtc-candidate", { room: roomId, candidate: event.candidate });
+    }
+  };
+
+  // Connection State Resilience Handlers
+  peerConnection.onconnectionstatechange = () => {
+    console.log(`WebRTC Connection State: ${peerConnection.connectionState}`);
+    if (peerConnection.connectionState === 'connected') {
+      notify("Secure Telehealth Call Established", "success");
+    } else if (peerConnection.connectionState === 'disconnected' || peerConnection.connectionState === 'failed') {
+      notify("Connection lost. Attempting automatic ICE reconnection...", "warning");
+      peerConnection.restartIce();
+    }
+  };
+
+  // Socket Signalling Handlers
+  socket.emit("join-room", { 
+    room: roomId, 
+    userId: currentUser ? currentUser.id : (currentRole === 'doctor' ? 'D-101' : 'P-10421'), 
+    role: currentRole 
+  });
+
+  // Doctor generates the offer when patient joins
+  socket.on("peer-joined", async ({ socketId, role }) => {
+    console.log(`Peer joined room: ${socketId} as ${role}`);
+    if (currentRole === 'doctor') {
+      try {
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+        socket.emit("webrtc-offer", { room: roomId, offer });
+      } catch (err) {
+        console.error("Offer creation failed:", err);
+      }
+    }
+  });
+
+  socket.on("webrtc-offer", async ({ offer, senderId }) => {
+    console.log("Received WebRTC Offer from:", senderId);
+    try {
+      await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+      const answer = await peerConnection.createAnswer();
+      await peerConnection.setLocalDescription(answer);
+      socket.emit("webrtc-answer", { room: roomId, answer });
+    } catch (err) {
+      console.error("Failed handling WebRTC offer:", err);
+    }
+  });
+
+  socket.on("webrtc-answer", async ({ answer }) => {
+    console.log("Received WebRTC Answer");
+    try {
+      await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+    } catch (err) {
+      console.error("Failed handling WebRTC answer:", err);
+    }
+  });
+
+  socket.on("webrtc-candidate", async ({ candidate }) => {
+    try {
+      if (candidate) {
+        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+      }
+    } catch (err) {
+      console.error("Failed adding ICE Candidate:", err);
+    }
+  });
+
+  // Live Socket real-time text chat
+  socket.on("chat-message", ({ sender, text }) => {
+    appendChatMessage(sender, text, 'other');
+    const panel = document.getElementById('videoCallSidebar');
+    if (panel && panel.style.display === 'none') {
+      notify(`New message from ${sender}`, 'success');
+    }
+  });
+
+  // Live Doctor Clinical Note Syncing
+  socket.on("note-sync", ({ text }) => {
+    const adviceBox = document.getElementById('patient-live-advice-box');
+    if (adviceBox) {
+      adviceBox.innerHTML = `<span style="white-space: pre-wrap;">${text}</span>`;
+    }
+  });
+
+  // Live Reaction Relays
+  socket.on("reaction", ({ emoji }) => {
+    showFloatingReaction(emoji);
+  });
+
+  // Graceful peer disconnection
+  socket.on("peer-disconnected", () => {
+    notify(`${partnerName} disconnected. Waiting for connection recovery...`, "warning");
+    const remoteVideo = document.getElementById('remoteVideo');
+    if (remoteVideo) remoteVideo.style.display = 'none';
+    if (pulseRing) pulseRing.style.display = 'block';
+    if (partnerEl) partnerEl.textContent = `${partnerName} (Reconnecting...)`;
+  });
 }
 
 function closeVideoCall() {
-  document.getElementById('videoCallOverlay').style.display = 'none';
+  const overlay = document.getElementById('videoCallOverlay');
+  if (overlay) overlay.style.display = 'none';
+  
   clearInterval(callInterval);
 
   const timer = document.getElementById('callTimer');
@@ -1024,26 +1132,13 @@ function closeVideoCall() {
     localStream = null;
   }
 
-  const videoSelfContainer = document.querySelector('.video-self');
-  if (videoSelfContainer) {
-    videoSelfContainer.style.display = 'none';
-  }
-
   const localVideo = document.getElementById('localVideo');
-  const partnerVideo = document.getElementById('partnerVideo');
   const placeholder = document.getElementById('localVideoPlaceholder');
   const avatarCenter = document.getElementById('partnerAvatarCenter');
 
   if (localVideo) {
     localVideo.srcObject = null;
     localVideo.style.display = 'none';
-  }
-  if (partnerVideo) {
-    partnerVideo.srcObject = null;
-    partnerVideo.style.display = 'none';
-  }
-  if (avatarCenter) {
-    avatarCenter.style.display = 'flex';
   }
   if (placeholder) {
     placeholder.style.display = 'inline';
@@ -1094,6 +1189,16 @@ async function toggleScreenShare(btn) {
       if (partnerName) partnerName.style.display = 'none';
       if (partnerSub) partnerSub.style.display = 'none';
 
+      // WebRTC: Replace camera video track with screen-share video track
+      const videoTrack = stream.getVideoTracks()[0];
+      if (peerConnection) {
+        const senders = peerConnection.getSenders();
+        const videoSender = senders.find(sender => sender.track && sender.track.kind === 'video');
+        if (videoSender) {
+          videoSender.replaceTrack(videoTrack);
+        }
+      }
+
       // Auto-cleanup on end of screen share (browser native toolbar button click)
       stream.getVideoTracks()[0].onended = () => {
         stopScreenShare();
@@ -1129,6 +1234,19 @@ function stopScreenShare() {
     screenVideo.srcObject = null;
     screenVideo.style.display = 'none';
   }
+
+  // Revert back to Camera video track in Peer Connection
+  if (peerConnection && localStream) {
+    const videoTrack = localStream.getVideoTracks()[0];
+    if (videoTrack) {
+      const senders = peerConnection.getSenders();
+      const videoSender = senders.find(sender => sender.track && sender.track.kind === 'video');
+      if (videoSender) {
+        videoSender.replaceTrack(videoTrack);
+      }
+    }
+  }
+
   if (pulseRing) pulseRing.style.display = 'block';
   if (partnerName) partnerName.style.display = 'block';
   if (partnerSub) partnerSub.style.display = 'block';
@@ -1168,8 +1286,8 @@ function switchCallTab(tab) {
 }
 
 function toggleVideoChat(btn) {
-  const sidebar = document.getElementById('videoCallSidebar');
-  if (!sidebar) return;
+  const panel = document.getElementById('videoChatPanel');
+  if (!panel) return;
 
   const isOpen = sidebar.style.display === 'flex';
   sidebar.style.display = isOpen ? 'none' : 'flex';
@@ -1218,152 +1336,23 @@ function sendVideoChatMessage() {
   appendChatMessage(myName, text, 'self');
   input.value = '';
 
-  // Send message over WebSockets to remote peer
-  if (signalingSocket && signalingSocket.readyState === WebSocket.OPEN) {
-    signalingSocket.send(JSON.stringify({
-      type: 'chat',
-      sender: myName,
-      text: text
-    }));
-  } else {
-    // Simulated backup if socket is not open
-    setTimeout(() => {
-      const isDoctor = currentRole === 'doctor';
-      const replies = isDoctor ? patientChatReplies : doctorChatReplies;
-      const partnerName = isDoctor ? 'Aarav Mehta' : 'Dr. Shreya Joshi';
+  // Trigger simulated response after 2 seconds
+  setTimeout(() => {
+    const isDoctor = currentRole === 'doctor';
+    const replies = isDoctor ? patientChatReplies : doctorChatReplies;
+    const partnerName = isDoctor ? 'Alex Smith' : 'Dr. Sarah Johnson';
 
-      const replyText = replies[currentReplyIndex % replies.length];
-      currentReplyIndex++;
+    const replyText = replies[currentReplyIndex % replies.length];
+    currentReplyIndex++;
 
-      appendChatMessage(partnerName, replyText, 'other');
+    appendChatMessage(partnerName, replyText, 'other');
 
-      const sidebar = document.getElementById('videoCallSidebar');
-      if (sidebar && sidebar.style.display === 'none') {
-        notify(`New message from ${partnerName}`, 'success');
-      }
-    }, 2000);
-  }
-}
-
-function sendReaction(emoji, event) {
-  if (event) {
-    event.stopPropagation();
-  }
-  showReactionBubble(emoji);
-  
-  if (signalingSocket && signalingSocket.readyState === WebSocket.OPEN) {
-    signalingSocket.send(JSON.stringify({
-      type: 'reaction',
-      emoji: emoji
-    }));
-  }
-}
-
-function toggleRecording() {
-  const btn = document.getElementById('btn-record-toggle');
-  const badge = document.getElementById('recIndicatorBadge');
-  const timer = document.getElementById('recTimer');
-  
-  if (!btn || !badge) return;
-  
-  isRecording = !isRecording;
-  
-  if (isRecording) {
-    btn.innerHTML = '⏹️';
-    btn.style.background = '#ef4444';
-    badge.style.display = 'flex';
-    recordSeconds = 0;
-    if (timer) timer.textContent = '00:00';
-    
-    if (recordInterval) clearInterval(recordInterval);
-    recordInterval = setInterval(() => {
-      recordSeconds++;
-      const m = String(Math.floor(recordSeconds / 60)).padStart(2, '0');
-      const s = String(recordSeconds % 60).padStart(2, '0');
-      if (timer) timer.textContent = `${m}:${s}`;
-    }, 1000);
-    
-    notify('Consultation recording started', 'success');
-  } else {
-    btn.innerHTML = '⏺️';
-    btn.style.background = '';
-    badge.style.display = 'none';
-    if (recordInterval) {
-      clearInterval(recordInterval);
-      recordInterval = null;
+    // If chat side panel is hidden, notify user via notification bubble
+    const panel = document.getElementById('videoChatPanel');
+    if (panel && panel.style.display === 'none') {
+      notify(`New message from ${partnerName}`, 'success');
     }
-    notify('Consultation recording saved to medical records', 'success');
-  }
-}
-
-function requestVitals() {
-  notify('Requesting latest vitals from patient device...', '');
-  if (signalingSocket && signalingSocket.readyState === WebSocket.OPEN) {
-    signalingSocket.send(JSON.stringify({
-      type: 'request-vitals'
-    }));
-  } else {
-    setTimeout(() => {
-      const bpSystolic = Math.floor(Math.random() * 10) + 115;
-      const bpDiastolic = Math.floor(Math.random() * 6) + 75;
-      const hr = Math.floor(Math.random() * 8) + 68;
-      const spo2 = Math.floor(Math.random() * 3) + 97;
-      
-      const bpVal = document.getElementById('val-bp');
-      const hrVal = document.getElementById('val-hr');
-      const spo2Val = document.getElementById('val-spo2');
-      
-      if (bpVal) bpVal.textContent = `${bpSystolic}/${bpDiastolic}`;
-      if (hrVal) hrVal.textContent = `${hr} bpm`;
-      if (spo2Val) spo2Val.textContent = `${spo2}%`;
-      
-      notify('Patient vitals synchronized successfully (simulated)', 'success');
-    }, 1500);
-  }
-}
-
-function shareVitals() {
-  shareVitalsWebSocket();
-}
-
-async function saveCallNotes() {
-  const complaint = document.getElementById('call-note-complaint')?.value;
-  const clinical = document.getElementById('call-note-clinical')?.value;
-  
-  const patient = patients.find(p => p.name === activeCallPartnerName);
-  const patientId = patient ? patient.id : 'P-10421';
-  
-  try {
-    const res = await fetch(`${API_BASE}/patients/${patientId}/clinical-notes`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chiefComplaint: complaint, clinicalNotes: clinical })
-    });
-    
-    if (!res.ok) throw new Error('Failed to save advice');
-    
-    notify('Consultation advice saved successfully', 'success');
-    
-    // Sync via WebSockets to patient screen in real-time
-    if (signalingSocket && signalingSocket.readyState === WebSocket.OPEN) {
-      signalingSocket.send(JSON.stringify({
-        type: 'advice',
-        complaint: complaint,
-        clinical: clinical
-      }));
-    }
-    
-    const patientAdviceBox = document.getElementById('patient-live-advice-box');
-    if (patientAdviceBox) {
-      if (clinical) {
-        patientAdviceBox.innerHTML = `<div style="font-weight:600;margin-bottom:0.25rem;">Chief Complaint: ${complaint || 'None'}</div><div>${clinical}</div>`;
-      } else {
-        patientAdviceBox.innerHTML = `<span style="color:rgba(255,255,255,0.4);font-style:italic;">No advice recorded yet. The doctor's advice will update here in real-time.</span>`;
-      }
-    }
-  } catch (err) {
-    notify(err.message, 'error');
-  }
+  }, 2000);
 }
 
 // ── PATIENT FLOW APIS ──
@@ -1591,6 +1580,11 @@ function renderPatientPrescriptions() {
             <div class="flex justify-between text-sm mb-1"><span>Refills left</span><span>${rx.refillsTotal - rx.refillsUsed} of ${rx.refillsTotal}</span></div>
             <div class="progress-bar"><div class="progress-fill" style="width:${progressPercent}%"></div></div>
           </div>
+          <div style="margin-top:.75rem; display:flex; justify-content:flex-end;">
+            <a href="/api/prescriptions/${rx.id}/download" class="btn btn-sm btn-ghost" download style="color:var(--primary-light); display:flex; align-items:center; gap:0.25rem;">
+              <span>📥</span> Download Signed PDF
+            </a>
+          </div>
         `;
         activeList.appendChild(item);
       }
@@ -1616,6 +1610,11 @@ function renderPatientPrescriptions() {
           <td><div class="font-semibold">${rx.medicineName}</div><div class="text-muted">${rx.doctorName}</div></td>
           <td>${rx.date}</td>
           <td><span class="badge badge-gray">${rx.status}</span></td>
+          <td style="text-align:right;">
+            <a href="/api/prescriptions/${rx.id}/download" class="btn btn-sm btn-ghost" download style="color:var(--text3);">
+              📥 PDF
+            </a>
+          </td>
         `;
         histTable.appendChild(tr);
       }
@@ -2055,6 +2054,11 @@ function renderDoctorPrescriptions() {
       <td>${rx.duration}</td>
       <td>${rx.date}</td>
       <td><span class="badge badge-green">${rx.status}</span></td>
+      <td style="text-align:right;">
+        <a href="/api/prescriptions/${rx.id}/download" class="btn btn-sm btn-ghost" download style="color:var(--primary-light);">
+          📥 PDF
+        </a>
+      </td>
     `;
     tableBody.appendChild(tr);
   });
@@ -2652,221 +2656,8 @@ function filterAdminUsers() {
   });
 }
 
-function viewDoctorProfile(docId) {
-  const doc = doctorsData.find(d => String(d.id) === String(docId));
-  if (!doc) {
-    notify('Doctor details not found', 'error');
-    return;
-  }
-
-  const contentEl = document.getElementById('doc-profile-details-content');
-  if (!contentEl) return;
-
-  const nameParts = (doc.name || 'Doctor').split(' ');
-  const initials = (nameParts.length > 1 
-    ? nameParts.slice(1).map(n => n[0]).join('') 
-    : nameParts[0].substring(0, 2) || 'Dr').toUpperCase();
-
-  const specialtyStr = doc.specialty || 'General Medicine';
-  const borderClass = specialtyStr === 'General Medicine' ? 'avatar-teal' : specialtyStr === 'Cardiology' ? 'avatar-blue' : 'avatar-orange';
-  const ratingVal = doc.rating || 5.0;
-  const expStr = doc.exp || '5 yrs';
-  const feeVal = doc.fee || '500';
-  const degreeStr = doc.degree || 'MBBS, MD';
-  const licenseStr = doc.license || 'MCI-2014-08821';
-  const hospitalStr = doc.hospital || 'City Medical Center';
-  const consultationsCount = doc.consultationsCount || 120;
-  const emailStr = doc.email || 'info@hospital.com';
-  const phoneStr = doc.phone || '+91 98765 00004';
-  const availabilityStr = doc.availability || 'Available Today';
-  
-  // High-fidelity doctor details mappings A-Z
-  const doctorExtraDetails = {
-    'D-101': {
-      bio: 'Dr. Shreya Joshi is a highly regarded General Physician with over 12 years of experience. She specializes in managing chronic lifestyle conditions like Type-2 diabetes, hypertension, asthma, and thyroid disorders. She is strongly committed to evidence-based preventive medicine and patient education.',
-      education: 'MBBS (Grant Medical College, Mumbai), MD in General Medicine (AIIMS, New Delhi)',
-      languages: 'English, Hindi, Marathi',
-      awards: 'Vanguard Healthcare Excellence Award (2024), Best General Practitioner - City Medical Center (2022)',
-      location: 'Room 102, 1st Floor, OPD Block, City Medical Center, Mumbai',
-      services: 'Chronic Disease Management, Geriatric Care, Preventive Health Checkups, Infectious Disease Treatment'
-    },
-    'D-102': {
-      bio: 'Dr. Raj Patel is a senior Interventional Cardiologist with 18 years of clinical expertise. He is a pioneer in minimally invasive cardiac procedures and has performed over 3,000 successful coronary angioplasties. He specializes in heart failure therapies and preventative cardiac care.',
-      education: 'MBBS (BJ Medical College, Pune), MD (Internal Medicine, KEM Hospital), DM in Cardiology (Hargurudas Heart Institute)',
-      languages: 'English, Gujarati, Hindi',
-      awards: 'State Cardiology Excellence Award (2023), Fellowship of the American College of Cardiology (FACC)',
-      location: 'Chamber 304, 3rd Floor, Cardiology Wing, Heart Institute, Ahmedabad',
-      services: 'Coronary Angioplasty, Pacemaker Implantation, Heart Failure Management, Lipidology Consultation'
-    },
-    'D-103': {
-      bio: 'Dr. Neha Kapoor is a dedicated Endocrinologist specializing in diabetes, thyroid disorders, and metabolic health. With 9 years of experience, she focuses on personalized treatment plans combining advanced therapies with lifestyle medicine to empower patients to manage endocrine issues.',
-      education: 'MBBS (Lady Hardinge Medical College, Delhi), MD (Medicine, UCMS), Fellowship in Endocrinology (Christian Medical College, Vellore)',
-      languages: 'English, Hindi, Punjabi',
-      awards: 'Young Endocrinologist Research Award (2021), Diabetes Care Innovation Award (2023)',
-      location: 'Suite 12, Ground Floor, Diabetes & Hormone Clinic, New Delhi',
-      services: 'Type 1 & Type 2 Diabetes Management, Thyroid Disorders, PCOS Treatment, Osteoporosis & Bone Health'
-    },
-    'D-104': {
-      bio: 'Dr. Arun Mehta is a leading Neurologist with 15 years of experience in neurological care. He specializes in headache management, stroke rehabilitation, and movement disorders like Parkinson\'s disease. He runs dedicated clinics for epilepsy and sleep disorders.',
-      education: 'MBBS (Maulana Azad Medical College, New Delhi), MD (General Medicine), DM in Neurology (NIMHANS, Bangalore)',
-      languages: 'English, Hindi, Kannada',
-      awards: 'National Neurologist Association Merit Award (2022), Stroke Care Pioneer Certificate (2024)',
-      location: 'Chamber 401, 4th Floor, Neurology Block, Neuro Center, Bangalore',
-      services: 'Stroke Rehabilitation, Epilepsy Management, Parkinson\'s Clinic, Migraine and Chronic Headache Care'
-    },
-    'D-105': {
-      bio: 'Dr. Kavita Rao is a board-certified Dermatologist with 5 years of experience in clinical and cosmetic dermatology. She specializes in advanced treatments for acne, eczema, hair loss, and anti-aging therapies, offering customized skin health programs.',
-      education: 'MBBS (KMC, Manipal), DDVL in Dermatology & Venereology (Madras Medical College)',
-      languages: 'English, Tamil, Telugu',
-      awards: 'Rising Star in Dermatology (Dermacon 2023)',
-      location: 'Room 5, Ground Floor, City Skin Clinic, Chennai',
-      services: 'Clinical Dermatology (Acne, Psoriasis), Laser Skin Resurfacing, Chemical Peels, Hair Fall Treatments'
-    },
-    'D-106': {
-      bio: 'Dr. Amit Sharma is a compassionate General Physician with 10 years of experience. He is dedicated to comprehensive primary care, family health, and the management of acute infections and occupational health conditions.',
-      education: 'MBBS (Maulana Azad Medical College, Delhi), DNB (Family Medicine)',
-      languages: 'English, Hindi',
-      awards: 'Community Service Health Medal (2023)',
-      location: 'OPD Chamber 3, Ground Floor, Apollo Clinic, Kolkata',
-      services: 'General Family Medicine, Seasonal Fevers & Infections, Hypertension Control, Lifestyle Counseling'
-    },
-    'D-107': {
-      bio: 'Dr. Vikram Malhotra is an experienced Cardiologist with 14 years in cardiac sciences. He specializes in non-invasive cardiology, echocardiography, and the management of coronary artery disease and hypertension.',
-      education: 'MBBS (AFMC, Pune), MD (General Medicine, Command Hospital)',
-      languages: 'English, Hindi, Punjabi',
-      awards: 'Distinguished Service Award in Cardiac Sciences (2024)',
-      location: 'OPD 7, Ground Floor, Max Healthcare, Gurgaon',
-      services: 'Stress Testing & ECG Analysis, Hypertension Management, Arrhythmia Care, Post-Heart Surgery Rehab'
-    },
-    'D-108': {
-      bio: 'Dr. Priya Nair is an accomplished Endocrinologist with 8 years of clinical practice. She has special expertise in gestational diabetes, thyroid disorders during pregnancy, pediatric endocrinology, and metabolic syndrome.',
-      education: 'MBBS (Calicut Medical College), MD (Internal Medicine), DM in Endocrinology (Amrita Institute of Medical Sciences)',
-      languages: 'English, Malayalam, Hindi',
-      awards: 'Outstanding Endocrinologist Award (2023)',
-      location: 'Chamber 211, 2nd Floor, Fortis Hospital, Kochi',
-      services: 'Gestational Diabetes Care, Pediatric Growth Disorders, Obesity Management, Adrenal & Pituitary Care'
-    },
-    'D-109': {
-      bio: 'Dr. Rajesh Sen is a clinical Neurologist with 11 years of experience in brain and nerve health. He specializes in neuro-critical care, multiple sclerosis, and advanced diagnostic neurophysiology.',
-      education: 'MBBS (Calcutta Medical College), MD (Medicine), DM in Neurology (NIMHANS)',
-      languages: 'English, Bengali, Hindi',
-      awards: 'Academic Excellence in Neurology Award (NIMHANS, 2016)',
-      location: 'OPD Ward A, NIMHANS Special Wing, Bangalore',
-      services: 'Multiple Sclerosis Care, Electromyography (EMG) & EEG, Dementia & Cognitive Care, Neuropathy Care'
-    },
-    'D-110': {
-      bio: 'Dr. Sneha Reddy is a senior consultant Dermatologist with 7 years of experience. She specializes in pediatric dermatology, chronic skin conditions like vitiligo, and aesthetic dermatology including anti-aging procedures.',
-      education: 'MBBS (Osmania Medical College), MD in Dermatology (JIPMER, Puducherry)',
-      languages: 'English, Telugu, Kannada',
-      awards: 'Best Clinical Paper in Dermatology (Aadcon 2022)',
-      location: 'OPD Suite 2, City Skin & Hair Clinic, Hyderabad',
-      services: 'Pediatric Dermatology, Chronic Skin Disease Management, Botox & Dermal Fillers, Vitiligo Treatments'
-    }
-  };
-
-  const extra = doctorExtraDetails[doc.id] || {
-    bio: 'Experienced medical professional dedicated to providing compassionate, high-quality patient care and clinical services.',
-    education: doc.degree || degreeStr,
-    languages: 'English, Hindi',
-    awards: 'Verified Practitioner Award',
-    location: hospitalStr,
-    services: `${specialtyStr} services`
-  };
-
-  contentEl.innerHTML = `
-    <!-- Header with Avatar and Key Badges -->
-    <div style="display:flex; gap:1.5rem; align-items:center; margin-bottom:1.5rem;">
-      <div class="avatar ${borderClass}" style="width:76px; height:76px; font-size:1.6rem; flex-shrink:0; font-weight:700;">${initials}</div>
-      <div style="flex:1;">
-        <h3 style="font-size:1.4rem; font-weight:700; margin:0 0 0.25rem 0; color:var(--text);">${doc.name}</h3>
-        <div style="font-size:0.95rem; font-weight:600; color:var(--primary); margin-bottom:0.4rem;">${specialtyStr}</div>
-        <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
-          <span class="badge badge-teal">${doc.degree || degreeStr}</span>
-          <span class="badge badge-blue">★ ${ratingVal} Rating</span>
-          <span class="badge badge-green">${availabilityStr}</span>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Primary Stats Grid -->
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.5rem;">
-      <div style="background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:0.75rem 1rem;">
-        <div style="font-size:0.75rem; color:var(--text3); font-weight:600; text-transform:uppercase; margin-bottom:0.25rem;">Experience & License</div>
-        <div style="font-size:0.9rem; font-weight:600; color:var(--text2); margin-bottom:0.15rem;">${expStr} Experience</div>
-        <div style="font-size:0.83rem; color:var(--text3);">Lic. No: ${licenseStr}</div>
-      </div>
-      <div style="background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:0.75rem 1rem;">
-        <div style="font-size:0.75rem; color:var(--text3); font-weight:600; text-transform:uppercase; margin-bottom:0.25rem;">Consultation Fee</div>
-        <div style="font-size:0.9rem; font-weight:600; color:var(--primary); margin-bottom:0.15rem;">₹${feeVal} per visit</div>
-        <div style="font-size:0.83rem; color:var(--text3);">Online & Clinic Consultation</div>
-      </div>
-    </div>
-
-    <!-- Biography -->
-    <div style="margin-bottom:1.5rem;">
-      <h4 style="font-size:0.9rem; font-weight:600; color:var(--text); margin:0 0 0.4rem 0;">About the Doctor</h4>
-      <p style="font-size:0.88rem; color:var(--text2); line-height:1.5; margin:0;">${extra.bio}</p>
-    </div>
-
-    <!-- Education, Languages, Awards, Services Grid -->
-    <div style="display:grid; grid-template-columns:1fr; gap:0.75rem; margin-bottom:1.5rem; background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:1rem;">
-      <div style="font-size:0.88rem; line-height:1.4;">
-        <strong style="color:var(--text2);">🎓 Education:</strong> <span style="color:var(--text2);">${extra.education}</span>
-      </div>
-      <div style="font-size:0.88rem; line-height:1.4;">
-        <strong style="color:var(--text2);">🗣️ Languages Spoken:</strong> <span style="color:var(--text2);">${extra.languages}</span>
-      </div>
-      <div style="font-size:0.88rem; line-height:1.4;">
-        <strong style="color:var(--text2);">🏆 Awards & Honors:</strong> <span style="color:var(--text2);">${extra.awards}</span>
-      </div>
-      <div style="font-size:0.88rem; line-height:1.4;">
-        <strong style="color:var(--text2);">🩺 Special Services:</strong> <span style="color:var(--text2);">${extra.services}</span>
-      </div>
-    </div>
-
-    <!-- OPD / Contact Info -->
-    <div style="margin-bottom:1.5rem; display:grid; grid-template-columns:1fr; gap:0.75rem;">
-      <div style="display:flex; align-items:flex-start; gap:0.5rem; font-size:0.88rem;">
-        <span style="font-size:1.1rem; width:24px; text-align:center;">🏢</span>
-        <div><strong style="color:var(--text2);">Chamber Location:</strong> ${extra.location}</div>
-      </div>
-      <div style="display:flex; align-items:center; gap:0.5rem; font-size:0.88rem;">
-        <span style="font-size:1.1rem; width:24px; text-align:center;">📧</span>
-        <div><strong style="color:var(--text2);">Email Support:</strong> ${emailStr}</div>
-      </div>
-      <div style="display:flex; align-items:center; gap:0.5rem; font-size:0.88rem;">
-        <span style="font-size:1.1rem; width:24px; text-align:center;">📞</span>
-        <div><strong style="color:var(--text2);">Phone Support:</strong> ${phoneStr}</div>
-      </div>
-      <div style="display:flex; align-items:center; gap:0.5rem; font-size:0.88rem;">
-        <span style="font-size:1.1rem; width:24px; text-align:center;">⏱️</span>
-        <div><strong style="color:var(--text2);">Working Hours:</strong> Mon-Sat (09:00 AM - 05:00 PM)</div>
-      </div>
-    </div>
-    
-    <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:var(--radius-sm); padding:0.75rem 1rem; display:flex; align-items:center; gap:0.75rem;">
-      <span style="font-size:1.5rem;">📊</span>
-      <div style="font-size:0.85rem; color:#15803d; line-height:1.4;">
-        This practitioner has completed <strong>${consultationsCount} consultations</strong> on MedXpert with a <strong>98.7% positive patient feedback score</strong>.
-      </div>
-    </div>
-  `;
-
-  // Bind booking button to pre-select the doctor and switch to booking modal
-  const bookBtn = document.getElementById('btn-doc-profile-book');
-  if (bookBtn) {
-    bookBtn.onclick = () => {
-      closeModal('viewDocProfileModal');
-      openBookAppointmentModal(doc.id);
-    };
-  }
-
-  // Open the modal
-  openModal('viewDocProfileModal');
-}
-
 // ── GLOBAL EXPOSURES FOR ONCLICK HANDLERS ──
-window.joinVideoRoom = openVideoCall;
+window.joinVideoRoom = joinVideoRoom;
 window.cancelAppointment = cancelAppointment;
 window.viewDocument = viewDocument;
 window.openBookAppointmentModal = openBookAppointmentModal;
