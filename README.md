@@ -142,7 +142,7 @@ Patient
 👥 Contributors
 Priyanka Vanga
 Ashad Saifi
-Siddhant Mohapatra
+Siddhant Mohan Jha
 
 📄 License
 This project is developed for educational and internship purposes.
