@@ -846,7 +846,7 @@ function handleSignalingMessage(data) {
 }
 
 // ── VIDEO ROOM CONTROLLER ──
-async function openVideoCall(partnerName = 'Doctor') {
+async function openVideoCall(partnerName = 'Doctor', roomId = 'A-501') {
   const overlay = document.getElementById('videoCallOverlay');
   if (!overlay) return;
 
@@ -866,10 +866,43 @@ async function openVideoCall(partnerName = 'Doctor') {
   if (micIndicator) micIndicator.style.display = 'none'; // starts unmuted
 
   if (partnerEl) {
+    partnerEl.textContent = `Waiting for partner...`;
+  }
+
+  // Initialize WebSocket signaling socket
+  try {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws`;
+    console.log("Connecting to WebRTC signaling at:", wsUrl);
+    signalingSocket = new WebSocket(wsUrl);
+
+    signalingSocket.onopen = () => {
+      console.log("WebSocket signaling connected");
+      signalingSocket.send(JSON.stringify({
+        type: 'join',
+        role: currentRole
+      }));
+    };
+
+    signalingSocket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        handleSignalingMessage(data);
+      } catch (err) {
+        console.error("Error parsing signaling message:", err);
+      }
+    };
+
+    signalingSocket.onclose = () => {
+      console.log("WebSocket signaling closed");
+    };
+
+    signalingSocket.onerror = (err) => {
+      console.error("WebSocket signaling error:", err);
+    };
+  } catch (err) {
+    console.error("Failed to establish WebSocket signaling:", err);
     partnerEl.textContent = `${partnerName} · Connecting...`;
-    setTimeout(() => {
-      partnerEl.textContent = `${partnerName} (Connected)`;
-    }, 1500);
   }
 
   overlay.style.display = 'flex';
@@ -889,11 +922,29 @@ async function openVideoCall(partnerName = 'Doctor') {
   if (partnerSub) partnerSub.style.display = 'block';
   if (pulseRing) pulseRing.style.display = 'block';
 
-  // Reset chat state
+  // Reset call sidebar/chat state
   currentReplyIndex = 0;
-  const chatPanel = document.getElementById('videoChatPanel');
-  if (chatPanel) chatPanel.style.display = 'none';
+  const sidebar = document.getElementById('videoCallSidebar');
+  if (sidebar) sidebar.style.display = 'none';
+  
+  // Set active tab to chat
+  switchCallTab('chat');
 
+  // Toggle call sidebar
+  const videoCallSidebar = document.getElementById('videoCallSidebar');
+  if (videoCallSidebar) videoCallSidebar.style.display = 'flex';
+
+  const drView = document.getElementById('ehr-doctor-view');
+  const patView = document.getElementById('ehr-patient-view');
+  if (currentRole === 'doctor') {
+    if (drView) drView.style.display = 'flex';
+    if (patView) patView.style.display = 'none';
+  } else {
+    if (drView) drView.style.display = 'none';
+    if (patView) patView.style.display = 'flex';
+  }
+
+  // Reset chat state
   const chatMessages = document.getElementById('videoChatMessages');
   if (chatMessages) {
     chatMessages.innerHTML = `
@@ -914,6 +965,30 @@ async function openVideoCall(partnerName = 'Doctor') {
   if (screenToggle) {
     screenToggle.style.background = '';
     screenToggle.style.opacity = '1';
+  }
+
+  // Reset recording button & badge
+  const recordToggle = document.getElementById('btn-record-toggle');
+  if (recordToggle) {
+    recordToggle.innerHTML = '⏺️';
+    recordToggle.style.background = '';
+  }
+  const recBadge = document.getElementById('recIndicatorBadge');
+  if (recBadge) recBadge.style.display = 'none';
+  isRecording = false;
+  if (recordInterval) {
+    clearInterval(recordInterval);
+    recordInterval = null;
+  }
+
+  // Clear live sync advice text box and inputs
+  const callComplaintInput = document.getElementById('call-note-complaint');
+  const callClinicalInput = document.getElementById('call-note-clinical');
+  if (callComplaintInput) callComplaintInput.value = '';
+  if (callClinicalInput) callClinicalInput.value = '';
+  const patientAdviceBox = document.getElementById('patient-live-advice-box');
+  if (patientAdviceBox) {
+    patientAdviceBox.innerHTML = `<span style="color:rgba(255,255,255,0.4);font-style:italic;">No advice recorded yet. The doctor's advice will update here in real-time.</span>`;
   }
 
   // Access user's camera and microphone
@@ -943,33 +1018,8 @@ async function openVideoCall(partnerName = 'Doctor') {
     if (camBtn) camBtn.style.opacity = '1';
     if (micBtn) micBtn.style.opacity = '1';
   } catch (err) {
-    console.warn("Camera/microphone access denied or unavailable. Activating simulated video & audio feed:", err);
-    notify("Hardware permissions denied. Activating simulated video & audio feed.", "success");
-
-    const stream = createMockMediaStream();
-    localStream = stream;
-
-    const localVideo = document.getElementById('localVideo');
-    const placeholder = document.getElementById('localVideoPlaceholder');
-    const videoSelfContainer = document.querySelector('.video-self');
-    if (videoSelfContainer) {
-      videoSelfContainer.style.display = 'flex'; // show the container
-    }
-    if (localVideo) {
-      localVideo.srcObject = stream;
-      localVideo.style.display = 'block';
-    }
-    if (placeholder) {
-      placeholder.style.display = 'none';
-    }
-
-    // Remote partner stream will be applied via WebRTC 'ontrack' event handler
-
-    // Reset control buttons visually
-    const camBtn = document.querySelector('.camera-toggle');
-    const micBtn = document.querySelector('.mic-toggle');
-    if (camBtn) camBtn.style.opacity = '1';
-    if (micBtn) micBtn.style.opacity = '1';
+    console.warn("Camera/microphone access denied or unavailable:", err);
+    notify("Could not access camera/microphone", "error");
   }
 
   // Initialize Socket.io Connection
@@ -1132,13 +1182,35 @@ function closeVideoCall() {
     localStream = null;
   }
 
+  const videoSelfContainer = document.querySelector('.video-self');
+  if (videoSelfContainer) {
+    videoSelfContainer.style.display = 'none';
+  }
+
+  // Peer Connection Takedown
+  if (peerConnection) {
+    peerConnection.close();
+    peerConnection = null;
+  }
+
+  // Socket Connection Takedown
+  if (socket) {
+    socket.disconnect();
+    socket = null;
+  }
+
   const localVideo = document.getElementById('localVideo');
+  const remoteVideo = document.getElementById('remoteVideo');
   const placeholder = document.getElementById('localVideoPlaceholder');
   const avatarCenter = document.getElementById('partnerAvatarCenter');
 
   if (localVideo) {
     localVideo.srcObject = null;
     localVideo.style.display = 'none';
+  }
+  if (remoteVideo) {
+    remoteVideo.srcObject = null;
+    remoteVideo.style.display = 'none';
   }
   if (placeholder) {
     placeholder.style.display = 'inline';
@@ -1286,7 +1358,7 @@ function switchCallTab(tab) {
 }
 
 function toggleVideoChat(btn) {
-  const panel = document.getElementById('videoChatPanel');
+  const panel = document.getElementById('videoCallSidebar');
   if (!panel) return;
 
   const isOpen = sidebar.style.display === 'flex';
@@ -1336,23 +1408,67 @@ function sendVideoChatMessage() {
   appendChatMessage(myName, text, 'self');
   input.value = '';
 
-  // Trigger simulated response after 2 seconds
+  // Emit the chat message via Socket.io
+  if (socket && currentRoomId) {
+    socket.emit("chat-message", { room: currentRoomId, sender: myName, text });
+  }
+}
+
+// Sidebar Tab switching inside active Video call
+window.switchCallTab = function(tabName) {
+  const chatTab = document.getElementById('call-tab-chat');
+  const ehrTab = document.getElementById('call-tab-ehr');
+  const btnChat = document.getElementById('tab-btn-chat');
+  const btnEhr = document.getElementById('tab-btn-ehr');
+  
+  if (tabName === 'chat') {
+    if (chatTab) chatTab.style.display = 'flex';
+    if (ehrTab) ehrTab.style.display = 'none';
+    if (btnChat) btnChat.classList.add('active');
+    if (btnEhr) btnEhr.classList.remove('active');
+  } else {
+    if (chatTab) chatTab.style.display = 'none';
+    if (ehrTab) ehrTab.style.display = 'flex';
+    if (btnChat) btnChat.classList.remove('active');
+    if (btnEhr) btnEhr.classList.add('active');
+  }
+};
+
+// Dynamic Reaction floating emoji animations
+window.sendReaction = function(emoji, event) {
+  if (event) event.stopPropagation();
+  
+  // Hide popover
+  const popover = document.getElementById('reactionsPopover');
+  if (popover) popover.style.display = 'none';
+
+  // Emit reaction
+  if (socket && currentRoomId) {
+    socket.emit("reaction", { room: currentRoomId, emoji });
+  }
+  
+  // Display reaction locally
+  showFloatingReaction(emoji);
+};
+
+function showFloatingReaction(emoji) {
+  const container = document.getElementById('videoReactionsLayer');
+  if (!container) return;
+
+  const reaction = document.createElement('div');
+  reaction.textContent = emoji;
+  reaction.className = 'floating-emoji';
+  
+  // Random horizontal start position
+  const randX = Math.random() * 80 + 10;
+  reaction.style.left = `${randX}%`;
+  
+  container.appendChild(reaction);
+
+  // Auto clean up reaction element
   setTimeout(() => {
-    const isDoctor = currentRole === 'doctor';
-    const replies = isDoctor ? patientChatReplies : doctorChatReplies;
-    const partnerName = isDoctor ? 'Alex Smith' : 'Dr. Sarah Johnson';
-
-    const replyText = replies[currentReplyIndex % replies.length];
-    currentReplyIndex++;
-
-    appendChatMessage(partnerName, replyText, 'other');
-
-    // If chat side panel is hidden, notify user via notification bubble
-    const panel = document.getElementById('videoChatPanel');
-    if (panel && panel.style.display === 'none') {
-      notify(`New message from ${partnerName}`, 'success');
-    }
-  }, 2000);
+    reaction.remove();
+  }, 3000);
 }
 
 // ── PATIENT FLOW APIS ──
@@ -2654,6 +2770,52 @@ function filterAdminUsers() {
     const email = tr.cells[2].textContent.toLowerCase();
     tr.style.display = name.includes(q) || email.includes(q) ? 'table-row' : 'none';
   });
+}
+
+async function joinVideoRoom(appointmentId, partnerName) {
+  // If we only got partnerName (legacy click)
+  if (!partnerName && appointmentId) {
+    partnerName = appointmentId;
+    appointmentId = null;
+  }
+  
+  // Resolve appointmentId if not passed
+  if (!appointmentId) {
+    // Try to find a confirmed video appointment in appointmentsData
+    const activeAppt = appointmentsData.find(a => 
+      a.status === 'Confirmed' && 
+      a.type === 'Video' && 
+      (a.patientId === currentUser?.id || a.doctorId === currentUser?.id)
+    );
+    if (activeAppt) {
+      appointmentId = activeAppt.id;
+    } else {
+      // Fallback appointment for demo/quick video
+      appointmentId = 'A-501'; // Default seeded appointment
+    }
+  }
+
+  // Call the Backend verification slot lock
+  try {
+    const userId = currentUser ? currentUser.id : (currentRole === 'doctor' ? 'D-101' : 'P-10421');
+    const res = await fetch(`${API_BASE}/appointments/verify-room`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ appointmentId, userId, role: currentRole })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      notify(data.error || 'Consultation room is locked: no active slot found.', 'error');
+      return;
+    }
+    notify(data.message, 'success');
+  } catch (err) {
+    console.error("Verification failed:", err);
+    notify("Verification lock error. Running in debug mode.", "warning");
+  }
+
+  // Verification succeeded! Now initialize Socket.io Signaling and WebRTC Peer Connection
+  openVideoCall(partnerName, appointmentId);
 }
 
 // ── GLOBAL EXPOSURES FOR ONCLICK HANDLERS ──
