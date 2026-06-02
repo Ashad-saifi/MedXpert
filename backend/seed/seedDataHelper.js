@@ -17,13 +17,8 @@ const __dirname = path.dirname(__filename);
 
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
-const seedDatabase = async () => {
+export const seedDatabaseForInMemory = async () => {
     try {
-        const mongoUri = process.env.MONGO_URI || "mongodb://localhost:27017/medxpert";
-        console.log(`Connecting to database at ${mongoUri}...`);
-        await mongoose.connect(mongoUri);
-        console.log("MongoDB Connected for seeding.");
-
         console.log("Clearing existing collections...");
         await User.deleteMany({});
         await Doctor.deleteMany({});
@@ -770,7 +765,7 @@ const seedDatabase = async () => {
                 status: "Active"
             }
         ]);
-        console.log("Seeding Prescriptions.");
+        console.log("Seeded prescriptions.");
 
         console.log("Seeding Lab Reports...");
         await LabReport.create([
@@ -868,19 +863,9 @@ const seedDatabase = async () => {
         });
         console.log("Seeded system settings.");
 
-        console.log("Database seeded successfully!");
-        process.exit(0);
+        console.log("In-memory database seeded successfully!");
     } catch (error) {
-        if (error.name === "MongooseServerSelectionError" || error.message.includes("connect ECONNREFUSED")) {
-            console.warn(`\n⚠️  Database Seeding Warning: ${error.message}`);
-            console.warn(`👉 MongoDB local server is not running or offline. Seeding was bypassed gracefully.`);
-            console.warn(`👉 To seed a live database, please ensure MongoDB is running and update backend/.env with your MONGO_URI.\n`);
-            process.exit(0);
-        } else {
-            console.error("Database seeding failed:", error);
-            process.exit(1);
-        }
+        console.error("In-memory database seeding failed:", error);
+        throw error;
     }
 };
-
-seedDatabase();

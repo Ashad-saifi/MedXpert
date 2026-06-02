@@ -41,9 +41,21 @@ const patientSchema = new mongoose.Schema({
         type: String
     },
     emergencyContact: {
-        type: String
+        type: mongoose.Schema.Types.Mixed
     },
     insurance: {
+        type: mongoose.Schema.Types.Mixed
+    },
+    conditions: {
+        type: String
+    },
+    phone: {
+        type: String
+    },
+    dob: {
+        type: String
+    },
+    city: {
         type: String
     },
     clinicalNotes: {

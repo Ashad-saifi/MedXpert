@@ -34,7 +34,7 @@ const issuePrescription = async (req, res) => {
 
         // Hardcode active doctor context or find one
         const doctor = await Doctor.findOne({ id: "D-101" }) || await Doctor.findOne({});
-        const doctorName = doctor ? doctor.name : "Dr. Sarah Johnson";
+        const doctorName = doctor ? doctor.name : "Dr. Shreya Joshi";
         const doctorObjectId = doctor ? doctor._id : null;
 
         const count = await Prescription.countDocuments();

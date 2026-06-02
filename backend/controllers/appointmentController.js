@@ -64,6 +64,7 @@ const bookAppointment = async (req, res) => {
             doctorName: doctor.name,
             date: dateTime ? dateTime.split("T")[0] : new Date().toISOString().split("T")[0],
             time: dateTime ? new Date(dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "10:00 AM",
+            dateTime: dateTime || new Date().toISOString(),
             type: type || "Video Consultation",
             status: "Confirmed",
             reason: reason || "General Consult"

@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MedXpert – Advanced Telemedicine & EHR Platform</title>
+  <link rel="icon" type="image/png" href="./favicon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./src/index.css">
@@ -13,7 +14,9 @@
   <!-- LANDING PAGE -->
   <div id="landing" class="landing">
     <nav class="land-nav">
-      <div class="land-logo">Med<span>X</span>pert</div>
+      <div class="land-logo" style="display: flex; align-items: center; gap: 0.5rem;">
+        <span style="color: inherit;">Med<span>X</span>pert</span>
+      </div>
       <div style="font-size:.85rem;opacity:.7">Advanced Telemedicine & EHR</div>
     </nav>
     <div class="land-hero">
@@ -43,7 +46,10 @@
   <!-- LOGIN OVERLAY -->
   <div id="loginOverlay" class="login-overlay" style="display:none;">
     <div class="login-box">
-      <div class="login-logo">Med<span>X</span>pert</div>
+      <div class="login-logo" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+        <img src="./logo.png" alt="MedXpert Logo" style="height: 36px; width: 36px; object-fit: contain; border-radius: 4px;">
+        <span style="color: inherit;">Med<span>X</span>pert</span>
+      </div>
       <div class="login-sub" id="loginSubtitle">Patient Login</div>
       <div class="form-group">
         <label>Email Address</label>
@@ -73,7 +79,10 @@
   <div id="patientPanel" style="display:none;" class="app-shell">
     <div class="sidebar">
       <div class="sidebar-logo">
-        <div class="logo-text">Med<span>X</span>pert</div>
+        <div class="logo-text" style="display: flex; align-items: center; gap: 0.5rem;">
+          <img src="./logo.png" alt="MedXpert Logo" style="height: 28px; width: 28px; object-fit: contain; border-radius: 4px;">
+          <span style="color: inherit;">Med<span>X</span>pert</span>
+        </div>
         <div class="role-badge">🧑‍💼 Patient Portal</div>
       </div>
       <nav class="sidebar-nav" id="patient-nav">
@@ -92,7 +101,7 @@
       <div class="sidebar-footer">
         <div class="user-chip">
           <div class="avatar avatar-teal">AS</div>
-          <div class="user-info"><div class="name" id="p-user-display-name">Alex Smith</div><div class="role" id="p-user-display-id">Patient ID: P-10421</div></div>
+          <div class="user-info"><div class="name" id="p-user-display-name">Aarav Mehta</div><div class="role" id="p-user-display-id">Patient ID: P-10421</div></div>
         </div>
         <div class="back-btn back-to-home">← Back to Home</div>
       </div>
@@ -178,8 +187,8 @@
             <table>
               <thead><tr><th>Doctor</th><th>Date</th><th>Type</th><th>Notes</th></tr></thead>
               <tbody>
-                <tr><td><div class="font-semibold">Dr. Neha Kim</div><div class="text-muted">Endocrinology</div></td><td>May 10, 2026</td><td><span class="badge badge-blue">Video</span></td><td>Follow-up for diabetes management</td></tr>
-                <tr><td><div class="font-semibold">Dr. Sarah Johnson</div><div class="text-muted">General Medicine</div></td><td>Apr 22, 2026</td><td><span class="badge badge-teal">In-Clinic</span></td><td>Annual physical check-up</td></tr>
+                <tr><td><div class="font-semibold">Dr. Neha Kapoor</div><div class="text-muted">Endocrinology</div></td><td>May 10, 2026</td><td><span class="badge badge-blue">Video</span></td><td>Follow-up for diabetes management</td></tr>
+                <tr><td><div class="font-semibold">Dr. Shreya Joshi</div><div class="text-muted">General Medicine</div></td><td>Apr 22, 2026</td><td><span class="badge badge-teal">In-Clinic</span></td><td>Annual physical check-up</td></tr>
                 <tr><td><div class="font-semibold">Dr. Raj Patel</div><div class="text-muted">Cardiology</div></td><td>Mar 15, 2026</td><td><span class="badge badge-blue">Video</span></td><td>Routine heart check</td></tr>
               </tbody>
             </table>
@@ -309,7 +318,7 @@
           <div class="card">
             <div style="text-align:center;padding:1rem 0 1.5rem;">
               <div class="avatar avatar-teal" style="width:80px;height:80px;font-size:1.5rem;margin:0 auto 1rem;">AS</div>
-              <div style="font-size:1.2rem;font-weight:700;" id="p-profile-name">Alex Smith</div>
+              <div style="font-size:1.2rem;font-weight:700;" id="p-profile-name">Aarav Mehta</div>
               <div class="text-muted" id="p-profile-id">Patient ID: P-10421</div>
               <div style="margin-top:.75rem;"><span class="badge badge-teal">Verified Patient</span></div>
             </div>
@@ -339,7 +348,10 @@
   <div id="doctorPanel" style="display:none;" class="app-shell">
     <div class="sidebar">
       <div class="sidebar-logo">
-        <div class="logo-text">Med<span>X</span>pert</div>
+        <div class="logo-text" style="display: flex; align-items: center; gap: 0.5rem;">
+          <img src="./logo.png" alt="MedXpert Logo" style="height: 28px; width: 28px; object-fit: contain; border-radius: 4px;">
+          <span style="color: inherit;">Med<span>X</span>pert</span>
+        </div>
         <div class="role-badge">👨‍⚕️ Doctor Dashboard</div>
       </div>
       <nav class="sidebar-nav" id="doctor-nav">
@@ -357,7 +369,7 @@
       <div class="sidebar-footer">
         <div class="user-chip">
           <div class="avatar avatar-blue" style="font-size:.75rem;">SJ</div>
-          <div class="user-info"><div class="name">Dr. Sarah Johnson</div><div class="role">General Medicine</div></div>
+          <div class="user-info"><div class="name">Dr. Shreya Joshi</div><div class="role">General Medicine</div></div>
         </div>
         <div class="back-btn back-to-home">← Back to Home</div>
       </div>
@@ -393,7 +405,7 @@
             <div class="space-y">
               <div style="padding:.75rem;background:var(--warning-bg);border-radius:var(--radius-sm);border-left:3px solid var(--warning);">
                 <div class="text-sm font-semibold">Lab result review</div>
-                <div class="text-muted" style="font-size:.78rem;">Alex Smith – CBC results pending review</div>
+                <div class="text-muted" style="font-size:.78rem;">Aarav Mehta – CBC results pending review</div>
                 <button class="btn btn-sm btn-outline mt-1" id="d-action-review-now">Review Now</button>
               </div>
               <div style="padding:.75rem;background:var(--info-bg);border-radius:var(--radius-sm);border-left:3px solid var(--info);">
@@ -464,7 +476,7 @@
           </div>
           <div class="card">
             <div class="section-hd"><h3>Consultation Notes</h3></div>
-            <div class="form-group"><label>Patient</label><select class="form-control" id="d-notes-patient-select"><option value="P-10421">Alex Smith – P-10421</option><option value="P-10388">Priya Verma – P-10388</option></select></div>
+            <div class="form-group"><label>Patient</label><select class="form-control" id="d-notes-patient-select"><option value="P-10421">Aarav Mehta – P-10421</option><option value="P-10388">Priya Verma – P-10388</option></select></div>
             <div class="form-group"><label>Chief Complaint</label><input type="text" class="form-control" id="d-notes-complaint" placeholder="Patient's main complaint..."></div>
             <div class="form-group"><label>Clinical Notes</label><textarea class="form-control" id="d-notes-clinical" rows="4" placeholder="Examination findings, diagnosis, plan..."></textarea></div>
             <div class="modal-footer" style="padding-top:.75rem;border-top:1px solid var(--border);margin-top:0;">
@@ -514,7 +526,7 @@
           <div class="card">
             <div style="text-align:center;padding:1rem 0 1.5rem;">
               <div class="avatar avatar-blue" style="width:80px;height:80px;font-size:1.5rem;margin:0 auto 1rem;">SJ</div>
-              <div style="font-size:1.2rem;font-weight:700;">Dr. Sarah Johnson</div>
+              <div style="font-size:1.2rem;font-weight:700;">Dr. Shreya Joshi</div>
               <div class="text-muted">MBBS, MD – General Medicine</div>
               <div style="margin-top:.75rem;"><span class="badge badge-blue">Verified Doctor</span></div>
             </div>
@@ -552,7 +564,10 @@
   <div id="adminPanel" style="display:none;" class="app-shell">
     <div class="sidebar">
       <div class="sidebar-logo">
-        <div class="logo-text">Med<span>X</span>pert</div>
+        <div class="logo-text" style="display: flex; align-items: center; gap: 0.5rem;">
+          <img src="./logo.png" alt="MedXpert Logo" style="height: 28px; width: 28px; object-fit: contain; border-radius: 4px;">
+          <span style="color: inherit;">Med<span>X</span>pert</span>
+        </div>
         <div class="role-badge">🛡️ Admin Panel</div>
       </div>
       <nav class="sidebar-nav" id="admin-nav">
@@ -762,7 +777,7 @@
     <div class="modal">
       <div class="modal-header"><h3>💊 Issue Prescription</h3><button class="modal-close modal-cancel" data-modal="prescModal">✕</button></div>
       <div class="form-row">
-        <div class="form-group"><label>Patient</label><select class="form-control" id="presc-patient-select"><option value="P-10421">Alex Smith – P-10421</option><option value="P-10388">Priya Verma – P-10388</option><option value="P-10299">Rahul Sharma – P-10299</option></select></div>
+        <div class="form-group"><label>Patient</label><select class="form-control" id="presc-patient-select"><option value="P-10421">Aarav Mehta – P-10421</option><option value="P-10388">Priya Verma – P-10388</option><option value="P-10299">Rahul Sharma – P-10299</option></select></div>
         <div class="form-group"><label>Date</label><input type="date" class="form-control" id="presc-date"></div>
       </div>
       <div class="form-group"><label>Diagnosis</label><input type="text" class="form-control" id="presc-diagnosis" placeholder="e.g. Type 2 Diabetes Mellitus"></div>
@@ -789,56 +804,255 @@
       </div>
       <div class="form-group"><label>Email Address</label><input type="email" class="form-control" id="addUser-email" placeholder="email@example.com"></div>
       <div class="form-row">
-        <div class="form-group"><label>Role</label><select class="form-control" id="addUser-role"><option>Patient</option><option>Doctor</option><option>Admin</option></select></div>
+        <div class="form-group">
+          <label>Role</label>
+          <select class="form-control" id="addUser-role" onchange="window.toggleAddUserRoleFields(this.value)">
+            <option value="Patient">Patient</option>
+            <option value="Doctor">Doctor</option>
+            <option value="Admin">Admin</option>
+          </select>
+        </div>
         <div class="form-group"><label>Phone</label><input type="tel" class="form-control" id="addUser-phone" placeholder="+91 XXXXX XXXXX"></div>
       </div>
+
+      <!-- Patient Specific Fields (Add) -->
+      <div id="addUser-patient-fields">
+        <hr class="divider" style="margin: 1rem 0;">
+        <h4 style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.8rem; color: var(--primary);">Patient Details</h4>
+        <div class="form-row">
+          <div class="form-group"><label>Age</label><input type="number" class="form-control" id="addUser-patient-age" placeholder="e.g. 30" value="30"></div>
+          <div class="form-group">
+            <label>Blood Type</label>
+            <select class="form-control" id="addUser-patient-blood">
+              <option value="O+">O+</option>
+              <option value="A+">A+</option>
+              <option value="A-">A-</option>
+              <option value="B+">B+</option>
+              <option value="B-">B-</option>
+              <option value="AB+">AB+</option>
+              <option value="AB-">AB-</option>
+              <option value="O-">O-</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group"><label>Chronic Conditions</label><input type="text" class="form-control" id="addUser-patient-conditions" placeholder="e.g. None" value="None"></div>
+      </div>
+
+      <!-- Doctor Specific Fields (Add) -->
+      <div id="addUser-doctor-fields" style="display:none;">
+        <hr class="divider" style="margin: 1rem 0;">
+        <h4 style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.8rem; color: var(--primary);">Doctor Details</h4>
+        <div class="form-row">
+          <div class="form-group"><label>Specialty</label><input type="text" class="form-control" id="addUser-doctor-specialty" placeholder="e.g. General Medicine" value="General Medicine"></div>
+          <div class="form-group"><label>Experience</label><input type="text" class="form-control" id="addUser-doctor-exp" placeholder="e.g. 5 yrs" value="5 yrs"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Consultation Fee</label><input type="text" class="form-control" id="addUser-doctor-fee" placeholder="e.g. ₹500" value="₹500"></div>
+          <div class="form-group"><label>Hospital</label><input type="text" class="form-control" id="addUser-doctor-hospital" placeholder="e.g. City Medical Center" value="City Medical Center"></div>
+        </div>
+      </div>
+
       <div class="modal-footer"><button class="btn btn-ghost modal-cancel" data-modal="addUserModal">Cancel</button><button class="btn btn-primary" id="btn-add-user-submit">Add User</button></div>
     </div>
   </div>
 
-  <!-- VIDEO CALL OVERLAY -->
-  <div id="videoCallOverlay" class="video-overlay" style="display:none;">
-    <div style="padding:1rem 2rem;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,.08);">
-      <div style="color:white;font-family:'Playfair Display',serif;font-size:1.2rem;">Med<span style="color:#f97316;">X</span>pert · Live Consultation</div>
-      <div style="display:flex;gap:.5rem;align-items:center;"><div style="width:8px;height:8px;border-radius:50%;background:#22c55e;"></div><span style="color:#22c55e;font-size:.85rem;font-weight:600;">LIVE</span><span id="callTimer" style="color:rgba(255,255,255,.6);font-size:.85rem;margin-left:.5rem;">00:00</span></div>
-    </div>
-    <div class="video-main">
-      <div class="video-feed">
-        <!-- Remote Participant Webcam Image Simulation -->
-        <img id="partnerVideoImage" style="width: 100%; height: 100%; object-fit: cover; border-radius: inherit; display: none; position: absolute; inset: 0; z-index: 1;" alt="Consultation Live Video Feed">
-        
-        <!-- Screen Share Viewport -->
-        <video id="mainScreenShareVideo" autoplay playsinline style="width: 100%; height: 100%; object-fit: contain; border-radius: inherit; display: none; position: absolute; inset: 0; z-index: 2; background: #000;"></video>
-        
-        <!-- Recording Overlay Badge -->
-        <div class="rec-indicator" id="recIndicatorBadge" style="display: none; align-items: center; gap: 0.4rem; background: rgba(0,0,0,0.6); padding: 0.35rem 0.65rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700; color: white; position: absolute; top: 1rem; left: 1rem; z-index: 4;">
-          <span style="width: 8px; height: 8px; border-radius: 50%; background: #ef4444;" class="rec-dot"></span>
-          <span>REC</span>
-          <span id="recTimer">00:00</span>
-        </div>
-        
-        <!-- Emoji Reactions Animation Layer -->
-        <div class="reactions-layer" id="videoReactionsLayer" style="position: absolute; inset: 0; pointer-events: none; z-index: 5; overflow: hidden;"></div>
-        
-        <div class="pulse-ring" id="videoPulseRing"></div>
-        <div style="display: flex; align-items: center; gap: 0.5rem; color: rgba(255,255,255,0.7); z-index: 3;" id="video-partner-name-wrapper">
-          <span id="video-partner-name">Dr. Sarah Johnson · Connecting...</span>
-          <div class="audio-indicator-bars" id="partner-audio-bars" style="display: none; align-items: flex-end; gap: 2px; height: 12px; width: 14px;">
-            <div class="audio-bar" style="height: 4px; width: 2px; background: #22c55e;"></div>
-            <div class="audio-bar" style="height: 8px; width: 2px; background: #22c55e;"></div>
-            <div class="audio-bar" style="height: 6px; width: 2px; background: #22c55e;"></div>
-            <div class="audio-bar" style="height: 10px; width: 2px; background: #22c55e;"></div>
+  <!-- Admin Edit User Modal -->
+  <div id="adminEditUserModal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header"><h3>📝 Edit User Account</h3><button class="modal-close modal-cancel" data-modal="adminEditUserModal">✕</button></div>
+      <input type="hidden" id="editUser-id">
+      
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" class="form-control" id="editUser-name" placeholder="Full name">
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group"><label>Email Address</label><input type="email" class="form-control" id="editUser-email" placeholder="email@example.com"></div>
+        <div class="form-group"><label>Phone</label><input type="tel" class="form-control" id="editUser-phone" placeholder="+91 XXXXX XXXXX"></div>
+      </div>
+
+      <!-- Patient Specific Fields (Edit) -->
+      <div id="editUser-patient-fields" style="display:none;">
+        <hr class="divider" style="margin: 1rem 0;">
+        <h4 style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.8rem; color: var(--primary);">Patient Details</h4>
+        <div class="form-row">
+          <div class="form-group"><label>Age</label><input type="number" class="form-control" id="editUser-patient-age" placeholder="e.g. 35"></div>
+          <div class="form-group">
+            <label>Blood Type</label>
+            <select class="form-control" id="editUser-patient-blood">
+              <option value="A+">A+</option>
+              <option value="A-">A-</option>
+              <option value="B+">B+</option>
+              <option value="B-">B-</option>
+              <option value="AB+">AB+</option>
+              <option value="AB-">AB-</option>
+              <option value="O+">O+</option>
+              <option value="O-">O-</option>
+            </select>
           </div>
         </div>
-        <div style="color:rgba(255,255,255,.4);font-size:.8rem;margin-top:.5rem; z-index: 3;" id="video-partner-sub">Secure end-to-end encrypted call</div>
-        
-        <div class="video-self" style="z-index: 3;">
-          <video id="localVideo" autoplay muted playsinline style="width: 100%; height: 100%; object-fit: cover; border-radius: inherit; transform: scaleX(-1); display: none;"></video>
-          <span id="localVideoPlaceholder">You (Camera Off)</span>
+        <div class="form-group"><label>Chronic Conditions</label><input type="text" class="form-control" id="editUser-patient-conditions" placeholder="e.g. Hypertension, Diabetes"></div>
+      </div>
+
+      <!-- Doctor Specific Fields (Edit) -->
+      <div id="editUser-doctor-fields" style="display:none;">
+        <hr class="divider" style="margin: 1rem 0;">
+        <h4 style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.8rem; color: var(--primary);">Doctor Details</h4>
+        <div class="form-row">
+          <div class="form-group"><label>Specialty</label><input type="text" class="form-control" id="editUser-doctor-specialty" placeholder="e.g. Cardiology"></div>
+          <div class="form-group"><label>Experience</label><input type="text" class="form-control" id="editUser-doctor-exp" placeholder="e.g. 8 years"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Consultation Fee</label><input type="text" class="form-control" id="editUser-doctor-fee" placeholder="e.g. ₹600"></div>
+          <div class="form-group"><label>Hospital</label><input type="text" class="form-control" id="editUser-doctor-hospital" placeholder="e.g. City Medical Center"></div>
+        </div>
+      </div>
+
+      <div class="modal-footer"><button class="btn btn-ghost modal-cancel" data-modal="adminEditUserModal">Cancel</button><button class="btn btn-primary" id="btn-edit-user-submit">Save Changes</button></div>
+    </div>
+  </div>
+
+  <!-- Edit Patient Profile Modal -->
+  <div id="editProfileModal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>👤 Edit Patient Profile</h3>
+        <button class="modal-close modal-cancel" data-modal="editProfileModal">✕</button>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Phone Number</label>
+          <input type="tel" class="form-control" id="edit-p-phone" placeholder="+91 XXXXX XXXXX">
+        </div>
+        <div class="form-group">
+          <label>Date of Birth</label>
+          <input type="date" class="form-control" id="edit-p-dob">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Blood Type</label>
+          <select class="form-control" id="edit-p-blood">
+            <option value="A+">A+</option>
+            <option value="A-">A-</option>
+            <option value="B+">B+</option>
+            <option value="B-">B-</option>
+            <option value="AB+">AB+</option>
+            <option value="AB-">AB-</option>
+            <option value="O+">O+</option>
+            <option value="O-">O-</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>City</label>
+          <input type="text" class="form-control" id="edit-p-city" placeholder="e.g. Mumbai">
+        </div>
+      </div>
+      <div class="section-hd mt-3"><h3>Emergency Contact</h3></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Contact Name</label>
+          <input type="text" class="form-control" id="edit-p-emerg-name" placeholder="Contact Name">
+        </div>
+        <div class="form-group">
+          <label>Contact Relation</label>
+          <input type="text" class="form-control" id="edit-p-emerg-relation" placeholder="e.g. Spouse, Parent">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Contact Phone</label>
+        <input type="tel" class="form-control" id="edit-p-emerg-phone" placeholder="+91 XXXXX XXXXX">
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost modal-cancel" data-modal="editProfileModal">Cancel</button>
+        <button class="btn btn-primary" id="btn-edit-p-profile-submit">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- View Doctor Profile Modal -->
+  <div id="viewDocProfileModal" class="modal-overlay">
+    <div class="modal" style="max-width: 600px;">
+      <div class="modal-header" style="border-bottom: 1px solid var(--border); padding-bottom: 1rem; margin-bottom: 1rem;">
+        <h3 id="doc-profile-title">👨‍⚕️ Doctor Profile Details</h3>
+        <button class="modal-close modal-cancel" data-modal="viewDocProfileModal">✕</button>
+      </div>
+      <div id="doc-profile-details-content">
+        <!-- Dynamically populated -->
+      </div>
+      <div class="modal-footer" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); margin-bottom: 0;">
+        <button class="btn btn-ghost modal-cancel" data-modal="viewDocProfileModal">Close</button>
+        <button class="btn btn-primary" id="btn-doc-profile-book">Book Appointment</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- VIDEO CALL OVERLAY (GOOGLE MEET EXACT REPLICA) -->
+  <div id="videoCallOverlay" class="video-overlay" style="display:none;">
+    
+    <!-- Top-Right: Self preview bubble / people indicator (matches screenshot) -->
+    <div class="meet-top-right-preview">
+      <div class="meet-people-bubble">
+        <div class="meet-self-avatar-circle">AS</div>
+        <span class="meet-people-count">1</span>
+      </div>
+    </div>
+
+    <!-- Main call screen tile (matches screenshot) -->
+    <div class="video-main">
+      <div class="video-feed-wrapper">
+        <div class="video-feed meet-main-tile">
+          <!-- The main participant video feed (camera active) -->
+          <video id="partnerVideo" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover; display: none; position: absolute; inset: 0; z-index: 1;"></video>
+          <img id="partnerVideoImage" style="width: 100%; height: 100%; object-fit: cover; display: none; position: absolute; inset: 0; z-index: 1;" alt="Webcam">
+          
+          <!-- Screen Share Viewport -->
+          <video id="mainScreenShareVideo" autoplay playsinline style="width: 100%; height: 100%; object-fit: contain; display: none; position: absolute; inset: 0; z-index: 2; background: #000;"></video>
+          
+          <!-- Centered Profile Avatar (when remote camera is off, matches screenshot) -->
+          <div class="meet-avatar-center-container" id="partnerAvatarCenter">
+            <div class="meet-avatar-circle">
+              <!-- Animated cartoon avatar from Dicebear for Ashad Saifi style -->
+              <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=Ashad" id="partnerAvatarImg" class="meet-avatar-img" alt="Avatar">
+            </div>
+          </div>
+          
+          <!-- Top-Right Muted Microphone Indicator inside the tile -->
+          <div class="meet-tile-mic-indicator">
+            <span class="meet-mic-slashed-icon">🔇</span>
+          </div>
+
+          <!-- Bottom-Left Name Tag -->
+          <div class="meet-tile-name-tag">
+            <span id="video-partner-name">Ashad Saifi</span>
+          </div>
+
+          <!-- Recording Overlay Badge -->
+          <div class="rec-indicator" id="recIndicatorBadge" style="display: none; align-items: center; gap: 0.4rem; background: rgba(0,0,0,0.6); padding: 0.35rem 0.65rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700; color: white; position: absolute; top: 1rem; left: 1rem; z-index: 4;">
+            <span style="width: 8px; height: 8px; border-radius: 50%; background: #ef4444;" class="rec-dot"></span>
+            <span>REC</span>
+            <span id="recTimer">00:00</span>
+          </div>
+          
+          <!-- Emoji Reactions Animation Layer -->
+          <div class="reactions-layer" id="videoReactionsLayer" style="position: absolute; inset: 0; pointer-events: none; z-index: 5; overflow: hidden;"></div>
+          
+          <div class="pulse-ring" id="videoPulseRing"></div>
+          <div style="display:none;" id="video-partner-name-wrapper"></div>
+          <div style="display:none;" id="partner-audio-bars"></div>
+          <div style="display:none;" id="video-partner-sub"></div>
+          
+          <!-- Local Video Tile / PiP Preview (minimized/hidden or standard PiP) -->
+          <div class="video-self" style="display:none; z-index: 3;">
+            <video id="localVideo" autoplay muted playsinline style="width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1);"></video>
+            <span id="localVideoPlaceholder">Camera Off</span>
+          </div>
         </div>
       </div>
       
-      <!-- Tabbed Call Sidebar -->
+      <!-- Tabbed Call Sidebar (Google Meet Styled Right Drawer) -->
       <div class="call-sidebar" id="videoCallSidebar" style="display: none;">
         <div class="sidebar-tabs">
           <button class="tab-btn active" id="tab-btn-chat" onclick="window.switchCallTab('chat')">Chat</button>
@@ -854,7 +1068,7 @@
           </div>
           <div class="chat-input-area">
             <button id="btn-attach-file" title="Attach Document" style="background:transparent;border:none;color:rgba(255,255,255,0.6);font-size:1.1rem;cursor:pointer;padding:0.25rem;">📎</button>
-            <input type="text" id="videoChatInput" placeholder="Type a message...">
+            <input type="text" id="videoChatInput" placeholder="Send a message to everyone...">
             <button id="btn-send-video-message">Send</button>
           </div>
         </div>
@@ -906,7 +1120,7 @@
           <div id="ehr-patient-view" style="display:none; flex-direction:column; gap:1rem; height:100%; overflow-y:auto; padding:1rem;">
             <div class="ehr-section" style="background:rgba(20,184,166,0.06);border:1px solid rgba(20,184,166,0.15);border-radius:var(--radius-sm);padding:0.85rem;">
               <h4 style="color:var(--primary-light);font-size:0.85rem;margin-bottom:0.25rem;">Doctor Details</h4>
-              <div style="font-size:0.9rem;font-weight:600;">Dr. Sarah Johnson</div>
+              <div style="font-size:0.9rem;font-weight:600;">Dr. Shreya Joshi</div>
               <div style="font-size:0.75rem;color:rgba(255,255,255,0.5);">General Medicine · License MCI-2014-08821</div>
             </div>
             
@@ -945,24 +1159,72 @@
         </div>
       </div>
     </div>
-    <div class="video-controls">
-      <button class="ctrl-btn ctrl-normal mic-toggle" title="Toggle Mic">🎤</button>
-      <button class="ctrl-btn ctrl-normal camera-toggle" title="Toggle Camera">📷</button>
-      <button class="ctrl-btn ctrl-normal screen-share-toggle" title="Share Screen">🖥️</button>
-      <button class="ctrl-btn ctrl-normal record-toggle" id="btn-record-toggle" title="Start Recording">⏺️</button>
-      <button class="ctrl-btn ctrl-normal reaction-toggle" id="btn-reaction-toggle" title="Send Reaction" style="position: relative;">
-        😊
-        <!-- Reactions Popover Picker -->
-        <div class="reactions-popover" id="reactionsPopover" style="display: none; position: absolute; bottom: 60px; background: #1a1f2e; border: 1px solid rgba(255,255,255,0.15); border-radius: var(--radius); padding: 0.5rem; gap: 0.5rem; z-index: 1000; box-shadow: var(--shadow-lg);">
-          <button class="react-btn" onclick="window.sendReaction('👍', event)" style="background:transparent;border:none;font-size:1.3rem;cursor:pointer;transition:transform 0.1s;">👍</button>
-          <button class="react-btn" onclick="window.sendReaction('❤️', event)" style="background:transparent;border:none;font-size:1.3rem;cursor:pointer;transition:transform 0.1s;">❤️</button>
-          <button class="react-btn" onclick="window.sendReaction('👏', event)" style="background:transparent;border:none;font-size:1.3rem;cursor:pointer;transition:transform 0.1s;">👏</button>
-          <button class="react-btn" onclick="window.sendReaction('😂', event)" style="background:transparent;border:none;font-size:1.3rem;cursor:pointer;transition:transform 0.1s;">😂</button>
-          <button class="react-btn" onclick="window.sendReaction('🎉', event)" style="background:transparent;border:none;font-size:1.3rem;cursor:pointer;transition:transform 0.1s;">🎉</button>
+
+    <!-- Floating Emoji Reactions Bar (matches screenshot) -->
+    <div class="meet-emoji-reactions-bar">
+      <button class="meet-emoji-btn" onclick="window.sendReaction('💖', event)">💖</button>
+      <button class="meet-emoji-btn" onclick="window.sendReaction('👍', event)">👍</button>
+      <button class="meet-emoji-btn" onclick="window.sendReaction('🎉', event)">🎉</button>
+      <button class="meet-emoji-btn" onclick="window.sendReaction('👏', event)">👏</button>
+      <button class="meet-emoji-btn" onclick="window.sendReaction('😂', event)">😂</button>
+      <button class="meet-emoji-btn" onclick="window.sendReaction('😮', event)">😮</button>
+      <button class="meet-emoji-btn" onclick="window.sendReaction('😢', event)">😢</button>
+      <button class="meet-emoji-btn" onclick="window.sendReaction('🤔', event)">🤔</button>
+      <button class="meet-emoji-btn" onclick="window.sendReaction('👎', event)">👎</button>
+    </div>
+
+    <!-- Google Meet Bottom Control Bar -->
+    <div class="meet-bottom-bar">
+      <!-- Left: Meet Meeting Info & Clock -->
+      <div class="meet-bar-info">
+        <span class="meet-time-clock" id="meetClock">16:39</span>
+        <span class="meet-info-divider">|</span>
+        <span class="meet-code-label">wfm-iagh-aoi</span>
+      </div>
+
+      <!-- Center: Call Actions -->
+      <div class="meet-bar-controls">
+        <!-- Mic Toggle with Caret -->
+        <div class="meet-control-pill mic-control-pill">
+          <button class="meet-caret-btn">▲</button>
+          <button class="ctrl-btn ctrl-normal mic-toggle" title="Toggle Microphone">🎤</button>
         </div>
-      </button>
-      <button class="ctrl-btn ctrl-normal chat-toggle" title="Chat & EHR">💬</button>
-      <button class="ctrl-btn ctrl-end" title="End Call" id="btn-end-video-call">📵</button>
+
+        <!-- Camera Toggle with Caret -->
+        <div class="meet-control-pill camera-control-pill">
+          <button class="meet-caret-btn">▲</button>
+          <button class="ctrl-btn ctrl-normal camera-toggle" title="Toggle Camera">📷</button>
+        </div>
+
+        <!-- Present Screen -->
+        <button class="ctrl-btn ctrl-normal screen-share-toggle" title="Share Screen">📤</button>
+
+        <!-- Reactions (Highlighted in blue in Google Meet) -->
+        <button class="ctrl-btn ctrl-normal reaction-toggle meet-reaction-active" id="btn-reaction-toggle" title="Send Reaction">
+          😊
+        </button>
+
+        <!-- Captions -->
+        <button class="ctrl-btn ctrl-normal cc-toggle" title="Toggle Captions" style="font-weight:700;font-size:0.85rem;letter-spacing:1px;color:rgba(255,255,255,0.7);">CC</button>
+
+        <!-- Hand Raise -->
+        <button class="ctrl-btn ctrl-normal hand-toggle" title="Raise Hand">✋</button>
+
+        <!-- More Options -->
+        <button class="ctrl-btn ctrl-normal record-toggle" id="btn-record-toggle" title="Start Recording">︙</button>
+
+        <!-- End Call (Red Pill Shape) -->
+        <button class="ctrl-btn ctrl-end" title="End Call" id="btn-end-video-call">📵</button>
+      </div>
+
+      <!-- Right: Meeting Drawer Toggles -->
+      <div class="meet-bar-utilities">
+        <button class="meet-util-btn info-toggle" title="Meeting Details">ⓘ</button>
+        <button class="meet-util-btn chat-toggle" title="Chat & EHR">💬</button>
+        <button class="meet-util-btn" title="People (2)">👥</button>
+        <button class="meet-util-btn" title="Activities">⬔</button>
+        <button class="meet-util-btn host-toggle" title="Host Controls">🛡️</button>
+      </div>
     </div>
   </div>
 

@@ -13,9 +13,16 @@ let appointmentsData = [];
 let prescriptionsData = [];
 let reportsData = [];
 let patientData = null;
+let patients = [];
 let localStream = null;
 let screenStream = null;
+let peerConnection = null;
+let signalingSocket = null;
 let currentReplyIndex = 0;
+let isRecording = false;
+let recordInterval = null;
+let recordSeconds = 0;
+let activeCallPartnerName = '';
 
 const doctorChatReplies = [
   "Hello! I am reviewing Your health records. How have you been feeling since your last appointment?",
@@ -37,6 +44,7 @@ const patientChatReplies = [
 // Initialize Event Listeners on DOM Load
 document.addEventListener('DOMContentLoaded', () => {
   initEventListeners();
+  startMeetClock();
 });
 
 function initEventListeners() {
@@ -72,6 +80,9 @@ function initEventListeners() {
   document.getElementById('btn-p-connect-now')?.addEventListener('click', () => openVideoCall('Doctor'));
   document.querySelector('.btn-start-consult')?.addEventListener('click', () => openVideoCall('Patient'));
 
+  // Admin reports PDF export
+  document.getElementById('btn-a-export-pdf')?.addEventListener('click', () => window.print());
+
   // Custom video toggles
   document.querySelector('.mic-toggle')?.addEventListener('click', function () {
     if (localStream) {
@@ -80,13 +91,28 @@ function initEventListeners() {
         audioTrack.enabled = !audioTrack.enabled;
         const isMuted = !audioTrack.enabled;
         this.style.opacity = isMuted ? '0.5' : '1';
+        
+        if (signalingSocket && signalingSocket.readyState === WebSocket.OPEN) {
+          signalingSocket.send(JSON.stringify({
+            type: 'mic-toggle',
+            enabled: !isMuted
+          }));
+        }
         notify(isMuted ? 'Microphone muted' : 'Microphone unmuted', '');
       } else {
         notify('No active microphone found', 'error');
       }
     } else {
       this.style.opacity = this.style.opacity == '0.5' ? '1' : '0.5';
-      notify(this.style.opacity == '0.5' ? 'Microphone muted' : 'Microphone unmuted', '');
+      const isMuted = this.style.opacity == '0.5';
+      
+      if (signalingSocket && signalingSocket.readyState === WebSocket.OPEN) {
+        signalingSocket.send(JSON.stringify({
+          type: 'mic-toggle',
+          enabled: !isMuted
+        }));
+      }
+      notify(isMuted ? 'Microphone muted' : 'Microphone unmuted', '');
     }
   });
   document.querySelector('.camera-toggle')?.addEventListener('click', function () {
@@ -99,11 +125,20 @@ function initEventListeners() {
 
         const localVideo = document.getElementById('localVideo');
         const placeholder = document.getElementById('localVideoPlaceholder');
+
         if (localVideo) {
           localVideo.style.display = isDisabled ? 'none' : 'block';
         }
         if (placeholder) {
           placeholder.style.display = isDisabled ? 'inline' : 'none';
+        }
+
+        // Send camera mute state to partner
+        if (signalingSocket && signalingSocket.readyState === WebSocket.OPEN) {
+          signalingSocket.send(JSON.stringify({
+            type: 'camera-toggle',
+            enabled: !isDisabled
+          }));
         }
 
         notify(isDisabled ? 'Camera disabled' : 'Camera enabled', '');
@@ -112,7 +147,15 @@ function initEventListeners() {
       }
     } else {
       this.style.opacity = this.style.opacity == '0.5' ? '1' : '0.5';
-      notify(this.style.opacity == '0.5' ? 'Camera disabled' : 'Camera enabled', '');
+      const isDisabled = this.style.opacity == '0.5';
+      
+      if (signalingSocket && signalingSocket.readyState === WebSocket.OPEN) {
+        signalingSocket.send(JSON.stringify({
+          type: 'camera-toggle',
+          enabled: !isDisabled
+        }));
+      }
+      notify(isDisabled ? 'Camera disabled' : 'Camera enabled', '');
     }
   });
 
@@ -143,7 +186,8 @@ function initEventListeners() {
   document.querySelectorAll('.btn-p-download-all').forEach(btn => {
     btn.addEventListener('click', () => downloadRecords());
   });
-  document.getElementById('btn-p-profile-save')?.addEventListener('click', () => savePatientProfile());
+  document.getElementById('btn-p-profile-save')?.addEventListener('click', openEditProfileModal);
+  document.getElementById('btn-edit-p-profile-submit')?.addEventListener('click', submitEditPatientProfile);
 
   // Doctor features
   document.getElementById('btn-add-rx-row')?.addEventListener('click', addRxRow);
@@ -168,6 +212,7 @@ function initEventListeners() {
   document.getElementById('btn-a-export-pdf')?.addEventListener('click', () => notify('Monthly analytics downloaded', 'success'));
   document.getElementById('btn-a-add-user')?.addEventListener('click', () => openModal('addUserModal'));
   document.getElementById('btn-add-user-submit')?.addEventListener('click', submitAddUser);
+  document.getElementById('btn-edit-user-submit')?.addEventListener('click', submitEditUserAdmin);
   document.getElementById('btn-a-save-settings')?.addEventListener('click', saveAdminSettings);
   document.getElementById('btn-a-update-security')?.addEventListener('click', () => notify('Security parameters updated successfully', 'success'));
 
@@ -198,15 +243,61 @@ function initEventListeners() {
     });
   });
 
-  // Mobile sidebar backdrop overlay clicks
-  document.querySelectorAll('.sidebar-mobile-overlay').forEach(overlay => {
-    overlay.addEventListener('click', () => {
-      const parentShell = overlay.closest('.app-shell');
-      if (parentShell) {
-        parentShell.querySelector('.sidebar')?.classList.remove('open');
-        overlay.classList.remove('active');
-      }
+  // Telehealth consultation room action handlers
+  document.getElementById('btn-record-toggle')?.addEventListener('click', toggleRecording);
+  document.getElementById('btn-reaction-toggle')?.addEventListener('click', function (e) {
+    e.stopPropagation();
+    const rxBar = document.querySelector('.meet-emoji-reactions-bar');
+    if (rxBar) {
+      const isHidden = rxBar.style.display === 'none';
+      rxBar.style.display = isHidden ? 'flex' : 'none';
+      this.classList.toggle('meet-reaction-active', isHidden);
+    }
+  });
+
+  // CC (Captions) Toggle
+  document.querySelector('.cc-toggle')?.addEventListener('click', function () {
+    const isActive = this.style.background === 'var(--primary-light)';
+    this.style.background = isActive ? '' : 'var(--primary-light)';
+    this.style.color = isActive ? 'rgba(255,255,255,0.7)' : '#202124';
+    notify(isActive ? 'Captions disabled' : 'Captions enabled', 'success');
+  });
+
+  // Hand Raise Toggle
+  document.querySelector('.hand-toggle')?.addEventListener('click', function () {
+    const isActive = this.style.background === 'rgb(249, 115, 22)';
+    this.style.background = isActive ? '' : '#f97316';
+    this.style.color = isActive ? 'white' : '#202124';
+    notify(isActive ? 'Hand lowered' : 'Hand raised', 'success');
+  });
+
+  // Caret Dropdown Buttons for Mic/Camera
+  document.querySelectorAll('.meet-caret-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      notify('Audio/Video source options: System Default selected', '');
     });
+  });
+
+  // Utilities Buttons (Details, People, Activities, Host controls)
+  document.querySelector('.info-toggle')?.addEventListener('click', () => {
+    notify('Meeting Details: Code wfm-iagh-aoi | Encryption Active', 'success');
+  });
+  document.querySelector('.meet-bar-utilities button[title*="People"]')?.addEventListener('click', () => {
+    notify('Participants (2): Aarav Mehta, Dr. Shreya Joshi', 'success');
+  });
+  document.querySelector('.meet-bar-utilities button[title*="Activities"]')?.addEventListener('click', () => {
+    notify('Activities: Whiteboard and Polls are available', 'success');
+  });
+  document.querySelector('.host-toggle')?.addEventListener('click', () => {
+    notify('Host controls unlocked: Managed by City Medical Center', 'success');
+  });
+
+  document.getElementById('btn-request-vitals')?.addEventListener('click', requestVitals);
+  document.getElementById('btn-share-vitals')?.addEventListener('click', shareVitals);
+  document.getElementById('btn-call-save-notes')?.addEventListener('click', saveCallNotes);
+  document.getElementById('btn-call-share-rx')?.addEventListener('click', () => {
+    openModal('prescModal');
   });
 }
 
@@ -229,7 +320,8 @@ function bindSidebarNavs(navId, prefix) {
     });
   });
   // Connect section link links (like Dashboard View Alls)
-  document.querySelectorAll('.nav-link').forEach(link => {
+  const panelId = prefix === 'p' ? 'patientPanel' : prefix === 'd' ? 'doctorPanel' : 'adminPanel';
+  document.querySelectorAll(`#${panelId} .nav-link`).forEach(link => {
     link.addEventListener('click', () => {
       const pageId = link.getAttribute('data-page');
       if (pageId) {
@@ -270,9 +362,9 @@ function openLogin(role) {
   const pwdInput = document.getElementById('loginPwd');
   if (emailInput && pwdInput) {
     if (role === 'patient') {
-      emailInput.value = 'alex@email.com';
+      emailInput.value = 'aarav@email.com';
     } else if (role === 'doctor') {
-      emailInput.value = 'sarah@hospital.com';
+      emailInput.value = 'shreya@hospital.com';
     } else {
       emailInput.value = 'admin@medxpert.com';
     }
@@ -300,7 +392,7 @@ async function doLogin() {
     });
 
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Server error during login');
+    if (!res.ok) throw new Error(data.message || data.error || 'Server error during login');
 
     currentUser = data.user;
     closeLogin();
@@ -377,8 +469,353 @@ async function showPage(prefix, pageId, el) {
   }
 }
 
+function createMockMediaStream() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 640;
+  canvas.height = 480;
+  const ctx = canvas.getContext('2d');
+  
+  let angle = 0;
+  const intervalId = setInterval(() => {
+    if (!ctx) return;
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 0, 640, 480);
+    
+    ctx.strokeStyle = 'rgba(20, 184, 166, 0.15)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 640; i += 40) {
+      ctx.beginPath();
+      ctx.moveTo(i, 0);
+      ctx.lineTo(i, 480);
+      ctx.stroke();
+    }
+    for (let j = 0; j < 480; j += 40) {
+      ctx.beginPath();
+      ctx.moveTo(0, j);
+      ctx.lineTo(640, j);
+      ctx.stroke();
+    }
+    
+    ctx.strokeStyle = '#14b8a6';
+    ctx.lineWidth = 3;
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = '#14b8a6';
+    ctx.beginPath();
+    for (let x = 0; x < 640; x++) {
+      const y = 240 + Math.sin(x * 0.03 + angle) * 40 * Math.sin(x * 0.005);
+      if (x === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 20px "DM Sans", sans-serif';
+    ctx.fillText('🔴 SIMULATED WEBCAM FEED', 40, 60);
+    
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.font = '14px "DM Sans", sans-serif';
+    ctx.fillText('Vitals Sensor: ONLINE', 40, 90);
+    ctx.fillText('Location: MedXpert Encrypted Link', 40, 115);
+    
+    angle += 0.05;
+  }, 40);
+
+  const stream = canvas.captureStream(25);
+  
+  try {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const dest = audioCtx.createMediaStreamDestination();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    
+    osc.connect(gain);
+    gain.connect(dest);
+    gain.gain.value = 0.001;
+    osc.start(0);
+    
+    const audioTrack = dest.stream.getAudioTracks()[0];
+    if (audioTrack) {
+      stream.addTrack(audioTrack);
+    }
+  } catch (e) {
+    console.error("Web Audio mock generation failed:", e);
+  }
+
+  const originalStop = stream.getVideoTracks()[0].stop;
+  stream.getVideoTracks()[0].stop = function() {
+    clearInterval(intervalId);
+    originalStop.call(this);
+  };
+  
+  return stream;
+}
+
+// ── WEBRTC & WEBSOCKETS SIGNALING ──
+function showReactionBubble(emoji) {
+  const reactionsLayer = document.getElementById('videoReactionsLayer');
+  if (!reactionsLayer) return;
+
+  const bubble = document.createElement('div');
+  bubble.className = 'reaction-bubble';
+  bubble.textContent = emoji;
+  
+  const startX = Math.random() * 80 + 10; // 10% to 90%
+  bubble.style.left = `${startX}%`;
+  bubble.style.bottom = '0px';
+
+  reactionsLayer.appendChild(bubble);
+
+  setTimeout(() => {
+    bubble.remove();
+  }, 2000);
+}
+
+function shareVitalsWebSocket() {
+  notify('Sharing live health vitals with doctor...', '');
+  
+  const bpSystolic = Math.floor(Math.random() * 10) + 115;
+  const bpDiastolic = Math.floor(Math.random() * 6) + 75;
+  const hr = Math.floor(Math.random() * 8) + 68;
+  const spo2 = Math.floor(Math.random() * 3) + 97;
+  
+  if (signalingSocket && signalingSocket.readyState === WebSocket.OPEN) {
+    signalingSocket.send(JSON.stringify({
+      type: 'vitals-data',
+      bp: `${bpSystolic}/${bpDiastolic}`,
+      hr: `${hr} bpm`,
+      spo2: `${spo2}%`
+    }));
+  }
+  
+  setTimeout(() => {
+    notify('Vitals shared with doctor successfully', 'success');
+  }, 1000);
+}
+
+function createPeerConnection() {
+  console.log("Creating RTCPeerConnection...");
+  const configuration = {
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' }
+    ]
+  };
+  peerConnection = new RTCPeerConnection(configuration);
+  
+  if (localStream) {
+    localStream.getTracks().forEach(track => {
+      peerConnection.addTrack(track, localStream);
+    });
+  }
+  
+  peerConnection.onicecandidate = (event) => {
+    if (event.candidate && signalingSocket && signalingSocket.readyState === WebSocket.OPEN) {
+      signalingSocket.send(JSON.stringify({
+        type: 'candidate',
+        candidate: event.candidate
+      }));
+    }
+  };
+  
+  peerConnection.ontrack = (event) => {
+    console.log("Remote track received:", event.streams[0]);
+    const partnerVideo = document.getElementById('partnerVideo');
+    const partnerVideoImage = document.getElementById('partnerVideoImage');
+    const avatarCenter = document.getElementById('partnerAvatarCenter');
+    const pulseRing = document.getElementById('videoPulseRing');
+    const audioBars = document.getElementById('partner-audio-bars');
+    const partnerEl = document.getElementById('video-partner-name');
+    const partnerName = activeCallPartnerName || (currentRole === 'doctor' ? 'Aarav Mehta' : 'Dr. Shreya Joshi');
+
+    if (partnerEl) {
+      partnerEl.textContent = `${partnerName} (Connected)`;
+    }
+    if (pulseRing) pulseRing.style.display = 'none';
+    if (avatarCenter) avatarCenter.style.display = 'none';
+    if (partnerVideoImage) partnerVideoImage.style.display = 'none';
+    
+    if (partnerVideo) {
+      partnerVideo.srcObject = event.streams[0];
+      partnerVideo.style.display = 'block';
+      partnerVideo.play().catch(err => console.warn("Error playing remote video:", err));
+    }
+    if (audioBars) audioBars.style.display = 'flex';
+  };
+}
+
+async function initiateCall() {
+  if (!peerConnection) {
+    createPeerConnection();
+  }
+  try {
+    const offer = await peerConnection.createOffer();
+    await peerConnection.setLocalDescription(offer);
+    if (signalingSocket && signalingSocket.readyState === WebSocket.OPEN) {
+      signalingSocket.send(JSON.stringify({
+        type: 'offer',
+        offer: offer
+      }));
+    }
+  } catch (err) {
+    console.error("Failed to create/send offer:", err);
+  }
+}
+
+async function handleOffer(offer) {
+  if (!peerConnection) {
+    createPeerConnection();
+  }
+  try {
+    await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+    const answer = await peerConnection.createAnswer();
+    await peerConnection.setLocalDescription(answer);
+    if (signalingSocket && signalingSocket.readyState === WebSocket.OPEN) {
+      signalingSocket.send(JSON.stringify({
+        type: 'answer',
+        answer: answer
+      }));
+    }
+  } catch (err) {
+    console.error("Failed to handle offer/create answer:", err);
+  }
+}
+
+async function handleAnswer(answer) {
+  if (peerConnection) {
+    try {
+      await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+    } catch (err) {
+      console.error("Failed to handle answer:", err);
+    }
+  }
+}
+
+async function handleCandidate(candidate) {
+  if (peerConnection) {
+    try {
+      await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+    } catch (err) {
+      console.error("Failed to handle ICE candidate:", err);
+    }
+  }
+}
+
+function handleSignalingMessage(data) {
+  switch (data.type) {
+    case 'peer-joined':
+      console.log(`Peer joined: ${data.role}`);
+      notify(`${data.role === 'doctor' ? 'Doctor' : 'Patient'} has joined the video consultation`, 'success');
+      const partnerEl = document.getElementById('video-partner-name');
+      const partnerName = activeCallPartnerName || (currentRole === 'doctor' ? 'Aarav Mehta' : 'Dr. Shreya Joshi');
+      if (partnerEl) {
+        partnerEl.textContent = `${partnerName} (Connected)`;
+      }
+      const pulseRing = document.getElementById('videoPulseRing');
+      if (pulseRing) pulseRing.style.display = 'none';
+      
+      initiateCall();
+      break;
+
+    case 'peer-left':
+      console.log(`Peer left: ${data.role}`);
+      notify(`${data.role === 'doctor' ? 'Doctor' : 'Patient'} has left the video consultation`, 'warning');
+      const partnerElLeft = document.getElementById('video-partner-name');
+      const partnerNameLeft = activeCallPartnerName || (currentRole === 'doctor' ? 'Aarav Mehta' : 'Dr. Shreya Joshi');
+      if (partnerElLeft) {
+        partnerElLeft.textContent = `${partnerNameLeft} · Disconnected`;
+      }
+      const partnerVideo = document.getElementById('partnerVideo');
+      const avatarCenter = document.getElementById('partnerAvatarCenter');
+      if (partnerVideo) {
+        partnerVideo.srcObject = null;
+        partnerVideo.style.display = 'none';
+      }
+      if (avatarCenter) {
+        avatarCenter.style.display = 'flex';
+      }
+      if (peerConnection) {
+        peerConnection.close();
+        peerConnection = null;
+      }
+      break;
+
+    case 'offer':
+      handleOffer(data.offer);
+      break;
+
+    case 'answer':
+      handleAnswer(data.answer);
+      break;
+
+    case 'candidate':
+      handleCandidate(data.candidate);
+      break;
+
+    case 'chat':
+      appendChatMessage(data.sender, data.text, 'other');
+      const sidebar = document.getElementById('videoCallSidebar');
+      if (sidebar && sidebar.style.display === 'none') {
+        notify(`New message from ${data.sender}`, 'success');
+      }
+      break;
+
+    case 'advice':
+      const patientAdviceBox = document.getElementById('patient-live-advice-box');
+      if (patientAdviceBox) {
+        if (data.clinical) {
+          patientAdviceBox.innerHTML = `<div style="font-weight:600;margin-bottom:0.25rem;">Chief Complaint: ${data.complaint || 'None'}</div><div>${data.clinical}</div>`;
+        } else {
+          patientAdviceBox.innerHTML = `<span style="color:rgba(255,255,255,0.4);font-style:italic;">No advice recorded yet. The doctor's advice will update here in real-time.</span>`;
+        }
+      }
+      break;
+
+    case 'reaction':
+      showReactionBubble(data.emoji);
+      break;
+
+    case 'request-vitals':
+      if (currentRole === 'patient') {
+        shareVitalsWebSocket();
+      }
+      break;
+
+    case 'vitals-data':
+      if (currentRole === 'doctor') {
+        const bpVal = document.getElementById('val-bp');
+        const hrVal = document.getElementById('val-hr');
+        const spo2Val = document.getElementById('val-spo2');
+        if (bpVal) bpVal.textContent = data.bp;
+        if (hrVal) hrVal.textContent = data.hr;
+        if (spo2Val) spo2Val.textContent = data.spo2;
+        notify('Patient vitals synchronized successfully', 'success');
+      }
+      break;
+
+    case 'camera-toggle':
+      const remoteVideo = document.getElementById('partnerVideo');
+      const remoteAvatar = document.getElementById('partnerAvatarCenter');
+      if (remoteVideo) {
+        remoteVideo.style.display = data.enabled ? 'block' : 'none';
+      }
+      if (remoteAvatar) {
+        remoteAvatar.style.display = data.enabled ? 'none' : 'flex';
+      }
+      break;
+
+    case 'mic-toggle':
+      const remoteMicIndicator = document.querySelector('.meet-tile-mic-indicator');
+      if (remoteMicIndicator) {
+        remoteMicIndicator.style.display = data.enabled ? 'none' : 'flex';
+      }
+      break;
+  }
+}
+
 // ── VIDEO ROOM CONTROLLER ──
 async function openVideoCall(partnerName = 'Doctor') {
+  activeCallPartnerName = partnerName;
   const overlay = document.getElementById('videoCallOverlay');
   if (!overlay) return;
 
@@ -386,12 +823,53 @@ async function openVideoCall(partnerName = 'Doctor') {
   const partnerEl = document.getElementById('video-partner-name');
   const partnerSub = document.getElementById('video-partner-sub');
   const pulseRing = document.getElementById('videoPulseRing');
+  const partnerVideo = document.getElementById('partnerVideo');
+  const partnerVideoImage = document.getElementById('partnerVideoImage');
+  const audioBars = document.getElementById('partner-audio-bars');
+  const micIndicator = document.querySelector('.meet-tile-mic-indicator');
+
+  if (partnerVideo) partnerVideo.style.display = 'none';
+  if (partnerVideoImage) partnerVideoImage.style.display = 'none';
+  if (audioBars) audioBars.style.display = 'none';
+  if (micIndicator) micIndicator.style.display = 'none'; // starts unmuted
 
   if (partnerEl) {
-    partnerEl.textContent = `${partnerName} · Connecting...`;
-    setTimeout(() => {
-      partnerEl.textContent = `${partnerName} (Connected)`;
-    }, 1500);
+    partnerEl.textContent = `Waiting for partner...`;
+  }
+
+  // Initialize WebSocket signaling socket
+  try {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws`;
+    console.log("Connecting to WebRTC signaling at:", wsUrl);
+    signalingSocket = new WebSocket(wsUrl);
+
+    signalingSocket.onopen = () => {
+      console.log("WebSocket signaling connected");
+      signalingSocket.send(JSON.stringify({
+        type: 'join',
+        role: currentRole
+      }));
+    };
+
+    signalingSocket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        handleSignalingMessage(data);
+      } catch (err) {
+        console.error("Error parsing signaling message:", err);
+      }
+    };
+
+    signalingSocket.onclose = () => {
+      console.log("WebSocket signaling closed");
+    };
+
+    signalingSocket.onerror = (err) => {
+      console.error("WebSocket signaling error:", err);
+    };
+  } catch (err) {
+    console.error("Failed to establish WebSocket signaling:", err);
   }
 
   overlay.style.display = 'flex';
@@ -411,10 +889,13 @@ async function openVideoCall(partnerName = 'Doctor') {
   if (partnerSub) partnerSub.style.display = 'block';
   if (pulseRing) pulseRing.style.display = 'block';
 
-  // Reset chat state
+  // Reset call sidebar/chat state
   currentReplyIndex = 0;
-  const chatPanel = document.getElementById('videoChatPanel');
-  if (chatPanel) chatPanel.style.display = 'none';
+  const sidebar = document.getElementById('videoCallSidebar');
+  if (sidebar) sidebar.style.display = 'none';
+  
+  // Set active tab to chat
+  switchCallTab('chat');
 
   const chatMessages = document.getElementById('videoChatMessages');
   if (chatMessages) {
@@ -438,6 +919,30 @@ async function openVideoCall(partnerName = 'Doctor') {
     screenToggle.style.opacity = '1';
   }
 
+  // Reset recording button & badge
+  const recordToggle = document.getElementById('btn-record-toggle');
+  if (recordToggle) {
+    recordToggle.innerHTML = '⏺️';
+    recordToggle.style.background = '';
+  }
+  const recBadge = document.getElementById('recIndicatorBadge');
+  if (recBadge) recBadge.style.display = 'none';
+  isRecording = false;
+  if (recordInterval) {
+    clearInterval(recordInterval);
+    recordInterval = null;
+  }
+
+  // Clear live sync advice text box and inputs
+  const callComplaintInput = document.getElementById('call-note-complaint');
+  const callClinicalInput = document.getElementById('call-note-clinical');
+  if (callComplaintInput) callComplaintInput.value = '';
+  if (callClinicalInput) callClinicalInput.value = '';
+  const patientAdviceBox = document.getElementById('patient-live-advice-box');
+  if (patientAdviceBox) {
+    patientAdviceBox.innerHTML = `<span style="color:rgba(255,255,255,0.4);font-style:italic;">No advice recorded yet. The doctor's advice will update here in real-time.</span>`;
+  }
+
   // Access user's camera and microphone
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -445,6 +950,10 @@ async function openVideoCall(partnerName = 'Doctor') {
 
     const localVideo = document.getElementById('localVideo');
     const placeholder = document.getElementById('localVideoPlaceholder');
+    const videoSelfContainer = document.querySelector('.video-self');
+    if (videoSelfContainer) {
+      videoSelfContainer.style.display = 'flex'; // show the container
+    }
     if (localVideo) {
       localVideo.srcObject = stream;
       localVideo.style.display = 'block';
@@ -453,14 +962,41 @@ async function openVideoCall(partnerName = 'Doctor') {
       placeholder.style.display = 'none';
     }
 
+    // Remote partner stream will be applied via WebRTC 'ontrack' event handler
+
     // Reset control buttons visually
     const camBtn = document.querySelector('.camera-toggle');
     const micBtn = document.querySelector('.mic-toggle');
     if (camBtn) camBtn.style.opacity = '1';
     if (micBtn) micBtn.style.opacity = '1';
   } catch (err) {
-    console.warn("Camera/microphone access denied or unavailable:", err);
-    notify("Could not access camera/microphone", "error");
+    console.warn("Camera/microphone access denied or unavailable. Activating simulated video & audio feed:", err);
+    notify("Hardware permissions denied. Activating simulated video & audio feed.", "success");
+
+    const stream = createMockMediaStream();
+    localStream = stream;
+
+    const localVideo = document.getElementById('localVideo');
+    const placeholder = document.getElementById('localVideoPlaceholder');
+    const videoSelfContainer = document.querySelector('.video-self');
+    if (videoSelfContainer) {
+      videoSelfContainer.style.display = 'flex'; // show the container
+    }
+    if (localVideo) {
+      localVideo.srcObject = stream;
+      localVideo.style.display = 'block';
+    }
+    if (placeholder) {
+      placeholder.style.display = 'none';
+    }
+
+    // Remote partner stream will be applied via WebRTC 'ontrack' event handler
+
+    // Reset control buttons visually
+    const camBtn = document.querySelector('.camera-toggle');
+    const micBtn = document.querySelector('.mic-toggle');
+    if (camBtn) camBtn.style.opacity = '1';
+    if (micBtn) micBtn.style.opacity = '1';
   }
 }
 
@@ -471,6 +1007,11 @@ function closeVideoCall() {
   const timer = document.getElementById('callTimer');
   const durationText = timer ? timer.textContent : '00:00';
   notify(`Consultation ended. Duration: ${durationText}`, 'success');
+
+  // Stop recording if active
+  if (isRecording) {
+    toggleRecording();
+  }
 
   // Stop screen sharing if active
   if (screenStream) {
@@ -483,14 +1024,42 @@ function closeVideoCall() {
     localStream = null;
   }
 
+  const videoSelfContainer = document.querySelector('.video-self');
+  if (videoSelfContainer) {
+    videoSelfContainer.style.display = 'none';
+  }
+
   const localVideo = document.getElementById('localVideo');
+  const partnerVideo = document.getElementById('partnerVideo');
   const placeholder = document.getElementById('localVideoPlaceholder');
+  const avatarCenter = document.getElementById('partnerAvatarCenter');
+
   if (localVideo) {
     localVideo.srcObject = null;
     localVideo.style.display = 'none';
   }
+  if (partnerVideo) {
+    partnerVideo.srcObject = null;
+    partnerVideo.style.display = 'none';
+  }
+  if (avatarCenter) {
+    avatarCenter.style.display = 'flex';
+  }
   if (placeholder) {
     placeholder.style.display = 'inline';
+  }
+
+  const sidebar = document.getElementById('videoCallSidebar');
+  if (sidebar) sidebar.style.display = 'none';
+
+  // Close WebRTC and signaling socket connections
+  if (peerConnection) {
+    peerConnection.close();
+    peerConnection = null;
+  }
+  if (signalingSocket) {
+    signalingSocket.close();
+    signalingSocket = null;
   }
 
   if (currentRole === 'doctor') {
@@ -565,13 +1134,45 @@ function stopScreenShare() {
   if (partnerSub) partnerSub.style.display = 'block';
 }
 
-// ── VIDEO CHAT HELPERS ──
-function toggleVideoChat(btn) {
-  const panel = document.getElementById('videoChatPanel');
-  if (!panel) return;
+// ── VIDEO CHAT HELPERS & TELEHEALTH ROOM EXTRA CONTROLS ──
+function updateCallEhrView() {
+  const doctorView = document.getElementById('ehr-doctor-view');
+  const patientView = document.getElementById('ehr-patient-view');
+  if (currentRole === 'doctor') {
+    if (doctorView) doctorView.style.display = 'flex';
+    if (patientView) patientView.style.display = 'none';
+  } else if (currentRole === 'patient') {
+    if (doctorView) doctorView.style.display = 'none';
+    if (patientView) patientView.style.display = 'flex';
+  }
+}
 
-  const isOpen = panel.style.display === 'flex';
-  panel.style.display = isOpen ? 'none' : 'flex';
+function switchCallTab(tab) {
+  const chatBtn = document.getElementById('tab-btn-chat');
+  const ehrBtn = document.getElementById('tab-btn-ehr');
+  const chatTab = document.getElementById('call-tab-chat');
+  const ehrTab = document.getElementById('call-tab-ehr');
+
+  if (tab === 'chat') {
+    chatBtn?.classList.add('active');
+    ehrBtn?.classList.remove('active');
+    if (chatTab) chatTab.style.display = 'flex';
+    if (ehrTab) ehrTab.style.display = 'none';
+  } else if (tab === 'ehr') {
+    ehrBtn?.classList.add('active');
+    chatBtn?.classList.remove('active');
+    if (chatTab) chatTab.style.display = 'none';
+    if (ehrTab) ehrTab.style.display = 'flex';
+    updateCallEhrView();
+  }
+}
+
+function toggleVideoChat(btn) {
+  const sidebar = document.getElementById('videoCallSidebar');
+  if (!sidebar) return;
+
+  const isOpen = sidebar.style.display === 'flex';
+  sidebar.style.display = isOpen ? 'none' : 'flex';
   btn.style.background = isOpen ? '' : '#14b8a6';
 
   if (!isOpen) {
@@ -579,6 +1180,7 @@ function toggleVideoChat(btn) {
     if (input) input.focus();
     const messages = document.getElementById('videoChatMessages');
     if (messages) messages.scrollTop = messages.scrollHeight;
+    updateCallEhrView();
   }
 }
 
@@ -612,27 +1214,156 @@ function sendVideoChatMessage() {
   const text = input.value.trim();
   if (!text) return;
 
-  const myName = currentRole === 'doctor' ? 'Dr. Sarah Johnson' : 'Alex Smith';
+  const myName = currentRole === 'doctor' ? 'Dr. Shreya Joshi' : 'Aarav Mehta';
   appendChatMessage(myName, text, 'self');
   input.value = '';
 
-  // Trigger simulated response after 2 seconds
-  setTimeout(() => {
-    const isDoctor = currentRole === 'doctor';
-    const replies = isDoctor ? patientChatReplies : doctorChatReplies;
-    const partnerName = isDoctor ? 'Alex Smith' : 'Dr. Sarah Johnson';
+  // Send message over WebSockets to remote peer
+  if (signalingSocket && signalingSocket.readyState === WebSocket.OPEN) {
+    signalingSocket.send(JSON.stringify({
+      type: 'chat',
+      sender: myName,
+      text: text
+    }));
+  } else {
+    // Simulated backup if socket is not open
+    setTimeout(() => {
+      const isDoctor = currentRole === 'doctor';
+      const replies = isDoctor ? patientChatReplies : doctorChatReplies;
+      const partnerName = isDoctor ? 'Aarav Mehta' : 'Dr. Shreya Joshi';
 
-    const replyText = replies[currentReplyIndex % replies.length];
-    currentReplyIndex++;
+      const replyText = replies[currentReplyIndex % replies.length];
+      currentReplyIndex++;
 
-    appendChatMessage(partnerName, replyText, 'other');
+      appendChatMessage(partnerName, replyText, 'other');
 
-    // If chat side panel is hidden, notify user via notification bubble
-    const panel = document.getElementById('videoChatPanel');
-    if (panel && panel.style.display === 'none') {
-      notify(`New message from ${partnerName}`, 'success');
+      const sidebar = document.getElementById('videoCallSidebar');
+      if (sidebar && sidebar.style.display === 'none') {
+        notify(`New message from ${partnerName}`, 'success');
+      }
+    }, 2000);
+  }
+}
+
+function sendReaction(emoji, event) {
+  if (event) {
+    event.stopPropagation();
+  }
+  showReactionBubble(emoji);
+  
+  if (signalingSocket && signalingSocket.readyState === WebSocket.OPEN) {
+    signalingSocket.send(JSON.stringify({
+      type: 'reaction',
+      emoji: emoji
+    }));
+  }
+}
+
+function toggleRecording() {
+  const btn = document.getElementById('btn-record-toggle');
+  const badge = document.getElementById('recIndicatorBadge');
+  const timer = document.getElementById('recTimer');
+  
+  if (!btn || !badge) return;
+  
+  isRecording = !isRecording;
+  
+  if (isRecording) {
+    btn.innerHTML = '⏹️';
+    btn.style.background = '#ef4444';
+    badge.style.display = 'flex';
+    recordSeconds = 0;
+    if (timer) timer.textContent = '00:00';
+    
+    if (recordInterval) clearInterval(recordInterval);
+    recordInterval = setInterval(() => {
+      recordSeconds++;
+      const m = String(Math.floor(recordSeconds / 60)).padStart(2, '0');
+      const s = String(recordSeconds % 60).padStart(2, '0');
+      if (timer) timer.textContent = `${m}:${s}`;
+    }, 1000);
+    
+    notify('Consultation recording started', 'success');
+  } else {
+    btn.innerHTML = '⏺️';
+    btn.style.background = '';
+    badge.style.display = 'none';
+    if (recordInterval) {
+      clearInterval(recordInterval);
+      recordInterval = null;
     }
-  }, 2000);
+    notify('Consultation recording saved to medical records', 'success');
+  }
+}
+
+function requestVitals() {
+  notify('Requesting latest vitals from patient device...', '');
+  if (signalingSocket && signalingSocket.readyState === WebSocket.OPEN) {
+    signalingSocket.send(JSON.stringify({
+      type: 'request-vitals'
+    }));
+  } else {
+    setTimeout(() => {
+      const bpSystolic = Math.floor(Math.random() * 10) + 115;
+      const bpDiastolic = Math.floor(Math.random() * 6) + 75;
+      const hr = Math.floor(Math.random() * 8) + 68;
+      const spo2 = Math.floor(Math.random() * 3) + 97;
+      
+      const bpVal = document.getElementById('val-bp');
+      const hrVal = document.getElementById('val-hr');
+      const spo2Val = document.getElementById('val-spo2');
+      
+      if (bpVal) bpVal.textContent = `${bpSystolic}/${bpDiastolic}`;
+      if (hrVal) hrVal.textContent = `${hr} bpm`;
+      if (spo2Val) spo2Val.textContent = `${spo2}%`;
+      
+      notify('Patient vitals synchronized successfully (simulated)', 'success');
+    }, 1500);
+  }
+}
+
+function shareVitals() {
+  shareVitalsWebSocket();
+}
+
+async function saveCallNotes() {
+  const complaint = document.getElementById('call-note-complaint')?.value;
+  const clinical = document.getElementById('call-note-clinical')?.value;
+  
+  const patient = patients.find(p => p.name === activeCallPartnerName);
+  const patientId = patient ? patient.id : 'P-10421';
+  
+  try {
+    const res = await fetch(`${API_BASE}/patients/${patientId}/clinical-notes`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chiefComplaint: complaint, clinicalNotes: clinical })
+    });
+    
+    if (!res.ok) throw new Error('Failed to save advice');
+    
+    notify('Consultation advice saved successfully', 'success');
+    
+    // Sync via WebSockets to patient screen in real-time
+    if (signalingSocket && signalingSocket.readyState === WebSocket.OPEN) {
+      signalingSocket.send(JSON.stringify({
+        type: 'advice',
+        complaint: complaint,
+        clinical: clinical
+      }));
+    }
+    
+    const patientAdviceBox = document.getElementById('patient-live-advice-box');
+    if (patientAdviceBox) {
+      if (clinical) {
+        patientAdviceBox.innerHTML = `<div style="font-weight:600;margin-bottom:0.25rem;">Chief Complaint: ${complaint || 'None'}</div><div>${clinical}</div>`;
+      } else {
+        patientAdviceBox.innerHTML = `<span style="color:rgba(255,255,255,0.4);font-style:italic;">No advice recorded yet. The doctor's advice will update here in real-time.</span>`;
+      }
+    }
+  } catch (err) {
+    notify(err.message, 'error');
+  }
 }
 
 // ── PATIENT FLOW APIS ──
@@ -641,7 +1372,6 @@ async function loadPatientData() {
     // 1. Load profile data
     const resPat = await fetch(`${API_BASE}/patients/P-10421`);
     patientData = await resPat.json();
-    updatePatientProfileUI();
 
     // 2. Load appointments
     const resAppt = await fetch(`${API_BASE}/appointments`);
@@ -663,6 +1393,8 @@ async function loadPatientData() {
     doctorsData = await resDocs.json();
     renderDoctorsList();
 
+    // Update UI profile and dashboard stats
+    updatePatientProfileUI();
   } catch (err) {
     console.error("Error loading patient data", err);
   }
@@ -723,11 +1455,25 @@ function updatePatientProfileUI() {
   // EHR Summary
   const ehrContainer = document.getElementById('p-ehr-summary');
   if (ehrContainer) {
+    let bmiStr = 'N/A';
+    if (patientData.weight && patientData.height) {
+      const h = parseFloat(patientData.height) / 100;
+      const w = parseFloat(patientData.weight);
+      if (h > 0 && w > 0) {
+        const bmiVal = (w / (h * h)).toFixed(1);
+        let category = 'Normal';
+        if (bmiVal < 18.5) category = 'Underweight';
+        else if (bmiVal >= 25 && bmiVal < 30) category = 'Overweight';
+        else if (bmiVal >= 30) category = 'Obese';
+        bmiStr = `${bmiVal} – ${category}`;
+      }
+    }
+
     ehrContainer.innerHTML = `
       <div class="flex justify-between"><span class="text-muted">Blood Type</span><span class="font-semibold">${patientData.bloodType}</span></div>
       <div class="flex justify-between"><span class="text-muted">Height</span><span class="font-semibold">${patientData.height}</span></div>
       <div class="flex justify-between"><span class="text-muted">Weight</span><span class="font-semibold">${patientData.weight}</span></div>
-      <div class="flex justify-between"><span class="text-muted">BMI</span><span class="font-semibold">${patientData.bmi}</span></div>
+      <div class="flex justify-between"><span class="text-muted">BMI</span><span class="font-semibold">${bmiStr}</span></div>
       <div class="flex justify-between"><span class="text-muted">Allergies</span><span class="font-semibold">${patientData.allergies}</span></div>
       <div class="flex justify-between"><span class="text-muted">Chronic Conditions</span><span class="font-semibold">${patientData.conditions}</span></div>
     `;
@@ -937,10 +1683,21 @@ function renderDoctorsList() {
 
     // 2. Direct card generation on page
     if (listContainer) {
-      const initials = doc.name.split(' ').slice(1).map(n => n[0]).join('');
-      const statusBadge = doc.availability.includes('Today') || doc.status === 'Active' ? 'badge-green' : 'badge-yellow';
+      const nameParts = (doc.name || 'Doctor').split(' ');
+      const initials = (nameParts.length > 1 
+        ? nameParts.slice(1).map(n => n[0]).join('') 
+        : nameParts[0].substring(0, 2) || 'Dr').toUpperCase();
+      
+      const availabilityStr = doc.availability || (doc.status === 'Active' ? 'Today' : 'Tomorrow');
+      const statusBadge = availabilityStr.includes('Today') || doc.status === 'Active' ? 'badge-green' : 'badge-yellow';
       const statusText = doc.status === 'Active' ? 'Available Today' : 'Tomorrow';
-      const borderClass = doc.specialty === 'General Medicine' ? 'avatar-teal' : doc.specialty === 'Cardiology' ? 'avatar-blue' : 'avatar-orange';
+      
+      const specialtyStr = doc.specialty || 'General Medicine';
+      const borderClass = specialtyStr === 'General Medicine' ? 'avatar-teal' : specialtyStr === 'Cardiology' ? 'avatar-blue' : 'avatar-orange';
+      const degreeStr = doc.degree || 'MBBS, MD';
+      const expStr = doc.exp || '5 yrs';
+      const ratingVal = doc.rating || 5.0;
+      const feeVal = doc.fee || '500';
 
       const card = document.createElement('div');
       card.className = 'card';
@@ -948,23 +1705,23 @@ function renderDoctorsList() {
         <div style="display:flex;gap:1rem;align-items:flex-start;">
           <div class="avatar ${borderClass}" style="width:52px;height:52px;font-size:1rem;">${initials}</div>
           <div style="flex:1;">
-            <div class="font-semibold">${doc.name}</div>
-            <div class="text-muted mb-1">${doc.specialty} · ${doc.exp} exp.</div>
+            <div class="font-semibold">${doc.name || 'Unknown Doctor'}</div>
+            <div class="text-muted mb-1">${specialtyStr} · ${expStr} exp.</div>
             <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
-              <span class="badge badge-teal">${doc.degree}</span>
+              <span class="badge badge-teal">${degreeStr}</span>
               <span class="badge ${statusBadge}">${statusText}</span>
-              <span>⭐ ${doc.rating}</span>
+              <span>⭐ ${ratingVal}</span>
             </div>
           </div>
         </div>
         <hr class="divider">
         <div class="flex gap-2" style="font-size:.83rem;color:var(--text3);margin-bottom:1rem;">
-          <span>📍 ${doc.specialty} Dept</span>
-          <span>💰 ₹${doc.fee}/consult</span>
+          <span>📍 ${specialtyStr} Dept</span>
+          <span>💰 ₹${feeVal}/consult</span>
         </div>
         <div style="display:flex;gap:.5rem;">
           <button class="btn btn-primary btn-sm" onclick="window.openBookAppointmentModal('${doc.id}')">Book Appointment</button>
-          <button class="btn btn-outline btn-sm" onclick="window.joinVideoRoom('${doc.name}')">Quick Video</button>
+          <button class="btn btn-outline btn-sm" onclick="window.viewDoctorProfile('${doc.id}')">View Profile</button>
         </div>
       `;
       listContainer.appendChild(card);
@@ -1049,19 +1806,48 @@ function downloadRecords() {
   notify('All medical records downloaded as PDF', 'success');
 }
 
-async function savePatientProfile() {
-  const phone = prompt("Update Phone Number:", patientData.phone);
-  const city = prompt("Update City:", patientData.city);
-  if (!phone && !city) return;
+function openEditProfileModal() {
+  if (!patientData) return;
+  document.getElementById('edit-p-phone').value = patientData.phone || '';
+  document.getElementById('edit-p-dob').value = patientData.dob || '';
+  document.getElementById('edit-p-blood').value = patientData.bloodType || 'O+';
+  document.getElementById('edit-p-city').value = patientData.city || '';
+  document.getElementById('edit-p-emerg-name').value = patientData.emergencyContact?.name || '';
+  document.getElementById('edit-p-emerg-relation').value = patientData.emergencyContact?.relation || '';
+  document.getElementById('edit-p-emerg-phone').value = patientData.emergencyContact?.phone || '';
+  openModal('editProfileModal');
+}
+
+async function submitEditPatientProfile() {
+  const phone = document.getElementById('edit-p-phone').value;
+  const dob = document.getElementById('edit-p-dob').value;
+  const bloodType = document.getElementById('edit-p-blood').value;
+  const city = document.getElementById('edit-p-city').value;
+  const emergName = document.getElementById('edit-p-emerg-name').value;
+  const emergRelation = document.getElementById('edit-p-emerg-relation').value;
+  const emergPhone = document.getElementById('edit-p-emerg-phone').value;
+
+  const bodyData = {
+    phone,
+    dob,
+    bloodType,
+    city,
+    emergencyContact: {
+      name: emergName,
+      relation: emergRelation,
+      phone: emergPhone
+    }
+  };
 
   try {
     const res = await fetch(`${API_BASE}/patients/P-10421/profile`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone, city })
+      body: JSON.stringify(bodyData)
     });
     if (!res.ok) throw new Error('Profile update failed');
-    notify('Profile details updated', 'success');
+    notify('Profile details updated successfully', 'success');
+    closeModal('editProfileModal');
     await loadPatientData();
   } catch (err) {
     notify(err.message, 'error');
@@ -1097,7 +1883,18 @@ async function loadDoctorData() {
     // 2. Fetch all patients
     const resPat = await fetch(`${API_BASE}/patients`);
     const patientsList = await resPat.json();
+    patients = patientsList;
     renderDoctorPatients(patientsList);
+
+    // Populate patient select dropdowns in Doctor dashboard
+    const notesSelect = document.getElementById('d-notes-patient-select');
+    if (notesSelect) {
+      notesSelect.innerHTML = patientsList.map(p => `<option value="${p.id}">${p.name} – ${p.id}</option>`).join('');
+    }
+    const prescSelect = document.getElementById('presc-patient-select');
+    if (prescSelect) {
+      prescSelect.innerHTML = patientsList.map(p => `<option value="${p.id}">${p.name} – ${p.id}</option>`).join('');
+    }
 
     // 3. Fetch all prescriptions
     const resRx = await fetch(`${API_BASE}/prescriptions`);
@@ -1207,6 +2004,22 @@ function renderDoctorPatients(list) {
 
   list.forEach(pat => {
     const avatarInit = pat.name.split(' ').map(n => n[0]).join('');
+    
+    // Find last and next appointment dates
+    const myAppts = appointmentsData.filter(a => a.patientId === pat.id);
+    const completedAppts = myAppts.filter(a => a.status === 'Completed' || new Date(a.dateTime) < new Date());
+    const upcomingAppts = myAppts.filter(a => a.status === 'Confirmed' && new Date(a.dateTime) >= new Date());
+    
+    completedAppts.sort((a, b) => new Date(b.dateTime) - new Date(a.dateTime));
+    upcomingAppts.sort((a, b) => new Date(a.dateTime) - new Date(b.dateTime));
+    
+    const lastVisit = completedAppts.length > 0 
+      ? new Date(completedAppts[0].dateTime).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
+      : 'None';
+    const nextVisit = upcomingAppts.length > 0
+      ? new Date(upcomingAppts[0].dateTime).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
+      : 'None';
+
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>
@@ -1218,10 +2031,10 @@ function renderDoctorPatients(list) {
           </div>
         </div>
       </td>
-      <td>38</td>
-      <td><span class="badge badge-yellow">${pat.conditions}</span></td>
-      <td>May 10, 2026</td>
-      <td>May 23, 2026</td>
+      <td>${pat.age || '38'}</td>
+      <td><span class="badge badge-yellow">${pat.chronicConditions || pat.conditions || 'None'}</span></td>
+      <td>${lastVisit}</td>
+      <td>${nextVisit}</td>
       <td><button class="btn btn-sm btn-outline" onclick="window.viewEhrDetails('${pat.id}')">View EHR</button></td>
     `;
     tableBody.appendChild(tr);
@@ -1253,7 +2066,7 @@ function renderDoctorReports() {
   tableBody.innerHTML = '';
 
   reportsData.forEach(rep => {
-    const pat = patients.find(p => p.id === rep.patientId) || { name: 'Alex Smith' };
+    const pat = patients.find(p => p.id === rep.patientId) || { name: 'Aarav Mehta' };
     const badgeClass = rep.result.includes('Normal') ? 'badge-green' : 'badge-yellow';
 
     const tr = document.createElement('tr');
@@ -1330,8 +2143,9 @@ async function submitIssuePrescription() {
 }
 
 function proceedToPrescription() {
+  const patientId = document.getElementById('d-notes-patient-select')?.value;
   notify('Consultation notes saved successfully', 'success');
-  openModal('prescModal');
+  openPrescriptionModal(patientId);
 }
 
 function viewEhrDetails(id) {
@@ -1371,6 +2185,7 @@ async function loadAdminData() {
     // Fetch users for list
     const resUsers = await fetch(`${API_BASE}/patients`);
     const patientsList = await resUsers.json();
+    patients = patientsList;
     const resDocs = await fetch(`${API_BASE}/doctors`);
     doctorsData = await resDocs.json();
 
@@ -1381,6 +2196,9 @@ async function loadAdminData() {
     const resAppt = await fetch(`${API_BASE}/appointments`);
     appointmentsData = await resAppt.json();
     renderAdminAppointments();
+
+    // Render reports & analytics
+    renderAdminReports();
 
   } catch (err) {
     console.error("Error loading admin data", err);
@@ -1425,6 +2243,76 @@ function renderAdminLogs(logs) {
   });
 }
 
+function renderAdminReports() {
+  const statsContainer = document.getElementById('a-reports-stats');
+  const doctorsContainer = document.getElementById('a-reports-top-doctors');
+
+  if (statsContainer) {
+    const totalAppointments = appointmentsData.length;
+    let totalRevenue = 0;
+    appointmentsData.forEach(appt => {
+      const doc = doctorsData.find(d => d.id === appt.doctorId || d.name === appt.doctorName);
+      if (doc && doc.fee) {
+        const feeVal = parseInt(doc.fee.replace(/[^\d]/g, '')) || 0;
+        totalRevenue += feeVal;
+      } else {
+        totalRevenue += 500;
+      }
+    });
+
+    const formattedRevenue = '₹' + totalRevenue.toLocaleString('en-IN');
+
+    statsContainer.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:0.75rem;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;">
+        <span style="font-weight:500;color:#64748b;">Total Consultations</span>
+        <span style="font-weight:600;font-size:1.1rem;color:#0f172a;">${totalAppointments} Calls</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:0.75rem;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;margin-top:0.75rem;">
+        <span style="font-weight:500;color:#64748b;">Estimated Revenue</span>
+        <span style="font-weight:600;font-size:1.1rem;color:#10b981;">${formattedRevenue}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:0.75rem;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;margin-top:0.75rem;">
+        <span style="font-weight:500;color:#64748b;">Avg. Consultation Rating</span>
+        <span style="font-weight:600;font-size:1.1rem;color:#eab308;">★ 4.85 / 5.0</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:0.75rem;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;margin-top:0.75rem;">
+        <span style="font-weight:500;color:#64748b;">Completion Rate</span>
+        <span style="font-weight:600;font-size:1.1rem;color:#3b82f6;">94.2%</span>
+      </div>
+    `;
+  }
+
+  if (doctorsContainer) {
+    const topDoctors = [...doctorsData]
+      .sort((a, b) => {
+        if (b.rating !== a.rating) {
+          return b.rating - a.rating;
+        }
+        return (b.consultationsCount || 0) - (a.consultationsCount || 0);
+      })
+      .slice(0, 4);
+
+    doctorsContainer.innerHTML = topDoctors.map(doc => {
+      const initials = doc.name.split(' ').slice(1).map(n => n[0]).join('');
+      return `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:0.75rem;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;margin-bottom:0.75rem;">
+          <div style="display:flex;align-items:center;gap:0.75rem;">
+            <div class="avatar avatar-blue" style="width:36px;height:36px;font-size:0.75rem;">${initials}</div>
+            <div>
+              <div style="font-weight:600;color:#1e293b;">${doc.name}</div>
+              <div style="font-size:0.75rem;color:#64748b;">${doc.specialty} · ${doc.hospital || 'MedXpert Clinic'}</div>
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-weight:600;color:#eab308;font-size:0.9rem;">★ ${doc.rating}</div>
+            <div style="font-size:0.7rem;color:#94a3b8;">${doc.consultationsCount || 0} consults</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+}
+
 function renderAdminUsersList(patientsList, docsList) {
   const tableBody = document.getElementById('a-users-table-body');
   if (!tableBody) return;
@@ -1432,9 +2320,10 @@ function renderAdminUsersList(patientsList, docsList) {
 
   // Render patients
   patientsList.forEach(pat => {
+    const initials = pat.name.split(' ').map(n => n[0]).join('');
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><div class="flex items-center gap-2"><div class="avatar avatar-teal" style="width:32px;height:32px;font-size:.72rem;">AS</div><div class="font-semibold">${pat.name}</div></div></td>
+      <td><div class="flex items-center gap-2"><div class="avatar avatar-teal" style="width:32px;height:32px;font-size:.72rem;">${initials}</div><div class="font-semibold">${pat.name}</div></div></td>
       <td><span class="badge badge-teal">Patient</span></td>
       <td>${pat.email}</td>
       <td>Jan 2026</td>
@@ -1478,11 +2367,13 @@ function renderAdminDoctorsTable(docsList) {
 
   docsList.forEach(doc => {
     const tr = document.createElement('tr');
+    const degreeVal = doc.degree || 'MBBS, MD';
+    const consultationsVal = doc.consultationsCount || 0;
     tr.innerHTML = `
-      <td><div class="font-semibold">${doc.name}</div><div class="text-muted">${doc.degree}</div></td>
+      <td><div class="font-semibold">${doc.name}</div><div class="text-muted">${degreeVal}</div></td>
       <td>${doc.specialty}</td>
       <td>${doc.status === 'Active' ? '147' : '0'}</td>
-      <td>${doc.consultationsCount}</td>
+      <td>${consultationsVal}</td>
       <td>${doc.status === 'Active' ? `⭐ ${doc.rating}` : '–'}</td>
       <td><span class="badge ${doc.status === 'Active' ? 'badge-green' : 'badge-yellow'}">${doc.status}</span></td>
     `;
@@ -1536,11 +2427,14 @@ async function rejectDoctor(id) {
 }
 
 async function suspendUser(id) {
-  if (!confirm('Are you sure you want to suspend this user account?')) return;
+  if (!confirm('Are you sure you want to remove this user account?')) return;
   try {
     const res = await fetch(`${API_BASE}/admin/users/suspend/${id}`, { method: 'POST' });
-    if (!res.ok) throw new Error('Suspension failed');
-    notify('User access suspended', 'success');
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.message || 'Removal failed');
+    }
+    notify('User account removed from server successfully', 'success');
     await loadAdminData();
   } catch (err) {
     notify(err.message, 'error');
@@ -1548,8 +2442,117 @@ async function suspendUser(id) {
 }
 
 function editUser(id) {
-  notify(`Accessing configuration profile for: ${id}`, 'success');
+  const isPatient = id.startsWith("P-");
+  const isDoctor = id.startsWith("D-");
+
+  let userObj = null;
+  if (isPatient) {
+    userObj = patients.find(p => p.id === id);
+  } else if (isDoctor) {
+    userObj = doctorsData.find(d => d.id === id);
+  }
+
+  if (!userObj) {
+    notify('User details not found', 'error');
+    return;
+  }
+
+  // Populate modal
+  document.getElementById('editUser-id').value = id;
+  document.getElementById('editUser-name').value = userObj.name || '';
+  document.getElementById('editUser-email').value = userObj.email || '';
+  document.getElementById('editUser-phone').value = userObj.phone || '';
+
+  const patientFields = document.getElementById('editUser-patient-fields');
+  const doctorFields = document.getElementById('editUser-doctor-fields');
+
+  if (isPatient) {
+    if (patientFields) patientFields.style.display = 'block';
+    if (doctorFields) doctorFields.style.display = 'none';
+    
+    document.getElementById('editUser-patient-age').value = userObj.age || '';
+    document.getElementById('editUser-patient-blood').value = userObj.bloodType || 'O+';
+    document.getElementById('editUser-patient-conditions').value = userObj.chronicConditions || userObj.conditions || '';
+  } else if (isDoctor) {
+    if (patientFields) patientFields.style.display = 'none';
+    if (doctorFields) doctorFields.style.display = 'block';
+    
+    document.getElementById('editUser-doctor-specialty').value = userObj.specialty || '';
+    document.getElementById('editUser-doctor-exp').value = userObj.exp || '';
+    document.getElementById('editUser-doctor-fee').value = userObj.fee || '';
+    document.getElementById('editUser-doctor-hospital').value = userObj.hospital || '';
+  } else {
+    if (patientFields) patientFields.style.display = 'none';
+    if (doctorFields) doctorFields.style.display = 'none';
+  }
+
+  openModal('adminEditUserModal');
 }
+
+async function submitEditUserAdmin() {
+  const id = document.getElementById('editUser-id').value;
+  const name = document.getElementById('editUser-name').value;
+  const email = document.getElementById('editUser-email').value;
+  const phone = document.getElementById('editUser-phone').value;
+
+  const isPatient = id.startsWith("P-");
+  const isDoctor = id.startsWith("D-");
+
+  const bodyData = { name, email, phone };
+
+  if (isPatient) {
+    bodyData.age = document.getElementById('editUser-patient-age').value;
+    bodyData.bloodType = document.getElementById('editUser-patient-blood').value;
+    bodyData.conditions = document.getElementById('editUser-patient-conditions').value;
+  } else if (isDoctor) {
+    bodyData.specialty = document.getElementById('editUser-doctor-specialty').value;
+    bodyData.exp = document.getElementById('editUser-doctor-exp').value;
+    bodyData.fee = document.getElementById('editUser-doctor-fee').value;
+    bodyData.hospital = document.getElementById('editUser-doctor-hospital').value;
+  }
+
+  if (!name || !email) {
+    notify('Name and Email are required', 'error');
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/users/edit/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(bodyData)
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.message || 'Failed to update user');
+    }
+
+    closeModal('adminEditUserModal');
+    notify('User account updated successfully', 'success');
+    await loadAdminData();
+  } catch (err) {
+    notify(err.message, 'error');
+  }
+}
+
+function toggleAddUserRoleFields(role) {
+  const patientFields = document.getElementById('addUser-patient-fields');
+  const doctorFields = document.getElementById('addUser-doctor-fields');
+  if (patientFields && doctorFields) {
+    if (role === 'Patient') {
+      patientFields.style.display = 'block';
+      doctorFields.style.display = 'none';
+    } else if (role === 'Doctor') {
+      patientFields.style.display = 'none';
+      doctorFields.style.display = 'block';
+    } else {
+      patientFields.style.display = 'none';
+      patientFields.style.display = 'none';
+    }
+  }
+}
+window.toggleAddUserRoleFields = toggleAddUserRoleFields;
 
 async function submitAddUser() {
   const firstName = document.getElementById('addUser-first').value;
@@ -1558,21 +2561,62 @@ async function submitAddUser() {
   const role = document.getElementById('addUser-role').value;
   const phone = document.getElementById('addUser-phone').value;
 
+  // Retrieve patient fields
+  const age = document.getElementById('addUser-patient-age').value;
+  const bloodType = document.getElementById('addUser-patient-blood').value;
+  const chronicConditions = document.getElementById('addUser-patient-conditions').value;
+
+  // Retrieve doctor fields
+  const specialty = document.getElementById('addUser-doctor-specialty').value;
+  const exp = document.getElementById('addUser-doctor-exp').value;
+  const fee = document.getElementById('addUser-doctor-fee').value;
+  const hospital = document.getElementById('addUser-doctor-hospital').value;
+
   if (!firstName || !lastName || !email) {
     notify('Please input name and email address', 'error');
     return;
   }
 
   try {
+    const bodyData = { firstName, lastName, email, role, phone };
+    if (role === 'Patient') {
+      bodyData.age = age;
+      bodyData.bloodType = bloodType;
+      bodyData.chronicConditions = chronicConditions;
+    } else if (role === 'Doctor') {
+      bodyData.specialty = specialty;
+      bodyData.exp = exp;
+      bodyData.fee = fee;
+      bodyData.hospital = hospital;
+    }
+
     const res = await fetch(`${API_BASE}/admin/users/add`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ firstName, lastName, email, role, phone })
+      body: JSON.stringify(bodyData)
     });
-    if (!res.ok) throw new Error('Add user failed');
+    
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.message || 'Add user failed');
+    }
 
     closeModal('addUserModal');
-    notify('User added and invitation sent', 'success');
+    notify('User added successfully!', 'success');
+
+    // Clear form
+    document.getElementById('addUser-first').value = '';
+    document.getElementById('addUser-last').value = '';
+    document.getElementById('addUser-email').value = '';
+    document.getElementById('addUser-phone').value = '';
+    document.getElementById('addUser-patient-age').value = '30';
+    document.getElementById('addUser-patient-blood').value = 'O+';
+    document.getElementById('addUser-patient-conditions').value = 'None';
+    document.getElementById('addUser-doctor-specialty').value = 'General Medicine';
+    document.getElementById('addUser-doctor-exp').value = '5 yrs';
+    document.getElementById('addUser-doctor-fee').value = '₹500';
+    document.getElementById('addUser-doctor-hospital').value = 'City Medical Center';
+
     await loadAdminData();
   } catch (err) {
     notify(err.message, 'error');
@@ -1608,6 +2652,219 @@ function filterAdminUsers() {
   });
 }
 
+function viewDoctorProfile(docId) {
+  const doc = doctorsData.find(d => String(d.id) === String(docId));
+  if (!doc) {
+    notify('Doctor details not found', 'error');
+    return;
+  }
+
+  const contentEl = document.getElementById('doc-profile-details-content');
+  if (!contentEl) return;
+
+  const nameParts = (doc.name || 'Doctor').split(' ');
+  const initials = (nameParts.length > 1 
+    ? nameParts.slice(1).map(n => n[0]).join('') 
+    : nameParts[0].substring(0, 2) || 'Dr').toUpperCase();
+
+  const specialtyStr = doc.specialty || 'General Medicine';
+  const borderClass = specialtyStr === 'General Medicine' ? 'avatar-teal' : specialtyStr === 'Cardiology' ? 'avatar-blue' : 'avatar-orange';
+  const ratingVal = doc.rating || 5.0;
+  const expStr = doc.exp || '5 yrs';
+  const feeVal = doc.fee || '500';
+  const degreeStr = doc.degree || 'MBBS, MD';
+  const licenseStr = doc.license || 'MCI-2014-08821';
+  const hospitalStr = doc.hospital || 'City Medical Center';
+  const consultationsCount = doc.consultationsCount || 120;
+  const emailStr = doc.email || 'info@hospital.com';
+  const phoneStr = doc.phone || '+91 98765 00004';
+  const availabilityStr = doc.availability || 'Available Today';
+  
+  // High-fidelity doctor details mappings A-Z
+  const doctorExtraDetails = {
+    'D-101': {
+      bio: 'Dr. Shreya Joshi is a highly regarded General Physician with over 12 years of experience. She specializes in managing chronic lifestyle conditions like Type-2 diabetes, hypertension, asthma, and thyroid disorders. She is strongly committed to evidence-based preventive medicine and patient education.',
+      education: 'MBBS (Grant Medical College, Mumbai), MD in General Medicine (AIIMS, New Delhi)',
+      languages: 'English, Hindi, Marathi',
+      awards: 'Vanguard Healthcare Excellence Award (2024), Best General Practitioner - City Medical Center (2022)',
+      location: 'Room 102, 1st Floor, OPD Block, City Medical Center, Mumbai',
+      services: 'Chronic Disease Management, Geriatric Care, Preventive Health Checkups, Infectious Disease Treatment'
+    },
+    'D-102': {
+      bio: 'Dr. Raj Patel is a senior Interventional Cardiologist with 18 years of clinical expertise. He is a pioneer in minimally invasive cardiac procedures and has performed over 3,000 successful coronary angioplasties. He specializes in heart failure therapies and preventative cardiac care.',
+      education: 'MBBS (BJ Medical College, Pune), MD (Internal Medicine, KEM Hospital), DM in Cardiology (Hargurudas Heart Institute)',
+      languages: 'English, Gujarati, Hindi',
+      awards: 'State Cardiology Excellence Award (2023), Fellowship of the American College of Cardiology (FACC)',
+      location: 'Chamber 304, 3rd Floor, Cardiology Wing, Heart Institute, Ahmedabad',
+      services: 'Coronary Angioplasty, Pacemaker Implantation, Heart Failure Management, Lipidology Consultation'
+    },
+    'D-103': {
+      bio: 'Dr. Neha Kapoor is a dedicated Endocrinologist specializing in diabetes, thyroid disorders, and metabolic health. With 9 years of experience, she focuses on personalized treatment plans combining advanced therapies with lifestyle medicine to empower patients to manage endocrine issues.',
+      education: 'MBBS (Lady Hardinge Medical College, Delhi), MD (Medicine, UCMS), Fellowship in Endocrinology (Christian Medical College, Vellore)',
+      languages: 'English, Hindi, Punjabi',
+      awards: 'Young Endocrinologist Research Award (2021), Diabetes Care Innovation Award (2023)',
+      location: 'Suite 12, Ground Floor, Diabetes & Hormone Clinic, New Delhi',
+      services: 'Type 1 & Type 2 Diabetes Management, Thyroid Disorders, PCOS Treatment, Osteoporosis & Bone Health'
+    },
+    'D-104': {
+      bio: 'Dr. Arun Mehta is a leading Neurologist with 15 years of experience in neurological care. He specializes in headache management, stroke rehabilitation, and movement disorders like Parkinson\'s disease. He runs dedicated clinics for epilepsy and sleep disorders.',
+      education: 'MBBS (Maulana Azad Medical College, New Delhi), MD (General Medicine), DM in Neurology (NIMHANS, Bangalore)',
+      languages: 'English, Hindi, Kannada',
+      awards: 'National Neurologist Association Merit Award (2022), Stroke Care Pioneer Certificate (2024)',
+      location: 'Chamber 401, 4th Floor, Neurology Block, Neuro Center, Bangalore',
+      services: 'Stroke Rehabilitation, Epilepsy Management, Parkinson\'s Clinic, Migraine and Chronic Headache Care'
+    },
+    'D-105': {
+      bio: 'Dr. Kavita Rao is a board-certified Dermatologist with 5 years of experience in clinical and cosmetic dermatology. She specializes in advanced treatments for acne, eczema, hair loss, and anti-aging therapies, offering customized skin health programs.',
+      education: 'MBBS (KMC, Manipal), DDVL in Dermatology & Venereology (Madras Medical College)',
+      languages: 'English, Tamil, Telugu',
+      awards: 'Rising Star in Dermatology (Dermacon 2023)',
+      location: 'Room 5, Ground Floor, City Skin Clinic, Chennai',
+      services: 'Clinical Dermatology (Acne, Psoriasis), Laser Skin Resurfacing, Chemical Peels, Hair Fall Treatments'
+    },
+    'D-106': {
+      bio: 'Dr. Amit Sharma is a compassionate General Physician with 10 years of experience. He is dedicated to comprehensive primary care, family health, and the management of acute infections and occupational health conditions.',
+      education: 'MBBS (Maulana Azad Medical College, Delhi), DNB (Family Medicine)',
+      languages: 'English, Hindi',
+      awards: 'Community Service Health Medal (2023)',
+      location: 'OPD Chamber 3, Ground Floor, Apollo Clinic, Kolkata',
+      services: 'General Family Medicine, Seasonal Fevers & Infections, Hypertension Control, Lifestyle Counseling'
+    },
+    'D-107': {
+      bio: 'Dr. Vikram Malhotra is an experienced Cardiologist with 14 years in cardiac sciences. He specializes in non-invasive cardiology, echocardiography, and the management of coronary artery disease and hypertension.',
+      education: 'MBBS (AFMC, Pune), MD (General Medicine, Command Hospital)',
+      languages: 'English, Hindi, Punjabi',
+      awards: 'Distinguished Service Award in Cardiac Sciences (2024)',
+      location: 'OPD 7, Ground Floor, Max Healthcare, Gurgaon',
+      services: 'Stress Testing & ECG Analysis, Hypertension Management, Arrhythmia Care, Post-Heart Surgery Rehab'
+    },
+    'D-108': {
+      bio: 'Dr. Priya Nair is an accomplished Endocrinologist with 8 years of clinical practice. She has special expertise in gestational diabetes, thyroid disorders during pregnancy, pediatric endocrinology, and metabolic syndrome.',
+      education: 'MBBS (Calicut Medical College), MD (Internal Medicine), DM in Endocrinology (Amrita Institute of Medical Sciences)',
+      languages: 'English, Malayalam, Hindi',
+      awards: 'Outstanding Endocrinologist Award (2023)',
+      location: 'Chamber 211, 2nd Floor, Fortis Hospital, Kochi',
+      services: 'Gestational Diabetes Care, Pediatric Growth Disorders, Obesity Management, Adrenal & Pituitary Care'
+    },
+    'D-109': {
+      bio: 'Dr. Rajesh Sen is a clinical Neurologist with 11 years of experience in brain and nerve health. He specializes in neuro-critical care, multiple sclerosis, and advanced diagnostic neurophysiology.',
+      education: 'MBBS (Calcutta Medical College), MD (Medicine), DM in Neurology (NIMHANS)',
+      languages: 'English, Bengali, Hindi',
+      awards: 'Academic Excellence in Neurology Award (NIMHANS, 2016)',
+      location: 'OPD Ward A, NIMHANS Special Wing, Bangalore',
+      services: 'Multiple Sclerosis Care, Electromyography (EMG) & EEG, Dementia & Cognitive Care, Neuropathy Care'
+    },
+    'D-110': {
+      bio: 'Dr. Sneha Reddy is a senior consultant Dermatologist with 7 years of experience. She specializes in pediatric dermatology, chronic skin conditions like vitiligo, and aesthetic dermatology including anti-aging procedures.',
+      education: 'MBBS (Osmania Medical College), MD in Dermatology (JIPMER, Puducherry)',
+      languages: 'English, Telugu, Kannada',
+      awards: 'Best Clinical Paper in Dermatology (Aadcon 2022)',
+      location: 'OPD Suite 2, City Skin & Hair Clinic, Hyderabad',
+      services: 'Pediatric Dermatology, Chronic Skin Disease Management, Botox & Dermal Fillers, Vitiligo Treatments'
+    }
+  };
+
+  const extra = doctorExtraDetails[doc.id] || {
+    bio: 'Experienced medical professional dedicated to providing compassionate, high-quality patient care and clinical services.',
+    education: doc.degree || degreeStr,
+    languages: 'English, Hindi',
+    awards: 'Verified Practitioner Award',
+    location: hospitalStr,
+    services: `${specialtyStr} services`
+  };
+
+  contentEl.innerHTML = `
+    <!-- Header with Avatar and Key Badges -->
+    <div style="display:flex; gap:1.5rem; align-items:center; margin-bottom:1.5rem;">
+      <div class="avatar ${borderClass}" style="width:76px; height:76px; font-size:1.6rem; flex-shrink:0; font-weight:700;">${initials}</div>
+      <div style="flex:1;">
+        <h3 style="font-size:1.4rem; font-weight:700; margin:0 0 0.25rem 0; color:var(--text);">${doc.name}</h3>
+        <div style="font-size:0.95rem; font-weight:600; color:var(--primary); margin-bottom:0.4rem;">${specialtyStr}</div>
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
+          <span class="badge badge-teal">${doc.degree || degreeStr}</span>
+          <span class="badge badge-blue">★ ${ratingVal} Rating</span>
+          <span class="badge badge-green">${availabilityStr}</span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Primary Stats Grid -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.5rem;">
+      <div style="background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:0.75rem 1rem;">
+        <div style="font-size:0.75rem; color:var(--text3); font-weight:600; text-transform:uppercase; margin-bottom:0.25rem;">Experience & License</div>
+        <div style="font-size:0.9rem; font-weight:600; color:var(--text2); margin-bottom:0.15rem;">${expStr} Experience</div>
+        <div style="font-size:0.83rem; color:var(--text3);">Lic. No: ${licenseStr}</div>
+      </div>
+      <div style="background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:0.75rem 1rem;">
+        <div style="font-size:0.75rem; color:var(--text3); font-weight:600; text-transform:uppercase; margin-bottom:0.25rem;">Consultation Fee</div>
+        <div style="font-size:0.9rem; font-weight:600; color:var(--primary); margin-bottom:0.15rem;">₹${feeVal} per visit</div>
+        <div style="font-size:0.83rem; color:var(--text3);">Online & Clinic Consultation</div>
+      </div>
+    </div>
+
+    <!-- Biography -->
+    <div style="margin-bottom:1.5rem;">
+      <h4 style="font-size:0.9rem; font-weight:600; color:var(--text); margin:0 0 0.4rem 0;">About the Doctor</h4>
+      <p style="font-size:0.88rem; color:var(--text2); line-height:1.5; margin:0;">${extra.bio}</p>
+    </div>
+
+    <!-- Education, Languages, Awards, Services Grid -->
+    <div style="display:grid; grid-template-columns:1fr; gap:0.75rem; margin-bottom:1.5rem; background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:1rem;">
+      <div style="font-size:0.88rem; line-height:1.4;">
+        <strong style="color:var(--text2);">🎓 Education:</strong> <span style="color:var(--text2);">${extra.education}</span>
+      </div>
+      <div style="font-size:0.88rem; line-height:1.4;">
+        <strong style="color:var(--text2);">🗣️ Languages Spoken:</strong> <span style="color:var(--text2);">${extra.languages}</span>
+      </div>
+      <div style="font-size:0.88rem; line-height:1.4;">
+        <strong style="color:var(--text2);">🏆 Awards & Honors:</strong> <span style="color:var(--text2);">${extra.awards}</span>
+      </div>
+      <div style="font-size:0.88rem; line-height:1.4;">
+        <strong style="color:var(--text2);">🩺 Special Services:</strong> <span style="color:var(--text2);">${extra.services}</span>
+      </div>
+    </div>
+
+    <!-- OPD / Contact Info -->
+    <div style="margin-bottom:1.5rem; display:grid; grid-template-columns:1fr; gap:0.75rem;">
+      <div style="display:flex; align-items:flex-start; gap:0.5rem; font-size:0.88rem;">
+        <span style="font-size:1.1rem; width:24px; text-align:center;">🏢</span>
+        <div><strong style="color:var(--text2);">Chamber Location:</strong> ${extra.location}</div>
+      </div>
+      <div style="display:flex; align-items:center; gap:0.5rem; font-size:0.88rem;">
+        <span style="font-size:1.1rem; width:24px; text-align:center;">📧</span>
+        <div><strong style="color:var(--text2);">Email Support:</strong> ${emailStr}</div>
+      </div>
+      <div style="display:flex; align-items:center; gap:0.5rem; font-size:0.88rem;">
+        <span style="font-size:1.1rem; width:24px; text-align:center;">📞</span>
+        <div><strong style="color:var(--text2);">Phone Support:</strong> ${phoneStr}</div>
+      </div>
+      <div style="display:flex; align-items:center; gap:0.5rem; font-size:0.88rem;">
+        <span style="font-size:1.1rem; width:24px; text-align:center;">⏱️</span>
+        <div><strong style="color:var(--text2);">Working Hours:</strong> Mon-Sat (09:00 AM - 05:00 PM)</div>
+      </div>
+    </div>
+    
+    <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:var(--radius-sm); padding:0.75rem 1rem; display:flex; align-items:center; gap:0.75rem;">
+      <span style="font-size:1.5rem;">📊</span>
+      <div style="font-size:0.85rem; color:#15803d; line-height:1.4;">
+        This practitioner has completed <strong>${consultationsCount} consultations</strong> on MedXpert with a <strong>98.7% positive patient feedback score</strong>.
+      </div>
+    </div>
+  `;
+
+  // Bind booking button to pre-select the doctor and switch to booking modal
+  const bookBtn = document.getElementById('btn-doc-profile-book');
+  if (bookBtn) {
+    bookBtn.onclick = () => {
+      closeModal('viewDocProfileModal');
+      openBookAppointmentModal(doc.id);
+    };
+  }
+
+  // Open the modal
+  openModal('viewDocProfileModal');
+}
+
 // ── GLOBAL EXPOSURES FOR ONCLICK HANDLERS ──
 window.joinVideoRoom = openVideoCall;
 window.cancelAppointment = cancelAppointment;
@@ -1619,3 +2876,22 @@ window.approveDoctor = approveDoctor;
 window.rejectDoctor = rejectDoctor;
 window.suspendUser = suspendUser;
 window.editUser = editUser;
+window.submitEditUserAdmin = submitEditUserAdmin;
+window.switchCallTab = switchCallTab;
+window.sendReaction = sendReaction;
+window.viewDoctorProfile = viewDoctorProfile;
+
+function startMeetClock() {
+  const clockEl = document.getElementById('meetClock');
+  if (!clockEl) return;
+  
+  const updateClock = () => {
+    const now = new Date();
+    const hrs = String(now.getHours()).padStart(2, '0');
+    const mins = String(now.getMinutes()).padStart(2, '0');
+    clockEl.textContent = `${hrs}:${mins}`;
+  };
+  
+  updateClock();
+  setInterval(updateClock, 30000); // update clock every 30 seconds
+}

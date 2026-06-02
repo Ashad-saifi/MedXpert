@@ -9,10 +9,10 @@ This guide explains how to log into the application using prefilled demo credent
 When you launch the login overlays, these credentials will be automatically prefilled:
 
 - **Patient Portal**:
-  - **Email**: `alex@email.com`
+  - **Email**: `aarav@email.com`
   - **Password**: `password123`
 - **Doctor Dashboard**:
-  - **Email**: `sarah@hospital.com`
+  - **Email**: `shreya@hospital.com`
   - **Password**: `password123`
 - **Admin Panel**:
   - **Email**: `admin@medxpert.com`

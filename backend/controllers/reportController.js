@@ -29,7 +29,7 @@ const uploadReport = async (req, res) => {
         const patient = await Patient.findOne({ id: patientId || "P-10421" });
         const patientObjectId = patient ? patient._id : null;
         const finalPatientId = patient ? patient.id : "P-10421";
-        const patientName = patient ? patient.name : "Alex Smith";
+        const patientName = patient ? patient.name : "Aarav Mehta";
 
         const count = await LabReport.countDocuments();
         const nextId = `L-${300 + count + 1}`;

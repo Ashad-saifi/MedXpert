@@ -40,14 +40,17 @@ const appointmentSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    dateTime: {
+        type: String
+    },
     type: {
         type: String,
-        enum: ["Video Consultation", "In-Clinic"],
-        default: "Video Consultation"
+        enum: ["Video", "Video Consultation", "In-Clinic"],
+        default: "Video"
     },
     status: {
         type: String,
-        enum: ["Confirmed", "Pending", "Cancelled"],
+        enum: ["Confirmed", "Pending", "Cancelled", "Completed"],
         default: "Confirmed"
     },
     reason: {

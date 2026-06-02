@@ -3,13 +3,208 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const connectDB = async () => {
+    // Try connecting to the specified MONGO_URI
+    const uri = process.env.MONGO_URI || "mongodb://localhost:27017/medxpert";
     try {
-        const conn = await mongoose.connect(process.env.MONGO_URI || "mongodb://localhost:27017/medxpert");
+        console.log(`Attempting to connect to MongoDB...`);
+        const conn = await mongoose.connect(uri, {
+            serverSelectionTimeoutMS: 1500
+        });
         console.log(`MongoDB Connected: ${conn.connection.host}`);
     } catch (error) {
-        console.warn(`⚠️  MongoDB Connection Warning: ${error.message}`);
-        console.warn(`👉 The backend is running in offline fallback mode. Update backend/.env with your MONGO_URI to connect a live database.`);
+        console.warn(`⚠️  MongoDB Connection failed: ${error.message}`);
+        console.warn(`👉 Activating ultra-fast, zero-dependency In-Memory JS Database Mock...`);
+        
+        setupInMemoryMock();
     }
 };
+
+function setupInMemoryMock() {
+    const memDB = {};
+
+    // Mock connection
+    mongoose.connect = async () => {
+        return { connection: { host: "in-memory-js-mock-db" } };
+    };
+
+    class MockQuery {
+        constructor(data) {
+            this.data = data;
+        }
+        sort(sortObj) {
+            if (!this.data || !Array.isArray(this.data)) return this;
+            if (typeof sortObj === 'string') {
+                const desc = sortObj.startsWith('-');
+                const key = desc ? sortObj.substring(1) : sortObj;
+                this.data.sort((a, b) => {
+                    const valA = a[key] || '';
+                    const valB = b[key] || '';
+                    return desc ? (valB > valA ? 1 : -1) : (valA > valB ? 1 : -1);
+                });
+            } else if (sortObj && typeof sortObj === 'object') {
+                const entry = Object.entries(sortObj)[0];
+                if (entry) {
+                    const [key, dir] = entry;
+                    const desc = dir === -1 || dir === 'desc' || dir === 'descending';
+                    this.data.sort((a, b) => {
+                        const valA = a[key] || '';
+                        const valB = b[key] || '';
+                        return desc ? (valB > valA ? 1 : -1) : (valA > valB ? 1 : -1);
+                    });
+                }
+            }
+            return this;
+        }
+        limit(limitNum) {
+            if (this.data && Array.isArray(this.data)) {
+                this.data = this.data.slice(0, limitNum);
+            }
+            return this;
+        }
+        select() {
+            return this;
+        }
+        async exec() {
+            return this.data;
+        }
+        then(onFulfilled, onRejected) {
+            return Promise.resolve(this.data).then(onFulfilled, onRejected);
+        }
+        catch(onRejected) {
+            return Promise.resolve(this.data).catch(onRejected);
+        }
+    }
+
+    function matchFilter(item, filter) {
+        if (!filter || Object.keys(filter).length === 0) return true;
+        for (const [key, val] of Object.entries(filter)) {
+            if (key === '$or') {
+                if (!Array.isArray(val)) return false;
+                const matchesAny = val.some(subFilter => matchFilter(item, subFilter));
+                if (!matchesAny) return false;
+                continue;
+            }
+            
+            let itemVal = item[key];
+            
+            if (val && typeof val === 'object' && val.$regex !== undefined) {
+                const pattern = val.$regex;
+                const options = val.$options || '';
+                try {
+                    const regex = new RegExp(pattern, options);
+                    if (!regex.test(String(itemVal || ''))) {
+                        return false;
+                    }
+                } catch (e) {
+                    console.error("Regex match failed in mock db:", e);
+                    return false;
+                }
+                continue;
+            }
+            
+            let filterVal = val;
+            if (itemVal && typeof itemVal === 'object' && itemVal._id) {
+                itemVal = itemVal._id.toString();
+            } else if (itemVal && typeof itemVal === 'object' && itemVal.toString) {
+                itemVal = itemVal.toString();
+            }
+            if (filterVal && typeof filterVal === 'object' && filterVal.toString) {
+                filterVal = filterVal.toString();
+            }
+            if (String(itemVal) !== String(filterVal)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function wrapDoc(doc, Model, name) {
+        if (!doc) return doc;
+        const inst = doc instanceof Model ? doc : new Model(doc);
+        inst.save = async function() {
+            const index = memDB[name].findIndex(x => String(x._id) === String(inst._id));
+            if (index >= 0) {
+                memDB[name][index] = inst;
+            } else {
+                memDB[name].push(inst);
+            }
+            return inst;
+        };
+        return inst;
+    }
+
+    // Register all registered models
+    for (const name of Object.keys(mongoose.models)) {
+        memDB[name] = [];
+        const Model = mongoose.models[name];
+
+        Model.find = function(filter) {
+            const matched = memDB[name].filter(x => matchFilter(x, filter)).map(x => wrapDoc(x, Model, name));
+            return new MockQuery(matched);
+        };
+
+        Model.findOne = function(filter) {
+            const found = memDB[name].find(x => matchFilter(x, filter));
+            return new MockQuery(wrapDoc(found, Model, name));
+        };
+
+        Model.findById = function(id) {
+            const found = memDB[name].find(x => String(x._id) === String(id));
+            return new MockQuery(wrapDoc(found, Model, name));
+        };
+
+        Model.create = async function(docs) {
+            const isArray = Array.isArray(docs);
+            const docList = isArray ? docs : [docs];
+            const created = [];
+            for (const doc of docList) {
+                const inst = new Model(doc);
+                if (!inst._id) {
+                    inst._id = new mongoose.Types.ObjectId().toString();
+                }
+                inst.save = async function() {
+                    const index = memDB[name].findIndex(x => String(x._id) === String(inst._id));
+                    if (index >= 0) {
+                        memDB[name][index] = inst;
+                    } else {
+                        memDB[name].push(inst);
+                    }
+                    return inst;
+                };
+                memDB[name].push(inst);
+                created.push(inst);
+            }
+            return isArray ? created : created[0];
+        };
+
+        Model.countDocuments = async function(filter) {
+            return memDB[name].filter(x => matchFilter(x, filter)).length;
+        };
+
+        Model.deleteOne = async function(filter) {
+            const index = memDB[name].findIndex(x => matchFilter(x, filter));
+            if (index >= 0) {
+                memDB[name].splice(index, 1);
+            }
+            return { deletedCount: index >= 0 ? 1 : 0 };
+        };
+
+        Model.deleteMany = async function(filter) {
+            const initialLength = memDB[name].length;
+            memDB[name] = memDB[name].filter(x => !matchFilter(x, filter));
+            return { deletedCount: initialLength - memDB[name].length };
+        };
+    }
+
+    // Load and execute seeding function
+    console.log("🌱 Seeding in-memory database mock...");
+    import("../seed/seedDataHelper.js").then(({ seedDatabaseForInMemory }) => {
+        seedDatabaseForInMemory().then(() => {
+            console.log("✅ In-memory database mock seeded successfully!");
+        });
+    }).catch(err => {
+        console.error("❌ Failed to seed in-memory mock:", err);
+    });
+}
 
 export default connectDB;

@@ -79,7 +79,7 @@ const updateClinicalNotes = async (req, res) => {
         patient.chiefComplaint = req.body.chiefComplaint || "";
 
         await patient.save();
-        await addLog("Dr. Sarah Johnson", `Updated clinical notes for ${patient.name}`);
+        await addLog("Dr. Shreya Joshi", `Updated clinical notes for ${patient.name}`);
 
         res.json({ success: true, message: "Clinical notes updated successfully", patient });
     } catch (error) {

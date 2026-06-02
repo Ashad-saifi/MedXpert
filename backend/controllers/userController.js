@@ -45,7 +45,11 @@ const registerUser = async (req, res) => {
 
         // Depending on role, create associated profile
         if (user.role === "doctor") {
+            const count = await Doctor.countDocuments();
+            const nextDocId = `D-${100 + count + 1}`;
+
             await Doctor.create({
+                id: nextDocId,
                 user: user._id,
                 name: user.name,
                 email: user.email,
@@ -58,7 +62,11 @@ const registerUser = async (req, res) => {
                 status: additionalFields.status || "Available Today"
             });
         } else if (user.role === "patient") {
+            const count = await Patient.countDocuments();
+            const nextPatId = `P-${10000 + count + 1}`;
+
             await Patient.create({
+                id: nextPatId,
                 user: user._id,
                 name: user.name,
                 email: user.email,
@@ -68,9 +76,18 @@ const registerUser = async (req, res) => {
                 height: additionalFields.height || "Not Specified",
                 weight: additionalFields.weight || "Not Specified",
                 chronicConditions: additionalFields.chronicConditions || "None",
+                conditions: additionalFields.chronicConditions || "None",
                 allergies: additionalFields.allergies || "None",
-                emergencyContact: additionalFields.emergencyContact || "None",
-                insurance: additionalFields.insurance || "None"
+                emergencyContact: additionalFields.emergencyContact || {
+                    name: "Not Specified",
+                    relation: "Not Specified",
+                    phone: "Not Specified"
+                },
+                insurance: additionalFields.insurance || {
+                    provider: "Not Specified",
+                    policyNo: "Not Specified",
+                    validUntil: "Not Specified"
+                }
             });
         }
 

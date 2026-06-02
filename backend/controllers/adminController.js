@@ -83,10 +83,40 @@ const updateSettings = async (req, res) => {
 // @desc    Suspend a user
 // @route   POST /api/admin/users/suspend/:id
 // @access  Private/Admin
+// @desc    Remove (Suspend) a user account
+// @route   POST /api/admin/users/suspend/:id
+// @access  Private/Admin
 const suspendUser = async (req, res) => {
     try {
-        await addLog("Admin", `Suspended user ID: ${req.params.id}`);
-        res.json({ success: true, message: "User suspended successfully" });
+        const { id } = req.params;
+        let deleted = false;
+
+        if (id.startsWith("P-")) {
+            const patient = await Patient.findOne({ id });
+            if (patient) {
+                if (patient.user) {
+                    await User.deleteOne({ _id: patient.user });
+                }
+                await Patient.deleteOne({ id });
+                deleted = true;
+            }
+        } else if (id.startsWith("D-")) {
+            const doctor = await Doctor.findOne({ id });
+            if (doctor) {
+                if (doctor.user) {
+                    await User.deleteOne({ _id: doctor.user });
+                }
+                await Doctor.deleteOne({ id });
+                deleted = true;
+            }
+        }
+
+        if (deleted) {
+            await addLog("Admin", `Removed user account ID: ${id}`);
+            res.json({ success: true, message: "User account removed from the server successfully" });
+        } else {
+            res.status(404).json({ success: false, message: "User account not found" });
+        }
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -97,7 +127,7 @@ const suspendUser = async (req, res) => {
 // @access  Private/Admin
 const addUser = async (req, res) => {
     try {
-        const { firstName, lastName, email, role, phone } = req.body;
+        const { firstName, lastName, email, role, phone, age, bloodType, chronicConditions, specialty, exp, fee, hospital } = req.body;
         const fullName = `${firstName} ${lastName}`;
 
         // Check if user already exists
@@ -129,11 +159,11 @@ const addUser = async (req, res) => {
                 user: user._id,
                 name: `Dr. ${fullName}`,
                 email,
-                specialty: "General Medicine",
-                exp: "0 yrs",
-                fee: "₹500",
+                specialty: specialty || "General Medicine",
+                exp: exp || "5 yrs",
+                fee: fee || "₹500",
                 license: "MCI-PENDING",
-                hospital: "City Medical Center",
+                hospital: hospital || "City Medical Center",
                 rating: 5.0,
                 status: "Active"
             });
@@ -146,15 +176,24 @@ const addUser = async (req, res) => {
                 user: user._id,
                 name: fullName,
                 email,
-                age: 30,
+                age: Number(age) || 30,
                 gender: "Not Specified",
-                bloodType: "O+",
+                bloodType: bloodType || "O+",
                 height: "–",
                 weight: "–",
-                chronicConditions: "None",
+                chronicConditions: chronicConditions || "None",
+                conditions: chronicConditions || "None",
                 allergies: "None",
-                emergencyContact: "None",
-                insurance: "None"
+                emergencyContact: {
+                    name: "Not Specified",
+                    relation: "Not Specified",
+                    phone: "Not Specified"
+                },
+                insurance: {
+                    provider: "Not Specified",
+                    policyNo: "Not Specified",
+                    validUntil: "Not Specified"
+                }
             });
         }
 
@@ -166,9 +205,70 @@ const addUser = async (req, res) => {
     }
 };
 
+// @desc    Edit a user details and associated clinical profile
+// @route   PUT /api/admin/users/edit/:id
+// @access  Private/Admin
+const editUserAdmin = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, email, phone, age, bloodType, conditions, specialty, exp, fee, hospital } = req.body;
+        
+        let userObjectId = null;
+
+        if (id.startsWith("P-")) {
+            const patient = await Patient.findOne({ id });
+            if (!patient) {
+                return res.status(404).json({ message: "Patient not found" });
+            }
+            userObjectId = patient.user;
+            
+            // Update patient specific fields
+            if (name !== undefined) patient.name = name;
+            if (email !== undefined) patient.email = email;
+            if (phone !== undefined) patient.phone = phone;
+            if (age !== undefined) patient.age = Number(age);
+            if (bloodType !== undefined) patient.bloodType = bloodType;
+            if (conditions !== undefined) patient.chronicConditions = conditions;
+            await patient.save();
+        } else if (id.startsWith("D-")) {
+            const doctor = await Doctor.findOne({ id });
+            if (!doctor) {
+                return res.status(404).json({ message: "Doctor not found" });
+            }
+            userObjectId = doctor.user;
+            
+            // Update doctor specific fields
+            if (name !== undefined) doctor.name = name;
+            if (email !== undefined) doctor.email = email;
+            if (specialty !== undefined) doctor.specialty = specialty;
+            if (exp !== undefined) doctor.exp = exp;
+            if (fee !== undefined) doctor.fee = fee;
+            if (hospital !== undefined) doctor.hospital = hospital;
+            await doctor.save();
+        }
+
+        // Update core User details
+        if (userObjectId) {
+            const user = await User.findById(userObjectId);
+            if (user) {
+                if (name !== undefined) user.name = name;
+                if (email !== undefined) user.email = email;
+                if (phone !== undefined) user.phone = phone;
+                await user.save();
+            }
+        }
+
+        await addLog("Admin", `Updated user account ID: ${id}`);
+        res.json({ success: true, message: "User account updated successfully" });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 export {
     getAdminLogsAndStats,
     updateSettings,
     suspendUser,
-    addUser
+    addUser,
+    editUserAdmin
 };
