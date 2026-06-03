@@ -388,6 +388,40 @@ function notify(msg, type) {
 
 function openModal(id) {
   document.getElementById(id)?.classList.add('open');
+  if (id === 'addUserModal') {
+    clearAllAddUserErrors();
+  } else if (id === 'adminEditUserModal') {
+    clearAllEditUserErrors();
+  }
+}
+
+function clearAllAddUserErrors() {
+  const fields = [
+    'addUser-first',
+    'addUser-last',
+    'addUser-email',
+    'addUser-phone',
+    'addUser-patient-age',
+    'addUser-doctor-specialty',
+    'addUser-doctor-exp',
+    'addUser-doctor-fee',
+    'addUser-doctor-hospital'
+  ];
+  fields.forEach(clearFieldError);
+}
+
+function clearAllEditUserErrors() {
+  const fields = [
+    'editUser-name',
+    'editUser-email',
+    'editUser-phone',
+    'editUser-patient-age',
+    'editUser-doctor-specialty',
+    'editUser-doctor-exp',
+    'editUser-doctor-fee',
+    'editUser-doctor-hospital'
+  ];
+  fields.forEach(clearFieldError);
 }
 
 function closeModal(id) {
@@ -2062,8 +2096,46 @@ function downloadRecords() {
   notify('All medical records downloaded as PDF', 'success');
 }
 
+function setFieldError(fieldId, errorMsg) {
+  const field = document.getElementById(fieldId);
+  if (!field) return;
+  field.classList.add('is-invalid');
+  
+  let errorEl = field.parentNode.querySelector('.invalid-feedback');
+  if (!errorEl) {
+    errorEl = document.createElement('div');
+    errorEl.className = 'invalid-feedback';
+    field.parentNode.appendChild(errorEl);
+  }
+  errorEl.textContent = errorMsg;
+  errorEl.style.display = 'block';
+}
+
+function clearFieldError(fieldId) {
+  const field = document.getElementById(fieldId);
+  if (!field) return;
+  field.classList.remove('is-invalid');
+  const errorEl = field.parentNode.querySelector('.invalid-feedback');
+  if (errorEl) {
+    errorEl.style.display = 'none';
+  }
+}
+
+function clearAllPatientProfileErrors() {
+  const fields = [
+    'edit-p-phone',
+    'edit-p-dob',
+    'edit-p-city',
+    'edit-p-emerg-name',
+    'edit-p-emerg-relation',
+    'edit-p-emerg-phone'
+  ];
+  fields.forEach(clearFieldError);
+}
+
 function openEditProfileModal() {
   if (!patientData) return;
+  clearAllPatientProfileErrors();
   document.getElementById('edit-p-phone').value = patientData.phone || '';
   document.getElementById('edit-p-dob').value = patientData.dob || '';
   document.getElementById('edit-p-blood').value = patientData.bloodType || 'O+';
@@ -2075,13 +2147,96 @@ function openEditProfileModal() {
 }
 
 async function submitEditPatientProfile() {
-  const phone = document.getElementById('edit-p-phone').value;
+  const phone = document.getElementById('edit-p-phone').value.trim();
   const dob = document.getElementById('edit-p-dob').value;
   const bloodType = document.getElementById('edit-p-blood').value;
-  const city = document.getElementById('edit-p-city').value;
-  const emergName = document.getElementById('edit-p-emerg-name').value;
-  const emergRelation = document.getElementById('edit-p-emerg-relation').value;
-  const emergPhone = document.getElementById('edit-p-emerg-phone').value;
+  const city = document.getElementById('edit-p-city').value.trim();
+  const emergName = document.getElementById('edit-p-emerg-name').value.trim();
+  const emergRelation = document.getElementById('edit-p-emerg-relation').value.trim();
+  const emergPhone = document.getElementById('edit-p-emerg-phone').value.trim();
+
+  clearAllPatientProfileErrors();
+
+  let isValid = true;
+  const phoneRegex = /^(\+?\d{1,3}[- ]?)?\d{10}$/;
+  const letterRegex = /^[a-zA-Z\s\-\.]+$/;
+  const relationRegex = /^[a-zA-Z\s]+$/;
+
+  // Phone Validation
+  if (!phone) {
+    setFieldError('edit-p-phone', 'Phone number is required');
+    isValid = false;
+  } else if (!phoneRegex.test(phone)) {
+    setFieldError('edit-p-phone', 'Please enter a valid 10-digit phone number');
+    isValid = false;
+  }
+
+  // DOB Validation
+  if (!dob) {
+    setFieldError('edit-p-dob', 'Date of birth is required');
+    isValid = false;
+  } else {
+    const dobDate = new Date(dob);
+    const today = new Date();
+    if (isNaN(dobDate.getTime())) {
+      setFieldError('edit-p-dob', 'Please enter a valid date of birth');
+      isValid = false;
+    } else if (dobDate >= today) {
+      setFieldError('edit-p-dob', 'Date of birth must be in the past');
+      isValid = false;
+    } else {
+      const minDate = new Date();
+      minDate.setFullYear(today.getFullYear() - 120);
+      if (dobDate < minDate) {
+        setFieldError('edit-p-dob', 'Please enter a valid date of birth');
+        isValid = false;
+      }
+    }
+  }
+
+  // City Validation
+  if (!city) {
+    setFieldError('edit-p-city', 'City is required');
+    isValid = false;
+  } else if (!letterRegex.test(city)) {
+    setFieldError('edit-p-city', 'City name must contain only letters');
+    isValid = false;
+  }
+
+  // Emergency Contact Name
+  if (!emergName) {
+    setFieldError('edit-p-emerg-name', 'Emergency contact name is required');
+    isValid = false;
+  } else if (!letterRegex.test(emergName)) {
+    setFieldError('edit-p-emerg-name', 'Name must contain only letters');
+    isValid = false;
+  }
+
+  // Emergency Contact Relation
+  if (!emergRelation) {
+    setFieldError('edit-p-emerg-relation', 'Relation is required');
+    isValid = false;
+  } else if (!relationRegex.test(emergRelation)) {
+    setFieldError('edit-p-emerg-relation', 'Relation must contain only letters');
+    isValid = false;
+  }
+
+  // Emergency Contact Phone
+  if (!emergPhone) {
+    setFieldError('edit-p-emerg-phone', 'Emergency phone is required');
+    isValid = false;
+  } else if (!phoneRegex.test(emergPhone)) {
+    setFieldError('edit-p-emerg-phone', 'Please enter a valid 10-digit phone number');
+    isValid = false;
+  } else if (emergPhone === phone) {
+    setFieldError('edit-p-emerg-phone', 'Emergency contact phone must be different from your phone number');
+    isValid = false;
+  }
+
+  if (!isValid) {
+    notify('Please correct the errors in the form', 'error');
+    return;
+  }
 
   const bodyData = {
     phone,
@@ -2924,41 +3079,129 @@ function editUser(id) {
     
     document.getElementById('editUser-patient-age').value = userObj.age || '';
     document.getElementById('editUser-patient-blood').value = userObj.bloodType || 'O+';
-    document.getElementById('editUser-patient-conditions').value = userObj.chronicConditions || userObj.conditions || '';
-  } else if (isDoctor) {
-    if (patientFields) patientFields.style.display = 'none';
-    if (doctorFields) doctorFields.style.display = 'block';
-    
-    document.getElementById('editUser-doctor-specialty').value = userObj.specialty || '';
-    document.getElementById('editUser-doctor-exp').value = userObj.exp || '';
-    document.getElementById('editUser-doctor-fee').value = userObj.fee || '';
-    document.getElementById('editUser-doctor-hospital').value = userObj.hospital || '';
-  } else {
-    if (patientFields) patientFields.style.display = 'none';
-    if (doctorFields) doctorFields.style.display = 'none';
-  }
-
-  openModal('adminEditUserModal');
-}
-
-async function submitEditUserAdmin() {
+    document.async function submitEditUserAdmin() {
   const id = document.getElementById('editUser-id').value;
-  const name = document.getElementById('editUser-name').value;
-  const email = document.getElementById('editUser-email').value;
-  const phone = document.getElementById('editUser-phone').value;
+  const name = document.getElementById('editUser-name').value.trim();
+  const email = document.getElementById('editUser-email').value.trim();
+  const phone = document.getElementById('editUser-phone').value.trim();
 
   const isPatient = id.startsWith("P-");
   const isDoctor = id.startsWith("D-");
 
+  clearAllEditUserErrors();
+
+  let isValid = true;
+  const phoneRegex = /^(\+?\d{1,3}[- ]?)?\d{10}$/;
+  const letterRegex = /^[a-zA-Z\s\-\.]+$/;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  // Basic validations
+  if (!name) {
+    setFieldError('editUser-name', 'Full name is required');
+    isValid = false;
+  } else if (!letterRegex.test(name)) {
+    setFieldError('editUser-name', 'Name must contain only letters');
+    isValid = false;
+  }
+
+  if (!email) {
+    setFieldError('editUser-email', 'Email address is required');
+    isValid = false;
+  } else if (!emailRegex.test(email)) {
+    setFieldError('editUser-email', 'Please enter a valid email address');
+    isValid = false;
+  }
+
+  if (!phone) {
+    setFieldError('editUser-phone', 'Phone number is required');
+    isValid = false;
+  } else if (!phoneRegex.test(phone)) {
+    setFieldError('editUser-phone', 'Please enter a valid 10-digit phone number');
+    isValid = false;
+  }
+
   const bodyData = { name, email, phone };
 
   if (isPatient) {
-    bodyData.age = document.getElementById('editUser-patient-age').value;
-    bodyData.bloodType = document.getElementById('editUser-patient-blood').value;
-    bodyData.conditions = document.getElementById('editUser-patient-conditions').value;
+    const age = document.getElementById('editUser-patient-age').value.trim();
+    const bloodType = document.getElementById('editUser-patient-blood').value;
+    const conditions = document.getElementById('editUser-patient-conditions').value.trim();
+
+    if (!age) {
+      setFieldError('editUser-patient-age', 'Age is required');
+      isValid = false;
+    } else {
+      const ageNum = Number(age);
+      if (isNaN(ageNum) || ageNum < 0 || ageNum > 120) {
+        setFieldError('editUser-patient-age', 'Please enter a valid age (0-120)');
+        isValid = false;
+      }
+    }
+
+    bodyData.age = age;
+    bodyData.bloodType = bloodType;
+    bodyData.conditions = conditions;
   } else if (isDoctor) {
-    bodyData.specialty = document.getElementById('editUser-doctor-specialty').value;
-    bodyData.exp = document.getElementById('editUser-doctor-exp').value;
+    const specialty = document.getElementById('editUser-doctor-specialty').value.trim();
+    const exp = document.getElementById('editUser-doctor-exp').value.trim();
+    const fee = document.getElementById('editUser-doctor-fee').value.trim();
+    const hospital = document.getElementById('editUser-doctor-hospital').value.trim();
+
+    if (!specialty) {
+      setFieldError('editUser-doctor-specialty', 'Specialty is required');
+      isValid = false;
+    } else if (!letterRegex.test(specialty)) {
+      setFieldError('editUser-doctor-specialty', 'Specialty must contain only letters');
+      isValid = false;
+    }
+
+    if (!exp) {
+      setFieldError('editUser-doctor-exp', 'Experience is required');
+      isValid = false;
+    }
+
+    if (!fee) {
+      setFieldError('editUser-doctor-fee', 'Consultation fee is required');
+      isValid = false;
+    }
+
+    if (!hospital) {
+      setFieldError('editUser-doctor-hospital', 'Hospital name is required');
+      isValid = false;
+    }
+
+    bodyData.specialty = specialty;
+    bodyData.exp = exp;
+    bodyData.fee = fee;
+    bodyData.hospital = hospital;
+  }
+
+  if (!isValid) {
+    notify('Please correct the errors in the form', 'error');
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/users/edit/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(bodyData)
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.message || 'Failed to update user');
+    }
+
+    closeModal('adminEditUserModal');
+    notify('User account updated successfully', 'success');
+    await loadAdminData();
+  } catch (err) {
+    notify(err.message, 'error');
+  }
+}
+
+ue;
     bodyData.fee = document.getElementById('editUser-doctor-fee').value;
     bodyData.hospital = document.getElementById('editUser-doctor-hospital').value;
   }
@@ -3007,41 +3250,115 @@ function toggleAddUserRoleFields(role) {
 window.toggleAddUserRoleFields = toggleAddUserRoleFields;
 
 async function submitAddUser() {
-  const firstName = document.getElementById('addUser-first').value;
-  const lastName = document.getElementById('addUser-last').value;
-  const email = document.getElementById('addUser-email').value;
+  const firstName = document.getElementById('addUser-first').value.trim();
+  const lastName = document.getElementById('addUser-last').value.trim();
+  const email = document.getElementById('addUser-email').value.trim();
   const role = document.getElementById('addUser-role').value;
-  const phone = document.getElementById('addUser-phone').value;
+  const phone = document.getElementById('addUser-phone').value.trim();
 
   // Retrieve patient fields
-  const age = document.getElementById('addUser-patient-age').value;
+  const age = document.getElementById('addUser-patient-age').value.trim();
   const bloodType = document.getElementById('addUser-patient-blood').value;
-  const chronicConditions = document.getElementById('addUser-patient-conditions').value;
+  const chronicConditions = document.getElementById('addUser-patient-conditions').value.trim();
 
   // Retrieve doctor fields
-  const specialty = document.getElementById('addUser-doctor-specialty').value;
-  const exp = document.getElementById('addUser-doctor-exp').value;
-  const fee = document.getElementById('addUser-doctor-fee').value;
-  const hospital = document.getElementById('addUser-doctor-hospital').value;
+  const specialty = document.getElementById('addUser-doctor-specialty').value.trim();
+  const exp = document.getElementById('addUser-doctor-exp').value.trim();
+  const fee = document.getElementById('addUser-doctor-fee').value.trim();
+  const hospital = document.getElementById('addUser-doctor-hospital').value.trim();
 
-  if (!firstName || !lastName || !email) {
-    notify('Please input name and email address', 'error');
+  clearAllAddUserErrors();
+
+  let isValid = true;
+  const phoneRegex = /^(\+?\d{1,3}[- ]?)?\d{10}$/;
+  const letterRegex = /^[a-zA-Z\s\-\.]+$/;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  // Basic validations
+  if (!firstName) {
+    setFieldError('addUser-first', 'First name is required');
+    isValid = false;
+  } else if (!letterRegex.test(firstName)) {
+    setFieldError('addUser-first', 'First name must contain only letters');
+    isValid = false;
+  }
+
+  if (!lastName) {
+    setFieldError('addUser-last', 'Last name is required');
+    isValid = false;
+  } else if (!letterRegex.test(lastName)) {
+    setFieldError('addUser-last', 'Last name must contain only letters');
+    isValid = false;
+  }
+
+  if (!email) {
+    setFieldError('addUser-email', 'Email address is required');
+    isValid = false;
+  } else if (!emailRegex.test(email)) {
+    setFieldError('addUser-email', 'Please enter a valid email address');
+    isValid = false;
+  }
+
+  if (!phone) {
+    setFieldError('addUser-phone', 'Phone number is required');
+    isValid = false;
+  } else if (!phoneRegex.test(phone)) {
+    setFieldError('addUser-phone', 'Please enter a valid 10-digit phone number');
+    isValid = false;
+  }
+
+  const bodyData = { firstName, lastName, email, role, phone };
+
+  if (role === 'Patient') {
+    if (!age) {
+      setFieldError('addUser-patient-age', 'Age is required');
+      isValid = false;
+    } else {
+      const ageNum = Number(age);
+      if (isNaN(ageNum) || ageNum < 0 || ageNum > 120) {
+        setFieldError('addUser-patient-age', 'Please enter a valid age (0-120)');
+        isValid = false;
+      }
+    }
+    bodyData.age = age;
+    bodyData.bloodType = bloodType;
+    bodyData.chronicConditions = chronicConditions;
+  } else if (role === 'Doctor') {
+    if (!specialty) {
+      setFieldError('addUser-doctor-specialty', 'Specialty is required');
+      isValid = false;
+    } else if (!letterRegex.test(specialty)) {
+      setFieldError('addUser-doctor-specialty', 'Specialty must contain only letters');
+      isValid = false;
+    }
+
+    if (!exp) {
+      setFieldError('addUser-doctor-exp', 'Experience is required');
+      isValid = false;
+    }
+
+    if (!fee) {
+      setFieldError('addUser-doctor-fee', 'Consultation fee is required');
+      isValid = false;
+    }
+
+    if (!hospital) {
+      setFieldError('addUser-doctor-hospital', 'Hospital name is required');
+      isValid = false;
+    }
+
+    bodyData.specialty = specialty;
+    bodyData.exp = exp;
+    bodyData.fee = fee;
+    bodyData.hospital = hospital;
+  }
+
+  if (!isValid) {
+    notify('Please correct the errors in the form', 'error');
     return;
   }
 
   try {
-    const bodyData = { firstName, lastName, email, role, phone };
-    if (role === 'Patient') {
-      bodyData.age = age;
-      bodyData.bloodType = bloodType;
-      bodyData.chronicConditions = chronicConditions;
-    } else if (role === 'Doctor') {
-      bodyData.specialty = specialty;
-      bodyData.exp = exp;
-      bodyData.fee = fee;
-      bodyData.hospital = hospital;
-    }
-
     const res = await fetch(`${API_BASE}/admin/users/add`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

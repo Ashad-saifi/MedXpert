@@ -1965,4 +1965,19 @@ select.form-control {
   }
 }
 
+/* ── FORM VALIDATION STYLES ── */
+.form-control.is-invalid {
+  border-color: var(--danger) !important;
+}
+.form-control.is-invalid:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
+}
+.invalid-feedback {
+  color: var(--danger);
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-top: 0.25rem;
+  display: none;
+}
+
 
