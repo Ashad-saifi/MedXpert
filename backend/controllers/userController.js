@@ -124,6 +124,13 @@ const loginUser = async (req, res) => {
         const user = await User.findOne({ email });
 
         if (user && (await bcrypt.compare(password, user.password))) {
+            let profile = null;
+            if (user.role === "doctor") {
+                profile = await Doctor.findOne({ user: user._id });
+            } else if (user.role === "patient") {
+                profile = await Patient.findOne({ user: user._id });
+            }
+
             res.json({
                 user: {
                     id: user._id,
@@ -132,6 +139,7 @@ const loginUser = async (req, res) => {
                     role: user.role,
                     phone: user.phone
                 },
+                profile,
                 token: generateToken(user._id)
             });
         } else {

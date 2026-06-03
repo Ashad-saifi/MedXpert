@@ -768,6 +768,36 @@ const seedDatabase = async () => {
                 refillsTotal: 6,
                 refillsUsed: 1,
                 status: "Active"
+            },
+            {
+                id: "RX-208",
+                patient: patientProfiles[0]._id,
+                doctor: sarahDoc._id,
+                patientId: patientProfiles[0].id,
+                patientName: patientProfiles[0].name,
+                doctorName: sarahDoc.name,
+                medicineName: "Amoxicillin 500mg",
+                dosage: "Three times daily – After meals",
+                duration: "10 days",
+                date: "2026-02-15",
+                refillsTotal: 0,
+                refillsUsed: 0,
+                status: "Completed"
+            },
+            {
+                id: "RX-209",
+                patient: patientProfiles[0]._id,
+                doctor: rajDoc._id,
+                patientId: patientProfiles[0].id,
+                patientName: patientProfiles[0].name,
+                doctorName: rajDoc.name,
+                medicineName: "Ibuprofen 400mg",
+                dosage: "As needed for pain – Max 3 daily",
+                duration: "15 days",
+                date: "2026-01-10",
+                refillsTotal: 1,
+                refillsUsed: 1,
+                status: "Expired"
             }
         ]);
         console.log("Seeding Prescriptions.");

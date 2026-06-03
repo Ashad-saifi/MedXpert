@@ -20,9 +20,14 @@ let peerConnection = null;
 let signalingSocket = null;
 let currentReplyIndex = 0;
 
+let notificationsData = [
+  { id: 1, text: "Welcome to MedXpert! Set up your profile to get started.", time: "1 hour ago", read: false, type: "info" },
+  { id: 2, text: "Prescription for Metformin 500mg was added by Dr. Raj Patel.", time: "2 hours ago", read: false, type: "prescription", page: "pPrescriptions" },
+  { id: 3, text: "Your Lipid Panel lab report is ready.", time: "1 day ago", read: true, type: "report", page: "pReports" }
+];
+
 // WebRTC & Socket.io Global State
 let socket = null;
-let peerConnection = null;
 let currentRoomId = null;
 const rtcConfig = {
   iceServers: [
@@ -80,6 +85,12 @@ function initEventListeners() {
       if (modalId) closeModal(modalId);
     });
   });
+
+  // Patient Topbar Search & Notification
+  document.getElementById('p-search-trigger')?.addEventListener('click', openSearchModal);
+  document.getElementById('p-notif-bell')?.addEventListener('click', openNotificationsModal);
+  document.getElementById('global-search-input')?.addEventListener('input', handleGlobalSearch);
+  document.getElementById('btn-clear-notifications')?.addEventListener('click', clearNotifications);
 
   // Page navigation click handlers
   bindSidebarNavs('patient-nav', 'p');
@@ -191,8 +202,8 @@ function initEventListeners() {
   // Telehealth live sync listeners
   document.getElementById('call-note-clinical')?.addEventListener('input', function () {
     const text = this.value;
-    if (socket && currentRoomId) {
-      socket.emit("note-sync", { room: currentRoomId, text });
+    if (signalingSocket && signalingSocket.readyState === WebSocket.OPEN && currentRoomId) {
+      signalingSocket.send(JSON.stringify({ type: 'note-sync', room: currentRoomId, text }));
     }
   });
 
@@ -227,7 +238,8 @@ function initEventListeners() {
   document.getElementById('btn-issue-presc-submit')?.addEventListener('click', submitIssuePrescription);
   document.getElementById('btn-d-save-draft')?.addEventListener('click', () => notify('Draft consultation notes saved', ''));
   document.getElementById('btn-d-proceed-rx')?.addEventListener('click', proceedToPrescription);
-  document.getElementById('btn-d-profile-edit')?.addEventListener('click', () => notify('Doctor profile changes saved', 'success'));
+  document.getElementById('btn-d-profile-edit')?.addEventListener('click', openEditDoctorProfileModal);
+  document.getElementById('btn-edit-d-profile-submit')?.addEventListener('click', submitEditDoctorProfile);
   document.getElementById('d-action-review-now')?.addEventListener('click', () => {
     showPage('d', 'dReports');
     notify('Opened pending lab reports for review', 'success');
@@ -417,16 +429,30 @@ async function doLogin() {
   const password = document.getElementById('loginPwd')?.value;
 
   try {
-    const res = await fetch(`${API_BASE}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, role: currentRole })
-    });
+    let res;
+    try {
+      res = await fetch(`${API_BASE}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, role: currentRole })
+      });
+    } catch (networkErr) {
+      notify('Cannot connect to server. Make sure the backend is running on port 5000.', 'error');
+      return;
+    }
 
-    const data = await res.json();
+    let data;
+    try {
+      data = await res.json();
+    } catch (parseErr) {
+      notify('Server returned an invalid response. Make sure the backend is running on port 5000.', 'error');
+      return;
+    }
+
     if (!res.ok) throw new Error(data.message || data.error || 'Server error during login');
 
     currentUser = data.user;
+    if (currentUser) currentUser.profile = data.profile;
     closeLogin();
 
     // Hide all panel screens
@@ -450,7 +476,7 @@ async function doLogin() {
       showPage('a', 'aDashboard', document.querySelector('#admin-nav [data-page="aDashboard"]'));
     }
 
-    notify(data.message, 'success');
+    notify(data.message || `Welcome back, ${data.user?.name || ''}!`, 'success');
   } catch (err) {
     notify(err.message, 'error');
   }
@@ -845,6 +871,97 @@ function handleSignalingMessage(data) {
   }
 }
 
+function createSimulatedStream() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 640;
+  canvas.height = 480;
+  const ctx = canvas.getContext('2d');
+  
+  let angle = 0;
+  const animInterval = setInterval(() => {
+    if (!ctx) return;
+    
+    // Gradient background
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw animated radar circles
+    ctx.strokeStyle = 'rgba(14, 165, 233, 0.4)';
+    ctx.lineWidth = 2;
+    for (let i = 1; i <= 3; i++) {
+      const radius = ((angle * 20 + i * 50) % 150);
+      ctx.beginPath();
+      ctx.arc(canvas.width / 2, canvas.height / 2, radius, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    
+    // Glowing pulse
+    const gradient = ctx.createRadialGradient(
+      canvas.width / 2, canvas.height / 2, 5,
+      canvas.width / 2, canvas.height / 2, 80 + Math.sin(angle) * 20
+    );
+    gradient.addColorStop(0, 'rgba(14, 165, 233, 0.6)');
+    gradient.addColorStop(1, 'rgba(15, 23, 42, 0)');
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(canvas.width / 2, canvas.height / 2, 80 + Math.sin(angle) * 20, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Draw text indicator
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 20px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Digital Camera Stream Active', canvas.width / 2, canvas.height / 2 - 10);
+    ctx.font = '14px sans-serif';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.fillText('No physical hardware camera found or permission blocked', canvas.width / 2, canvas.height / 2 + 25);
+    ctx.fillText('Tip: Check address bar to allow browser permissions', canvas.width / 2, canvas.height / 2 + 50);
+    
+    angle += 0.05;
+  }, 50); // 20 fps
+  
+  const stream = canvas.captureStream(20);
+  
+  // Store reference to clear interval when track stops
+  const track = stream.getVideoTracks()[0];
+  if (track) {
+    const originalStop = track.stop;
+    track.stop = function() {
+      clearInterval(animInterval);
+      if (originalStop) originalStop.call(track);
+    };
+  }
+  
+  return stream;
+}
+
+async function getResilientUserMedia() {
+  try {
+    return await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+  } catch (err1) {
+    console.warn("Dual track getUserMedia failed, trying video only...", err1);
+    try {
+      return await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    } catch (err2) {
+      console.warn("Video-only getUserMedia failed, trying audio only...", err2);
+      try {
+        const audioStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+        
+        // Combine audio track with simulated video track so WebRTC offer is complete
+        const simStream = createSimulatedStream();
+        const audioTrack = audioStream.getAudioTracks()[0];
+        if (audioTrack) {
+          simStream.addTrack(audioTrack);
+        }
+        return simStream;
+      } catch (err3) {
+        console.warn("All live hardware sources unavailable. Generating fully simulated stream...", err3);
+        return createSimulatedStream();
+      }
+    }
+  }
+}
+
 // ── VIDEO ROOM CONTROLLER ──
 async function openVideoCall(partnerName = 'Doctor', roomId = 'A-501') {
   const overlay = document.getElementById('videoCallOverlay');
@@ -993,7 +1110,7 @@ async function openVideoCall(partnerName = 'Doctor', roomId = 'A-501') {
 
   // Access user's camera and microphone
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    const stream = await getResilientUserMedia();
     localStream = stream;
 
     const localVideo = document.getElementById('localVideo');
@@ -1010,8 +1127,6 @@ async function openVideoCall(partnerName = 'Doctor', roomId = 'A-501') {
       placeholder.style.display = 'none';
     }
 
-    // Remote partner stream will be applied via WebRTC 'ontrack' event handler
-
     // Reset control buttons visually
     const camBtn = document.querySelector('.camera-toggle');
     const micBtn = document.querySelector('.mic-toggle');
@@ -1022,10 +1137,7 @@ async function openVideoCall(partnerName = 'Doctor', roomId = 'A-501') {
     notify("Could not access camera/microphone", "error");
   }
 
-  // Initialize Socket.io Connection
-  socket = io();
-
-  // Initialize WebRTC Peer Connection
+  // ── WebRTC Peer Connection + Signaling via native signalingSocket ──
   peerConnection = new RTCPeerConnection(rtcConfig);
 
   // Add Local Tracks to Peer Connection
@@ -1038,26 +1150,21 @@ async function openVideoCall(partnerName = 'Doctor', roomId = 'A-501') {
   // Handle Remote Track
   peerConnection.ontrack = (event) => {
     console.log("Remote track received:", event.streams[0]);
-    const remoteVideo = document.getElementById('remoteVideo');
+    const remoteVideo = document.getElementById('partnerVideo');
     const simulatedImage = document.getElementById('partnerVideoImage');
-    
     if (remoteVideo) {
       remoteVideo.srcObject = event.streams[0];
       remoteVideo.style.display = 'block';
     }
-    if (simulatedImage) {
-      simulatedImage.style.display = 'none';
-    }
+    if (simulatedImage) simulatedImage.style.display = 'none';
     if (pulseRing) pulseRing.style.display = 'none';
-    if (partnerEl) {
-      partnerEl.textContent = `${partnerName} (Connected)`;
-    }
+    if (partnerEl) partnerEl.textContent = `${partnerName} (Connected)`;
   };
 
-  // Handle ICE Candidates
+  // Send ICE candidates via signalingSocket
   peerConnection.onicecandidate = (event) => {
-    if (event.candidate) {
-      socket.emit("webrtc-candidate", { room: roomId, candidate: event.candidate });
+    if (event.candidate && signalingSocket && signalingSocket.readyState === WebSocket.OPEN) {
+      signalingSocket.send(JSON.stringify({ type: 'webrtc-candidate', room: roomId, candidate: event.candidate }));
     }
   };
 
@@ -1072,88 +1179,81 @@ async function openVideoCall(partnerName = 'Doctor', roomId = 'A-501') {
     }
   };
 
-  // Socket Signalling Handlers
-  socket.emit("join-room", { 
-    room: roomId, 
-    userId: currentUser ? currentUser.id : (currentRole === 'doctor' ? 'D-101' : 'P-10421'), 
-    role: currentRole 
-  });
-
-  // Doctor generates the offer when patient joins
-  socket.on("peer-joined", async ({ socketId, role }) => {
-    console.log(`Peer joined room: ${socketId} as ${role}`);
-    if (currentRole === 'doctor') {
+  // Set up signalingSocket message handler for WebRTC + in-call features
+  if (signalingSocket) {
+    signalingSocket.onmessage = (event) => {
       try {
-        const offer = await peerConnection.createOffer();
-        await peerConnection.setLocalDescription(offer);
-        socket.emit("webrtc-offer", { room: roomId, offer });
+        const msg = JSON.parse(event.data);
+        handleSignalingMessage(msg);
+
+        if (msg.type === 'peer-joined') {
+          if (currentRole === 'doctor' && peerConnection) {
+            peerConnection.createOffer().then(offer => {
+              peerConnection.setLocalDescription(offer);
+              if (signalingSocket && signalingSocket.readyState === WebSocket.OPEN) {
+                signalingSocket.send(JSON.stringify({ type: 'webrtc-offer', room: roomId, offer }));
+              }
+            }).catch(err => console.error('Offer creation failed:', err));
+          }
+        } else if (msg.type === 'webrtc-offer') {
+          if (peerConnection) {
+            peerConnection.setRemoteDescription(new RTCSessionDescription(msg.offer))
+              .then(() => peerConnection.createAnswer())
+              .then(answer => {
+                peerConnection.setLocalDescription(answer);
+                if (signalingSocket && signalingSocket.readyState === WebSocket.OPEN) {
+                  signalingSocket.send(JSON.stringify({ type: 'webrtc-answer', room: roomId, answer }));
+                }
+              }).catch(err => console.error('Failed handling WebRTC offer:', err));
+          }
+        } else if (msg.type === 'webrtc-answer') {
+          if (peerConnection) {
+            peerConnection.setRemoteDescription(new RTCSessionDescription(msg.answer))
+              .catch(err => console.error('Failed handling WebRTC answer:', err));
+          }
+        } else if (msg.type === 'webrtc-candidate') {
+          if (peerConnection && msg.candidate) {
+            peerConnection.addIceCandidate(new RTCIceCandidate(msg.candidate))
+              .catch(err => console.error('Failed adding ICE Candidate:', err));
+          }
+        } else if (msg.type === 'chat-message') {
+          appendChatMessage(msg.sender, msg.text, 'other');
+          const panel = document.getElementById('videoCallSidebar');
+          if (panel && panel.style.display === 'none') {
+            notify(`New message from ${msg.sender}`, 'success');
+          }
+        } else if (msg.type === 'note-sync') {
+          const adviceBox = document.getElementById('patient-live-advice-box');
+          if (adviceBox) {
+            adviceBox.innerHTML = `<span style="white-space: pre-wrap;">${msg.text}</span>`;
+          }
+        } else if (msg.type === 'reaction') {
+          showFloatingReaction(msg.emoji);
+        } else if (msg.type === 'peer-left' || msg.type === 'peer-disconnected') {
+          notify(`${partnerName} disconnected. Waiting for connection recovery...`, 'warning');
+          const remoteVideo = document.getElementById('partnerVideo');
+          if (remoteVideo) remoteVideo.style.display = 'none';
+          if (pulseRing) pulseRing.style.display = 'block';
+          if (partnerEl) partnerEl.textContent = `${partnerName} (Reconnecting...)`;
+        }
       } catch (err) {
-        console.error("Offer creation failed:", err);
+        console.error('Error handling signaling message:', err);
       }
+    };
+
+    // Announce joining room to the peer
+    const joinMsg = JSON.stringify({
+      type: 'join',
+      role: currentRole,
+      room: roomId,
+      userId: currentUser && currentUser.profile ? currentUser.profile.id : (currentRole === 'doctor' ? 'D-101' : 'P-10421')
+    });
+    if (signalingSocket.readyState === WebSocket.OPEN) {
+      signalingSocket.send(joinMsg);
+    } else {
+      signalingSocket.addEventListener('open', () => signalingSocket.send(joinMsg), { once: true });
     }
-  });
-
-  socket.on("webrtc-offer", async ({ offer, senderId }) => {
-    console.log("Received WebRTC Offer from:", senderId);
-    try {
-      await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-      const answer = await peerConnection.createAnswer();
-      await peerConnection.setLocalDescription(answer);
-      socket.emit("webrtc-answer", { room: roomId, answer });
-    } catch (err) {
-      console.error("Failed handling WebRTC offer:", err);
-    }
-  });
-
-  socket.on("webrtc-answer", async ({ answer }) => {
-    console.log("Received WebRTC Answer");
-    try {
-      await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-    } catch (err) {
-      console.error("Failed handling WebRTC answer:", err);
-    }
-  });
-
-  socket.on("webrtc-candidate", async ({ candidate }) => {
-    try {
-      if (candidate) {
-        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-      }
-    } catch (err) {
-      console.error("Failed adding ICE Candidate:", err);
-    }
-  });
-
-  // Live Socket real-time text chat
-  socket.on("chat-message", ({ sender, text }) => {
-    appendChatMessage(sender, text, 'other');
-    const panel = document.getElementById('videoCallSidebar');
-    if (panel && panel.style.display === 'none') {
-      notify(`New message from ${sender}`, 'success');
-    }
-  });
-
-  // Live Doctor Clinical Note Syncing
-  socket.on("note-sync", ({ text }) => {
-    const adviceBox = document.getElementById('patient-live-advice-box');
-    if (adviceBox) {
-      adviceBox.innerHTML = `<span style="white-space: pre-wrap;">${text}</span>`;
-    }
-  });
-
-  // Live Reaction Relays
-  socket.on("reaction", ({ emoji }) => {
-    showFloatingReaction(emoji);
-  });
-
-  // Graceful peer disconnection
-  socket.on("peer-disconnected", () => {
-    notify(`${partnerName} disconnected. Waiting for connection recovery...`, "warning");
-    const remoteVideo = document.getElementById('remoteVideo');
-    if (remoteVideo) remoteVideo.style.display = 'none';
-    if (pulseRing) pulseRing.style.display = 'block';
-    if (partnerEl) partnerEl.textContent = `${partnerName} (Reconnecting...)`;
-  });
+  }
 }
 
 function closeVideoCall() {
@@ -1200,7 +1300,7 @@ function closeVideoCall() {
   }
 
   const localVideo = document.getElementById('localVideo');
-  const remoteVideo = document.getElementById('remoteVideo');
+  const remoteVideo = document.getElementById('partnerVideo');
   const placeholder = document.getElementById('localVideoPlaceholder');
   const avatarCenter = document.getElementById('partnerAvatarCenter');
 
@@ -1361,8 +1461,8 @@ function toggleVideoChat(btn) {
   const panel = document.getElementById('videoCallSidebar');
   if (!panel) return;
 
-  const isOpen = sidebar.style.display === 'flex';
-  sidebar.style.display = isOpen ? 'none' : 'flex';
+  const isOpen = panel.style.display === 'flex';
+  panel.style.display = isOpen ? 'none' : 'flex';
   btn.style.background = isOpen ? '' : '#14b8a6';
 
   if (!isOpen) {
@@ -1408,9 +1508,9 @@ function sendVideoChatMessage() {
   appendChatMessage(myName, text, 'self');
   input.value = '';
 
-  // Emit the chat message via Socket.io
-  if (socket && currentRoomId) {
-    socket.emit("chat-message", { room: currentRoomId, sender: myName, text });
+  // Send the chat message via native WebSocket
+  if (signalingSocket && signalingSocket.readyState === WebSocket.OPEN && currentRoomId) {
+    signalingSocket.send(JSON.stringify({ type: 'chat-message', room: currentRoomId, sender: myName, text }));
   }
 }
 
@@ -1442,9 +1542,9 @@ window.sendReaction = function(emoji, event) {
   const popover = document.getElementById('reactionsPopover');
   if (popover) popover.style.display = 'none';
 
-  // Emit reaction
-  if (socket && currentRoomId) {
-    socket.emit("reaction", { room: currentRoomId, emoji });
+  // Send reaction via native WebSocket
+  if (signalingSocket && signalingSocket.readyState === WebSocket.OPEN && currentRoomId) {
+    signalingSocket.send(JSON.stringify({ type: 'reaction', room: currentRoomId, emoji }));
   }
   
   // Display reaction locally
@@ -1472,34 +1572,45 @@ function showFloatingReaction(emoji) {
 }
 
 // ── PATIENT FLOW APIS ──
+async function safeJson(res) {
+  try { return await res.json(); } catch(e) { return null; }
+}
+
 async function loadPatientData() {
   try {
     // 1. Load profile data
-    const resPat = await fetch(`${API_BASE}/patients/P-10421`);
-    patientData = await resPat.json();
+    const patId = currentUser && currentUser.profile ? currentUser.profile.id : 'P-10421';
+    const resPat = await fetch(`${API_BASE}/patients/${patId}`);
+    const pat = await safeJson(resPat);
+    if (pat && !pat.error) patientData = pat;
 
     // 2. Load appointments
     const resAppt = await fetch(`${API_BASE}/appointments`);
-    appointmentsData = await resAppt.json();
+    const appts = await safeJson(resAppt);
+    if (Array.isArray(appts)) appointmentsData = appts;
     renderPatientAppointments();
 
     // 3. Load prescriptions
     const resRx = await fetch(`${API_BASE}/prescriptions`);
-    prescriptionsData = await resRx.json();
+    const rxs = await safeJson(resRx);
+    if (Array.isArray(rxs)) prescriptionsData = rxs;
     renderPatientPrescriptions();
 
     // 4. Load reports
     const resRep = await fetch(`${API_BASE}/reports`);
-    reportsData = await resRep.json();
+    const reps = await safeJson(resRep);
+    if (Array.isArray(reps)) reportsData = reps;
     renderPatientReports();
 
     // 5. Load doctors for lists
     const resDocs = await fetch(`${API_BASE}/doctors`);
-    doctorsData = await resDocs.json();
+    const docs = await safeJson(resDocs);
+    if (Array.isArray(docs)) doctorsData = docs;
     renderDoctorsList();
 
     // Update UI profile and dashboard stats
     updatePatientProfileUI();
+    updateNotificationsBadge();
   } catch (err) {
     console.error("Error loading patient data", err);
   }
@@ -1594,7 +1705,7 @@ function renderPatientAppointments() {
   if (dashboardContainer) dashboardContainer.innerHTML = '';
   if (videoApptList) videoApptList.innerHTML = '';
 
-  const patId = patientData ? patientData.id : "P-10421";
+  const patId = patientData ? patientData.id : (currentUser && currentUser.profile ? currentUser.profile.id : "P-10421");
   const myAppts = appointmentsData.filter(a => a.patientId === patId);
 
   myAppts.forEach(appt => {
@@ -1612,7 +1723,10 @@ function renderPatientAppointments() {
         <td><span class="badge ${statusBadge}">${appt.status}</span></td>
         <td>
           ${appt.status === 'Confirmed' && appt.type === 'Video'
-          ? `<button class="btn btn-sm btn-primary" onclick="window.joinVideoRoom('${appt.doctorName}')">Join Call</button>`
+          ? `<div style="display:flex;gap:0.5rem;align-items:center;">
+               <button class="btn btn-sm btn-primary" onclick="window.joinVideoRoom('${appt.doctorName}')">Join Call</button>
+               <button class="btn btn-sm btn-ghost" onclick="window.cancelAppointment('${appt.id}')">Cancel</button>
+             </div>`
           : appt.status === 'Confirmed'
             ? `<button class="btn btn-sm btn-ghost" onclick="window.cancelAppointment('${appt.id}')">Cancel</button>`
             : `–`}
@@ -1674,7 +1788,7 @@ function renderPatientPrescriptions() {
   if (dashList) dashList.innerHTML = '';
   if (histTable) histTable.innerHTML = '';
 
-  const patId = patientData ? patientData.id : "P-10421";
+  const patId = patientData ? patientData.id : (currentUser && currentUser.profile ? currentUser.profile.id : "P-10421");
   const myRx = prescriptionsData.filter(rx => rx.patientId === patId);
 
   myRx.forEach(rx => {
@@ -1722,13 +1836,15 @@ function renderPatientPrescriptions() {
       // Completed / Historic Rx
       if (histTable) {
         const tr = document.createElement('tr');
+        const badgeClass = rx.status === 'Completed' ? 'badge-green' : rx.status === 'Expired' ? 'badge-red' : 'badge-gray';
+        const formattedDate = new Date(rx.date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
         tr.innerHTML = `
           <td><div class="font-semibold">${rx.medicineName}</div><div class="text-muted">${rx.doctorName}</div></td>
-          <td>${rx.date}</td>
-          <td><span class="badge badge-gray">${rx.status}</span></td>
+          <td>${formattedDate}</td>
+          <td><span class="badge ${badgeClass}">${rx.status}</span></td>
           <td style="text-align:right;">
-            <a href="/api/prescriptions/${rx.id}/download" class="btn btn-sm btn-ghost" download style="color:var(--text3);">
-              📥 PDF
+            <a href="/api/prescriptions/${rx.id}/download" class="btn btn-sm btn-ghost" download style="color:var(--primary-light); display:inline-flex; align-items:center; gap:0.25rem;">
+              <span>📥</span> PDF
             </a>
           </td>
         `;
@@ -1745,7 +1861,7 @@ function renderPatientReports() {
   if (docTable) docTable.innerHTML = '';
   if (repTable) repTable.innerHTML = '';
 
-  const patId = patientData ? patientData.id : "P-10421";
+  const patId = patientData ? patientData.id : (currentUser && currentUser.profile ? currentUser.profile.id : "P-10421");
   const myReports = reportsData.filter(r => r.patientId === patId);
 
   myReports.forEach(rep => {
@@ -1865,13 +1981,24 @@ async function submitBookAppointment() {
   }
 
   try {
+    // Parse time string (e.g. "10:30 AM" or "14:00") into a proper 24h HH:MM string
+    let timeStr = time || '10:00';
+    if (timeStr.includes('AM') || timeStr.includes('PM')) {
+      const [timePart, period] = timeStr.trim().split(' ');
+      let [h, m] = timePart.split(':').map(Number);
+      if (period === 'PM' && h !== 12) h += 12;
+      if (period === 'AM' && h === 12) h = 0;
+      timeStr = `${String(h).padStart(2,'0')}:${String(m || 0).padStart(2,'0')}`;
+    }
+    const dateTime = date ? `${date}T${timeStr}:00` : new Date().toISOString();
+
     const res = await fetch(`${API_BASE}/appointments/book`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         doctorId,
-        patientId: 'P-10421',
-        dateTime: `${date}T${time.includes('AM') ? time.replace(' AM', '') : (parseInt(time.replace(' PM', '')) + 12)}:00:00`,
+        patientId: currentUser && currentUser.profile ? currentUser.profile.id : 'P-10421',
+        dateTime,
         type,
         reason
       })
@@ -1890,8 +2017,22 @@ async function submitBookAppointment() {
 async function cancelAppointment(id) {
   if (!confirm('Are you sure you want to cancel this appointment?')) return;
   try {
+    const appt = appointmentsData.find(a => String(a.id) === String(id));
+    const docName = appt ? appt.doctorName : 'Doctor';
+
     const res = await fetch(`${API_BASE}/appointments/cancel/${id}`, { method: 'POST' });
     if (!res.ok) throw new Error('Cancellation failed');
+
+    // Add unread notification
+    notificationsData.unshift({
+      id: Date.now(),
+      text: `Your appointment with Dr. ${docName} has been cancelled successfully.`,
+      time: "Just now",
+      read: false,
+      type: "warning",
+      page: "pAppointments"
+    });
+
     notify('Appointment cancelled', '');
     await loadPatientData();
   } catch (err) {
@@ -1907,7 +2048,7 @@ async function triggerReportUpload() {
     const res = await fetch(`${API_BASE}/reports/upload`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ testName, patientId: 'P-10421', lab: 'CityPath Lab' })
+      body: JSON.stringify({ testName, patientId: currentUser && currentUser.profile ? currentUser.profile.id : 'P-10421', lab: 'CityPath Lab' })
     });
     if (!res.ok) throw new Error('Upload failed');
     notify('Report uploaded successfully', 'success');
@@ -1955,7 +2096,8 @@ async function submitEditPatientProfile() {
   };
 
   try {
-    const res = await fetch(`${API_BASE}/patients/P-10421/profile`, {
+    const patId = currentUser && currentUser.profile ? currentUser.profile.id : 'P-10421';
+    const res = await fetch(`${API_BASE}/patients/${patId}/profile`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(bodyData)
@@ -1987,38 +2129,132 @@ function filterDoctors() {
   });
 }
 
+function updateDoctorProfileUI() {
+  const profile = currentUser && currentUser.profile ? currentUser.profile : null;
+  if (!profile) return;
+
+  const nameParts = (profile.name || 'Doctor').split(' ');
+  const initials = (nameParts.length > 1 
+    ? nameParts.slice(1).map(n => n[0]).join('') 
+    : nameParts[0].substring(0, 2) || 'Dr').toUpperCase();
+
+  const avatarEl = document.getElementById('d-profile-avatar');
+  const nameEl = document.getElementById('d-profile-name');
+  const degreeSpecialtyEl = document.getElementById('d-profile-degree-specialty');
+  const licenseEl = document.getElementById('d-profile-license');
+  const expEl = document.getElementById('d-profile-exp');
+  const hospitalEl = document.getElementById('d-profile-hospital');
+  const feeEl = document.getElementById('d-profile-fee');
+  const availabilityEl = document.getElementById('d-profile-availability');
+
+  if (avatarEl) avatarEl.textContent = initials;
+  if (nameEl) nameEl.textContent = profile.name || '';
+  if (degreeSpecialtyEl) degreeSpecialtyEl.textContent = `${profile.degree || 'MBBS, MD'} – ${profile.specialty || 'General Medicine'}`;
+  if (licenseEl) licenseEl.textContent = profile.license || '';
+  if (expEl) expEl.textContent = profile.exp || '';
+  if (hospitalEl) hospitalEl.textContent = profile.hospital || '';
+  if (feeEl) feeEl.textContent = `₹${profile.fee || ''}`.replace('₹₹', '₹');
+  if (availabilityEl) availabilityEl.textContent = profile.availability || 'Available Today';
+}
+
+function openEditDoctorProfileModal() {
+  const profile = currentUser && currentUser.profile ? currentUser.profile : null;
+  if (!profile) return;
+
+  document.getElementById('edit-d-name').value = profile.name || '';
+  document.getElementById('edit-d-specialty').value = profile.specialty || '';
+  document.getElementById('edit-d-degree').value = profile.degree || '';
+  document.getElementById('edit-d-exp').value = profile.exp || '';
+  document.getElementById('edit-d-fee').value = profile.fee || '';
+  document.getElementById('edit-d-license').value = profile.license || '';
+  document.getElementById('edit-d-hospital').value = profile.hospital || '';
+  document.getElementById('edit-d-availability').value = profile.availability || '';
+
+  openModal('editDoctorProfileModal');
+}
+
+async function submitEditDoctorProfile() {
+  const name = document.getElementById('edit-d-name').value;
+  const specialty = document.getElementById('edit-d-specialty').value;
+  const degree = document.getElementById('edit-d-degree').value;
+  const exp = document.getElementById('edit-d-exp').value;
+  const fee = document.getElementById('edit-d-fee').value;
+  const license = document.getElementById('edit-d-license').value;
+  const hospital = document.getElementById('edit-d-hospital').value;
+  const availability = document.getElementById('edit-d-availability').value;
+
+  const bodyData = {
+    name,
+    specialty,
+    degree,
+    exp,
+    fee,
+    license,
+    hospital,
+    availability
+  };
+
+  try {
+    const docId = currentUser && currentUser.profile ? currentUser.profile.id : 'D-101';
+    const res = await fetch(`${API_BASE}/doctors/${docId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(bodyData)
+    });
+    if (!res.ok) throw new Error('Doctor profile update failed');
+    notify('Doctor profile updated successfully', 'success');
+    closeModal('editDoctorProfileModal');
+    await loadDoctorData();
+  } catch (err) {
+    notify(err.message, 'error');
+  }
+}
+
 // ── DOCTOR FLOW APIS ──
 async function loadDoctorData() {
   try {
+    // 0. Load logged-in doctor's profile details
+    const docId = currentUser && currentUser.profile ? currentUser.profile.id : 'D-101';
+    const resDoc = await fetch(`${API_BASE}/doctors/${docId}`);
+    const docData = await safeJson(resDoc);
+    if (docData && !docData.error) {
+      currentUser.profile = docData;
+      updateDoctorProfileUI();
+    }
+
     // 1. Fetch appointments
     const resAppt = await fetch(`${API_BASE}/appointments`);
-    appointmentsData = await resAppt.json();
+    const appts = await safeJson(resAppt);
+    if (Array.isArray(appts)) appointmentsData = appts;
     renderDoctorAppointments();
 
     // 2. Fetch all patients
     const resPat = await fetch(`${API_BASE}/patients`);
-    const patientsList = await resPat.json();
-    patients = patientsList;
-    renderDoctorPatients(patientsList);
+    const patientsList = await safeJson(resPat);
+    const validPatients = Array.isArray(patientsList) ? patientsList : [];
+    patients = validPatients;
+    renderDoctorPatients(validPatients);
 
     // Populate patient select dropdowns in Doctor dashboard
     const notesSelect = document.getElementById('d-notes-patient-select');
     if (notesSelect) {
-      notesSelect.innerHTML = patientsList.map(p => `<option value="${p.id}">${p.name} – ${p.id}</option>`).join('');
+      notesSelect.innerHTML = validPatients.map(p => `<option value="${p.id}">${p.name} – ${p.id}</option>`).join('');
     }
     const prescSelect = document.getElementById('presc-patient-select');
     if (prescSelect) {
-      prescSelect.innerHTML = patientsList.map(p => `<option value="${p.id}">${p.name} – ${p.id}</option>`).join('');
+      prescSelect.innerHTML = validPatients.map(p => `<option value="${p.id}">${p.name} – ${p.id}</option>`).join('');
     }
 
     // 3. Fetch all prescriptions
     const resRx = await fetch(`${API_BASE}/prescriptions`);
-    prescriptionsData = await resRx.json();
+    const rxs = await safeJson(resRx);
+    if (Array.isArray(rxs)) prescriptionsData = rxs;
     renderDoctorPrescriptions();
 
     // 4. Fetch reports
     const resRep = await fetch(`${API_BASE}/reports`);
-    reportsData = await resRep.json();
+    const reps = await safeJson(resRep);
+    if (Array.isArray(reps)) reportsData = reps;
     renderDoctorReports();
 
   } catch (err) {
@@ -2035,7 +2271,8 @@ function renderDoctorAppointments() {
   if (tableBody) tableBody.innerHTML = '';
   if (consultQueue) consultQueue.innerHTML = '';
 
-  let myAppts = appointmentsData.filter(a => a.doctorId === 'D-101');
+  const docId = currentUser && currentUser.profile ? currentUser.profile.id : 'D-101';
+  let myAppts = appointmentsData.filter(a => a.doctorId === docId);
 
   // Update nav badge count
   const countBadge = document.getElementById('d-badge-appt-count');
@@ -2272,6 +2509,95 @@ function viewEhrDetails(id) {
   notify(`Accessing patient health records: ${id}`, 'success');
 }
 
+function viewDoctorProfile(docId) {
+  const doc = doctorsData.find(d => d.id === docId);
+  if (!doc) { notify('Doctor profile not found', 'error'); return; }
+
+  const specialtyStr = doc.specialty || 'General Medicine';
+  const borderClass = specialtyStr === 'General Medicine' ? 'avatar-teal' : specialtyStr === 'Cardiology' ? 'avatar-blue' : 'avatar-orange';
+  const degreeStr = doc.degree || 'MBBS, MD';
+  const expStr = doc.exp || '5 yrs';
+  const ratingVal = doc.rating || 5.0;
+  const feeVal = doc.fee || '500';
+  const hospitalStr = doc.hospital || 'City Medical Center';
+  const licenseStr = doc.license || 'MCI-PENDING';
+  const availabilityStr = doc.availability || 'Available Today';
+  const consultationsCount = doc.consultationsCount || 0;
+
+  const nameParts = (doc.name || 'Doctor').split(' ');
+  const initials = (nameParts.length > 1 
+    ? nameParts.slice(1).map(n => n[0]).join('') 
+    : nameParts[0].substring(0, 2) || 'Dr').toUpperCase();
+
+  const availabilityStrLower = availabilityStr.toLowerCase();
+  const statusBadge = availabilityStrLower.includes('today') || doc.status === 'Active' ? 'badge-green' : 'badge-yellow';
+  const statusText = availabilityStrLower.includes('today') || doc.status === 'Active' ? 'Available Today' : 'Tomorrow';
+
+  const detailsContainer = document.getElementById('doc-profile-details-content');
+  if (detailsContainer) {
+    detailsContainer.innerHTML = `
+      <div style="text-align:center; padding:0.5rem 0 1rem;">
+        <div class="avatar ${borderClass}" style="width:72px;height:72px;font-size:1.5rem;margin:0 auto 0.75rem; font-weight:700; display:flex; align-items:center; justify-content:center;">${initials}</div>
+        <h4 style="font-size:1.3rem; font-weight:700; margin-bottom: 0.25rem; color:var(--text);">${doc.name}</h4>
+        <div class="text-muted" style="font-weight: 500; font-size: 0.9rem; margin-bottom: 0.5rem;">${specialtyStr}</div>
+        <div style="display: flex; gap: 0.4rem; justify-content: center; align-items: center;">
+          <span class="badge badge-teal">${degreeStr}</span>
+          <span class="badge ${statusBadge}">${statusText}</span>
+          <span style="font-size:0.88rem; font-weight:600; color:var(--text2); display:flex; align-items:center; gap:2px;">⭐ ${ratingVal}</span>
+        </div>
+      </div>
+      <hr class="divider" style="margin: 0.75rem 0 1rem; border-color:var(--border);">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; font-size: 0.88rem; color:var(--text2);">
+        <div>
+          <div style="font-weight:600; color:var(--text3); margin-bottom: 0.2rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Affiliated Hospital</div>
+          <div style="font-size:0.92rem; font-weight:500; color:var(--text);">🏢 ${hospitalStr}</div>
+        </div>
+        <div>
+          <div style="font-weight:600; color:var(--text3); margin-bottom: 0.2rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Consultation Fee</div>
+          <div style="font-size:0.92rem; font-weight:600; color:var(--primary);">💰 ₹${feeVal} / consult</div>
+        </div>
+        <div>
+          <div style="font-weight:600; color:var(--text3); margin-bottom: 0.2rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Experience</div>
+          <div style="font-size:0.92rem; font-weight:500; color:var(--text);">⏱️ ${expStr} of Practice</div>
+        </div>
+        <div>
+          <div style="font-weight:600; color:var(--text3); margin-bottom: 0.2rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">License Number</div>
+          <div style="font-size:0.92rem; font-family: monospace; font-weight:500; color:var(--text);">📋 ${licenseStr}</div>
+        </div>
+        <div>
+          <div style="font-weight:600; color:var(--text3); margin-bottom: 0.2rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Availability Schedule</div>
+          <div style="font-size:0.92rem; font-weight:500; color:var(--text);">📅 ${availabilityStr}</div>
+        </div>
+        <div>
+          <div style="font-weight:600; color:var(--text3); margin-bottom: 0.2rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Total Consultations</div>
+          <div style="font-size:0.92rem; font-weight:500; color:var(--text);">✅ ${consultationsCount} Completed</div>
+        </div>
+      </div>
+      <hr class="divider" style="margin: 1rem 0 1rem; border-color:var(--border);">
+      <div>
+        <div style="font-weight:600; color:var(--text3); margin-bottom: 0.4rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Clinical Profile & Bio</div>
+        <p style="font-size:0.85rem; color:var(--text2); line-height: 1.5; margin: 0;">
+          Dr. ${nameParts[nameParts.length - 1]} is a certified specialist in ${specialtyStr} at ${hospitalStr} with over ${expStr} of clinical experience. Dedicated to providing patient-centered care, offering expert consultations, and designing personalized medical treatment plans for optimal health outcomes.
+        </p>
+      </div>
+    `;
+  }
+
+  // Setup Book Appointment button trigger
+  const bookBtn = document.getElementById('btn-doc-profile-book');
+  if (bookBtn) {
+    // Clear old event listener to prevent duplicate triggers
+    const newBookBtn = bookBtn.cloneNode(true);
+    bookBtn.parentNode.replaceChild(newBookBtn, bookBtn);
+    newBookBtn.addEventListener('click', () => {
+      closeModal('viewDocProfileModal');
+      openBookAppointmentModal(docId);
+    });
+  }
+
+  openModal('viewDocProfileModal');
+}
+
 function filterPatients() {
   const q = document.getElementById('d-patient-search').value.toLowerCase();
   const condition = document.getElementById('d-patient-condition-filter').value;
@@ -2291,30 +2617,36 @@ function filterPatients() {
 async function loadAdminData() {
   try {
     const res = await fetch(`${API_BASE}/admin/logs`);
-    const data = await res.json();
+    const data = await safeJson(res);
+    if (!data) throw new Error('Admin logs endpoint unavailable');
 
     // Update stats counters
     const statPat = document.getElementById('a-stat-patients');
     const statDoc = document.getElementById('a-stat-doctors');
-    if (statPat) statPat.textContent = data.stats.totalPatients.toLocaleString();
-    if (statDoc) statDoc.textContent = data.stats.activeDoctors.toLocaleString();
+    if (statPat && data.stats) statPat.textContent = data.stats.totalPatients.toLocaleString();
+    if (statDoc && data.stats) statDoc.textContent = data.stats.activeDoctors.toLocaleString();
 
     // Render logs
-    renderAdminLogs(data.logs);
+    if (Array.isArray(data.logs)) renderAdminLogs(data.logs);
 
     // Fetch users for list
     const resUsers = await fetch(`${API_BASE}/patients`);
-    const patientsList = await resUsers.json();
-    patients = patientsList;
-    const resDocs = await fetch(`${API_BASE}/doctors`);
-    doctorsData = await resDocs.json();
+    const patientsList = await safeJson(resUsers);
+    const validPatients = Array.isArray(patientsList) ? patientsList : [];
+    patients = validPatients;
 
-    renderAdminUsersList(patientsList, doctorsData);
-    renderAdminDoctorsTable(doctorsData);
+    const resDocs = await fetch(`${API_BASE}/doctors`);
+    const docsList = await safeJson(resDocs);
+    const validDocs = Array.isArray(docsList) ? docsList : [];
+    doctorsData = validDocs;
+
+    renderAdminUsersList(validPatients, validDocs);
+    renderAdminDoctorsTable(validDocs);
 
     // Fetch appointments for admin list
     const resAppt = await fetch(`${API_BASE}/appointments`);
-    appointmentsData = await resAppt.json();
+    const appts = await safeJson(resAppt);
+    if (Array.isArray(appts)) appointmentsData = appts;
     renderAdminAppointments();
 
     // Render reports & analytics
@@ -2782,10 +3114,11 @@ async function joinVideoRoom(appointmentId, partnerName) {
   // Resolve appointmentId if not passed
   if (!appointmentId) {
     // Try to find a confirmed video appointment in appointmentsData
+    const myProfileId = currentUser?.profile?.id;
     const activeAppt = appointmentsData.find(a => 
       a.status === 'Confirmed' && 
       a.type === 'Video' && 
-      (a.patientId === currentUser?.id || a.doctorId === currentUser?.id)
+      (a.patientId === myProfileId || a.doctorId === myProfileId)
     );
     if (activeAppt) {
       appointmentId = activeAppt.id;
@@ -2797,7 +3130,7 @@ async function joinVideoRoom(appointmentId, partnerName) {
 
   // Call the Backend verification slot lock
   try {
-    const userId = currentUser ? currentUser.id : (currentRole === 'doctor' ? 'D-101' : 'P-10421');
+    const userId = currentUser && currentUser.profile ? currentUser.profile.id : (currentRole === 'doctor' ? 'D-101' : 'P-10421');
     const res = await fetch(`${API_BASE}/appointments/verify-room`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -2833,7 +3166,6 @@ window.submitEditUserAdmin = submitEditUserAdmin;
 window.switchCallTab = switchCallTab;
 window.sendReaction = sendReaction;
 window.viewDoctorProfile = viewDoctorProfile;
-
 function startMeetClock() {
   const clockEl = document.getElementById('meetClock');
   if (!clockEl) return;
@@ -2848,3 +3180,232 @@ function startMeetClock() {
   updateClock();
   setInterval(updateClock, 30000); // update clock every 30 seconds
 }
+
+// ── PATIENT PORTAL UTILITY FUNCTIONS ──
+function openSearchModal() {
+  const input = document.getElementById('global-search-input');
+  if (input) {
+    input.value = '';
+  }
+  const results = document.getElementById('global-search-results');
+  if (results) {
+    results.innerHTML = '<div class="text-muted text-center" style="padding: 2rem 0; text-align: center; color: var(--text3);">Type to search doctors, appointments, prescriptions...</div>';
+  }
+  openModal('pSearchModal');
+  setTimeout(() => input?.focus(), 100);
+}
+
+function openNotificationsModal() {
+  renderNotificationsList();
+  openModal('pNotifModal');
+}
+
+function clearNotifications() {
+  notificationsData = [];
+  updateNotificationsBadge();
+  renderNotificationsList();
+}
+
+function updateNotificationsBadge() {
+  const badge = document.getElementById('p-notif-badge');
+  if (badge) {
+    const unreadCount = notificationsData.filter(n => !n.read).length;
+    if (unreadCount > 0) {
+      badge.textContent = unreadCount;
+      badge.style.display = 'inline-block';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+}
+
+function renderNotificationsList() {
+  const container = document.getElementById('notifications-list');
+  if (!container) return;
+  container.innerHTML = '';
+  
+  if (notificationsData.length === 0) {
+    container.innerHTML = '<div class="text-muted text-center" style="padding: 2rem 0; text-align: center; color: var(--text3);">No notifications</div>';
+    return;
+  }
+  
+  notificationsData.forEach(notif => {
+    const div = document.createElement('div');
+    div.className = `notification-item ${notif.read ? 'read' : 'unread'}`;
+    div.style.cssText = `
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius-sm);
+      background: ${notif.read ? 'var(--surface2)' : 'rgba(14, 165, 233, 0.15)'};
+      border-left: 3px solid ${notif.read ? 'transparent' : 'var(--primary-light)'};
+      cursor: ${notif.page ? 'pointer' : 'default'};
+      margin-bottom: 0.5rem;
+      transition: all 0.2s;
+    `;
+    
+    div.innerHTML = `
+      <div style="font-size: 0.88rem; font-weight: ${notif.read ? 'normal' : '500'}; color: var(--text);">
+        ${notif.text}
+      </div>
+      <div style="font-size: 0.75rem; color: var(--text3); margin-top: 0.25rem;">
+        ${notif.time}
+      </div>
+    `;
+    
+    if (notif.page) {
+      div.addEventListener('click', () => {
+        notif.read = true;
+        updateNotificationsBadge();
+        closeModal('pNotifModal');
+        showPage('p', notif.page, document.querySelector(`#patient-nav [data-page="${notif.page}"]`));
+      });
+    } else {
+      div.addEventListener('click', () => {
+        notif.read = true;
+        updateNotificationsBadge();
+        renderNotificationsList();
+      });
+    }
+    
+    container.appendChild(div);
+  });
+}
+
+function handleGlobalSearch(e) {
+  const query = e.target.value.trim().toLowerCase();
+  const resultsContainer = document.getElementById('global-search-results');
+  if (!resultsContainer) return;
+  
+  if (!query) {
+    resultsContainer.innerHTML = '<div class="text-muted text-center" style="padding: 2rem 0; text-align: center; color: var(--text3);">Type to search...</div>';
+    return;
+  }
+  
+  const patId = patientData ? patientData.id : 'P-10421';
+  
+  const matchedDocs = doctorsData.filter(d => 
+    d.name.toLowerCase().includes(query) || 
+    (d.specialty && d.specialty.toLowerCase().includes(query)) ||
+    (d.hospital && d.hospital.toLowerCase().includes(query))
+  );
+  
+  const matchedAppts = appointmentsData.filter(a => 
+    a.patientId === patId && 
+    (a.doctorName.toLowerCase().includes(query) || 
+     a.reason.toLowerCase().includes(query) ||
+     a.status.toLowerCase().includes(query))
+  );
+  
+  const matchedRx = prescriptionsData.filter(r => 
+    r.patientId === patId && 
+    (r.medicineName.toLowerCase().includes(query) || 
+     r.doctorName.toLowerCase().includes(query) ||
+     r.status.toLowerCase().includes(query))
+  );
+  
+  const matchedReports = reportsData.filter(rep => 
+    rep.patientId === patId && 
+    (rep.testName.toLowerCase().includes(query) || 
+     rep.lab.toLowerCase().includes(query) ||
+     rep.status.toLowerCase().includes(query))
+  );
+  
+  const totalMatches = matchedDocs.length + matchedAppts.length + matchedRx.length + matchedReports.length;
+  
+  if (totalMatches === 0) {
+    resultsContainer.innerHTML = '<div class="text-muted text-center" style="padding: 2rem 0; text-align: center; color: var(--text3);">No matching results found</div>';
+    return;
+  }
+  
+  resultsContainer.innerHTML = '';
+  
+  // Doctors
+  if (matchedDocs.length > 0) {
+    const category = document.createElement('div');
+    category.style.cssText = 'padding: 0.5rem 1rem; background: var(--surface2); font-weight: bold; font-size: 0.8rem; text-transform: uppercase; color: var(--primary-light); margin-top: 0.5rem; border-radius: var(--radius-sm);';
+    category.textContent = 'Doctors';
+    resultsContainer.appendChild(category);
+    
+    matchedDocs.forEach(doc => {
+      const item = document.createElement('div');
+      item.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border);';
+      item.innerHTML = `
+        <div>
+          <div class="font-semibold" style="color: var(--text);">${doc.name}</div>
+          <div class="text-muted" style="font-size: 0.75rem;">${doc.specialty} • ${doc.hospital}</div>
+        </div>
+        <button class="btn btn-sm btn-primary" onclick="closeModal('pSearchModal'); window.openBookAppointmentModal('${doc.id}')">Book</button>
+      `;
+      resultsContainer.appendChild(item);
+    });
+  }
+  
+  // Appointments
+  if (matchedAppts.length > 0) {
+    const category = document.createElement('div');
+    category.style.cssText = 'padding: 0.5rem 1rem; background: var(--surface2); font-weight: bold; font-size: 0.8rem; text-transform: uppercase; color: var(--primary-light); margin-top: 0.5rem; border-radius: var(--radius-sm);';
+    category.textContent = 'Appointments';
+    resultsContainer.appendChild(category);
+    
+    matchedAppts.forEach(appt => {
+      const item = document.createElement('div');
+      item.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border);';
+      const formattedDate = new Date(appt.dateTime).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      item.innerHTML = `
+        <div>
+          <div class="font-semibold" style="color: var(--text);">${appt.doctorName}</div>
+          <div class="text-muted" style="font-size: 0.75rem;">${formattedDate} • ${appt.reason} (${appt.type})</div>
+        </div>
+        <span class="badge ${appt.status === 'Confirmed' ? 'badge-green' : appt.status === 'Cancelled' ? 'badge-red' : 'badge-gray'}">${appt.status}</span>
+      `;
+      resultsContainer.appendChild(item);
+    });
+  }
+  
+  // Prescriptions
+  if (matchedRx.length > 0) {
+    const category = document.createElement('div');
+    category.style.cssText = 'padding: 0.5rem 1rem; background: var(--surface2); font-weight: bold; font-size: 0.8rem; text-transform: uppercase; color: var(--primary-light); margin-top: 0.5rem; border-radius: var(--radius-sm);';
+    category.textContent = 'Prescriptions';
+    resultsContainer.appendChild(category);
+    
+    matchedRx.forEach(rx => {
+      const item = document.createElement('div');
+      item.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border);';
+      item.innerHTML = `
+        <div>
+          <div class="font-semibold" style="color: var(--text);">${rx.medicineName}</div>
+          <div class="text-muted" style="font-size: 0.75rem;">${rx.dosage} • By ${rx.doctorName}</div>
+        </div>
+        <span class="badge ${rx.status === 'Active' ? 'badge-green' : 'badge-yellow'}">${rx.status}</span>
+      `;
+      resultsContainer.appendChild(item);
+    });
+  }
+  
+  // Lab Reports
+  if (matchedReports.length > 0) {
+    const category = document.createElement('div');
+    category.style.cssText = 'padding: 0.5rem 1rem; background: var(--surface2); font-weight: bold; font-size: 0.8rem; text-transform: uppercase; color: var(--primary-light); margin-top: 0.5rem; border-radius: var(--radius-sm);';
+    category.textContent = 'Lab Reports';
+    resultsContainer.appendChild(category);
+    
+    matchedReports.forEach(rep => {
+      const item = document.createElement('div');
+      item.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border);';
+      item.innerHTML = `
+        <div>
+          <div class="font-semibold" style="color: var(--text);">${rep.testName}</div>
+          <div class="text-muted" style="font-size: 0.75rem;">${rep.date} • ${rep.lab}</div>
+        </div>
+        <button class="btn btn-sm btn-ghost" onclick="closeModal('pSearchModal'); window.viewDocument('${rep.testName}')">View</button>
+      `;
+      resultsContainer.appendChild(item);
+    });
+  }
+}
+
+// Global Exposures
+window.openSearchModal = openSearchModal;
+window.openNotificationsModal = openNotificationsModal;
+window.closeModal = closeModal;
+window.openModal = openModal;

@@ -1,15 +1,13 @@
-import mongoose from "mongoose";
-import dotenv from "dotenv";
+import connectDB from "./backend/config/db.js";
 import User from "./backend/models/User.js";
 
-dotenv.config({ path: "./backend/.env" });
+console.log("Initializing database connection...");
 
-const uri = process.env.MONGO_URI || "mongodb://localhost:27017/medxpert";
-console.log("Connecting to:", uri);
-
-mongoose.connect(uri)
+connectDB()
     .then(async () => {
-        console.log("Connected successfully!");
+        // Wait a brief moment to ensure async seeding completes if mock DB was activated
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
         const count = await User.countDocuments({});
         console.log("Total users in database:", count);
         if (count > 0) {
@@ -22,3 +20,4 @@ mongoose.connect(uri)
         console.error("Connection failed:", err.message);
         process.exit(1);
     });
+

@@ -1,5 +1,16 @@
 import mongoose from "mongoose";
 import dotenv from "dotenv";
+
+// Ensure all models are registered on mongoose.models for the In-Memory Mock DB
+import "../models/User.js";
+import "../models/Doctor.js";
+import "../models/Patient.js";
+import "../models/Appointment.js";
+import "../models/Prescription.js";
+import "../models/LabReport.js";
+import "../models/ActivityLog.js";
+import "../models/SystemSetting.js";
+
 dotenv.config();
 
 const connectDB = async () => {
@@ -15,11 +26,11 @@ const connectDB = async () => {
         console.warn(`⚠️  MongoDB Connection failed: ${error.message}`);
         console.warn(`👉 Activating ultra-fast, zero-dependency In-Memory JS Database Mock...`);
         
-        setupInMemoryMock();
+        await setupInMemoryMock();
     }
 };
 
-function setupInMemoryMock() {
+async function setupInMemoryMock() {
     const memDB = {};
 
     // Mock connection
@@ -62,6 +73,12 @@ function setupInMemoryMock() {
             return this;
         }
         select() {
+            return this;
+        }
+        populate() {
+            return this;
+        }
+        lean() {
             return this;
         }
         async exec() {
@@ -118,12 +135,35 @@ function setupInMemoryMock() {
         return true;
     }
 
+    function applyUpdate(inst, updateObj) {
+        // Handle both plain objects and $set style updates
+        const fields = updateObj.$set || updateObj;
+        for (const [key, val] of Object.entries(fields)) {
+            if (!key.startsWith('$')) {
+                inst[key] = val;
+            }
+        }
+    }
+
     function wrapDoc(doc, Model, name) {
         if (!doc) return doc;
         const inst = doc instanceof Model ? doc : new Model(doc);
+        // Copy all plain-object fields onto the instance so they are accessible
+        if (doc && typeof doc === 'object') {
+            for (const key of Object.keys(doc)) {
+                if (!(key in inst) || inst[key] === undefined) {
+                    inst[key] = doc[key];
+                }
+            }
+        }
         inst.save = async function() {
             const index = memDB[name].findIndex(x => String(x._id) === String(inst._id));
             if (index >= 0) {
+                // Merge all current instance fields back into the stored entry
+                const stored = memDB[name][index];
+                for (const key of Object.keys(inst)) {
+                    stored[key] = inst[key];
+                }
                 memDB[name][index] = inst;
             } else {
                 memDB[name].push(inst);
@@ -153,6 +193,52 @@ function setupInMemoryMock() {
             return new MockQuery(wrapDoc(found, Model, name));
         };
 
+        Model.findByIdAndDelete = async function(id) {
+            const index = memDB[name].findIndex(x => String(x._id) === String(id));
+            if (index >= 0) {
+                const deleted = memDB[name][index];
+                memDB[name].splice(index, 1);
+                return deleted;
+            }
+            return null;
+        };
+
+        Model.findOneAndDelete = async function(filter) {
+            const index = memDB[name].findIndex(x => matchFilter(x, filter));
+            if (index >= 0) {
+                const deleted = memDB[name][index];
+                memDB[name].splice(index, 1);
+                return deleted;
+            }
+            return null;
+        };
+
+        Model.findOneAndUpdate = async function(filter, update, options = {}) {
+            const index = memDB[name].findIndex(x => matchFilter(x, filter));
+            if (index < 0) return null;
+
+            const existing = memDB[name][index];
+            applyUpdate(existing, update);
+
+            if (options.new) {
+                return wrapDoc(existing, Model, name);
+            }
+            return wrapDoc(existing, Model, name);
+        };
+
+        Model.findByIdAndUpdate = async function(id, update, options = {}) {
+            const index = memDB[name].findIndex(x => String(x._id) === String(id));
+            if (index < 0) return null;
+
+            const existing = memDB[name][index];
+            applyUpdate(existing, update);
+
+            if (options.new) {
+                return wrapDoc(existing, Model, name);
+            }
+            return wrapDoc(existing, Model, name);
+        };
+
         Model.create = async function(docs) {
             const isArray = Array.isArray(docs);
             const docList = isArray ? docs : [docs];
@@ -161,6 +247,12 @@ function setupInMemoryMock() {
                 const inst = new Model(doc);
                 if (!inst._id) {
                     inst._id = new mongoose.Types.ObjectId().toString();
+                }
+                // Copy plain fields onto inst
+                for (const key of Object.keys(doc)) {
+                    if (inst[key] === undefined) {
+                        inst[key] = doc[key];
+                    }
                 }
                 inst.save = async function() {
                     const index = memDB[name].findIndex(x => String(x._id) === String(inst._id));
@@ -198,13 +290,13 @@ function setupInMemoryMock() {
 
     // Load and execute seeding function
     console.log("🌱 Seeding in-memory database mock...");
-    import("../seed/seedDataHelper.js").then(({ seedDatabaseForInMemory }) => {
-        seedDatabaseForInMemory().then(() => {
-            console.log("✅ In-memory database mock seeded successfully!");
-        });
-    }).catch(err => {
+    try {
+        const { seedDatabaseForInMemory } = await import("../seed/seedDataHelper.js");
+        await seedDatabaseForInMemory();
+        console.log("✅ In-memory database mock seeded successfully!");
+    } catch (err) {
         console.error("❌ Failed to seed in-memory mock:", err);
-    });
+    }
 }
 
 export default connectDB;

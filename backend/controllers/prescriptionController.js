@@ -3,8 +3,6 @@ import Patient from "../models/Patient.js";
 import Doctor from "../models/Doctor.js";
 import ActivityLog from "../models/ActivityLog.js";
 import { signPrescription, verifyPrescription } from "../cryptoHelper.js";
-import PDFDocument from "pdfkit";
-import QRCode from "qrcode";
 
 const addLog = async (user, action, status = "Success", ip = "127.0.0.1") => {
     const time = new Date().toTimeString().split(' ')[0];
@@ -89,6 +87,9 @@ const issuePrescription = async (req, res) => {
 // @access  Public
 const downloadPrescriptionPDF = async (req, res) => {
     try {
+        const PDFDocument = (await import("pdfkit")).default;
+        const QRCode = (await import("qrcode")).default;
+
         const { id } = req.params;
         const rx = await Prescription.findOne({ id });
 

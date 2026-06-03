@@ -112,7 +112,7 @@
         <button class="menu-toggle-btn" id="p-menu-toggle" aria-label="Toggle Menu">☰</button>
         <h2 id="pPageTitle">Dashboard</h2>
         <div class="topbar-actions">
-          <div class="icon-btn" title="Notifications" id="p-notif-bell">🔔</div>
+          <div class="icon-btn" title="Notifications" id="p-notif-bell" style="position: relative;">🔔<span id="p-notif-badge" class="nav-badge" style="position: absolute; top: -5px; right: -5px; background: var(--warning); margin: 0; padding: 0.15rem 0.35rem; font-size: 0.65rem; display: none;">0</span></div>
           <div class="icon-btn" title="Search" id="p-search-trigger">🔍</div>
         </div>
       </div>
@@ -525,17 +525,18 @@
         <div class="grid-2">
           <div class="card">
             <div style="text-align:center;padding:1rem 0 1.5rem;">
-              <div class="avatar avatar-blue" style="width:80px;height:80px;font-size:1.5rem;margin:0 auto 1rem;">SJ</div>
-              <div style="font-size:1.2rem;font-weight:700;">Dr. Shreya Joshi</div>
-              <div class="text-muted">MBBS, MD – General Medicine</div>
+              <div class="avatar avatar-blue" style="width:80px;height:80px;font-size:1.5rem;margin:0 auto 1rem;" id="d-profile-avatar">SJ</div>
+              <div style="font-size:1.2rem;font-weight:700;" id="d-profile-name">Dr. Shreya Joshi</div>
+              <div class="text-muted" id="d-profile-degree-specialty">MBBS, MD – General Medicine</div>
               <div style="margin-top:.75rem;"><span class="badge badge-blue">Verified Doctor</span></div>
             </div>
             <hr class="divider">
             <div class="space-y" style="font-size:.88rem;">
-              <div class="flex justify-between"><span class="text-muted">License No.</span><span>MCI-2014-08821</span></div>
-              <div class="flex justify-between"><span class="text-muted">Experience</span><span>12 years</span></div>
-              <div class="flex justify-between"><span class="text-muted">Hospital</span><span>City Medical Center</span></div>
-              <div class="flex justify-between"><span class="text-muted">Consultation Fee</span><span>₹500</span></div>
+              <div class="flex justify-between"><span class="text-muted">License No.</span><span id="d-profile-license">MCI-2014-08821</span></div>
+              <div class="flex justify-between"><span class="text-muted">Experience</span><span id="d-profile-exp">12 years</span></div>
+              <div class="flex justify-between"><span class="text-muted">Hospital</span><span id="d-profile-hospital">City Medical Center</span></div>
+              <div class="flex justify-between"><span class="text-muted">Consultation Fee</span><span id="d-profile-fee">₹500</span></div>
+              <div class="flex justify-between"><span class="text-muted">Availability</span><span id="d-profile-availability">Available Today</span></div>
             </div>
             <button class="btn btn-outline w-full mt-3" style="justify-content:center;" id="btn-d-profile-edit">Edit Profile</button>
           </div>
@@ -971,6 +972,58 @@
     </div>
   </div>
 
+  <!-- Edit Doctor Profile Modal -->
+  <div id="editDoctorProfileModal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>👨‍⚕️ Edit Doctor Profile</h3>
+        <button class="modal-close modal-cancel" data-modal="editDoctorProfileModal">✕</button>
+      </div>
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" class="form-control" id="edit-d-name" placeholder="Full name">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Specialty</label>
+          <input type="text" class="form-control" id="edit-d-specialty" placeholder="e.g. General Medicine">
+        </div>
+        <div class="form-group">
+          <label>Degree(s)</label>
+          <input type="text" class="form-control" id="edit-d-degree" placeholder="e.g. MBBS, MD">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Experience</label>
+          <input type="text" class="form-control" id="edit-d-exp" placeholder="e.g. 12 yrs">
+        </div>
+        <div class="form-group">
+          <label>Consultation Fee</label>
+          <input type="text" class="form-control" id="edit-d-fee" placeholder="e.g. 500">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>License No.</label>
+          <input type="text" class="form-control" id="edit-d-license" placeholder="e.g. MCI-2014-08821">
+        </div>
+        <div class="form-group">
+          <label>Affiliated Hospital</label>
+          <input type="text" class="form-control" id="edit-d-hospital" placeholder="e.g. City Medical Center">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Availability Status</label>
+        <input type="text" class="form-control" id="edit-d-availability" placeholder="e.g. Available Today">
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost modal-cancel" data-modal="editDoctorProfileModal">Cancel</button>
+        <button class="btn btn-primary" id="btn-edit-d-profile-submit">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
   <!-- View Doctor Profile Modal -->
   <div id="viewDocProfileModal" class="modal-overlay">
     <div class="modal" style="max-width: 600px;">
@@ -984,6 +1037,43 @@
       <div class="modal-footer" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); margin-bottom: 0;">
         <button class="btn btn-ghost modal-cancel" data-modal="viewDocProfileModal">Close</button>
         <button class="btn btn-primary" id="btn-doc-profile-book">Book Appointment</button>
+      </div>
+    </div>
+  </div>
+  <!-- Spotlight Search Modal -->
+  <div id="pSearchModal" class="modal-overlay">
+    <div class="modal" style="max-width: 650px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-xl); border-radius: var(--radius);">
+      <div class="modal-header" style="border-bottom: 1px solid var(--border); padding-bottom: 1rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="margin: 0; color: var(--text);">🔍 Search MedXpert</h3>
+        <button class="modal-close modal-cancel" data-modal="pSearchModal" style="background: transparent; border: none; font-size: 1.25rem; color: var(--text3); cursor: pointer;">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 0;">
+        <input type="text" id="global-search-input" class="form-control" placeholder="Search doctors, appointments, prescriptions, reports..." style="font-size: 1.1rem; padding: 0.75rem; margin-bottom: 1rem; width: 100%; box-sizing: border-box; background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: var(--radius-sm);">
+        <div id="global-search-results" style="max-height: 400px; overflow-y: auto;">
+          <div class="text-muted text-center" style="padding: 2rem 0; text-align: center; color: var(--text3);">Type to start searching...</div>
+        </div>
+      </div>
+      <div class="modal-footer" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); margin-bottom: 0; display: flex; justify-content: flex-end;">
+        <button class="btn btn-ghost modal-cancel" data-modal="pSearchModal">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notifications Modal -->
+  <div id="pNotifModal" class="modal-overlay">
+    <div class="modal" style="max-width: 500px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-xl); border-radius: var(--radius);">
+      <div class="modal-header" style="border-bottom: 1px solid var(--border); padding-bottom: 1rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="margin: 0; color: var(--text);">🔔 Notifications</h3>
+        <button class="modal-close modal-cancel" data-modal="pNotifModal" style="background: transparent; border: none; font-size: 1.25rem; color: var(--text3); cursor: pointer;">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 0;">
+        <div id="notifications-list" class="space-y" style="max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem;">
+          <!-- Dynamically populated notifications -->
+        </div>
+      </div>
+      <div class="modal-footer" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); margin-bottom: 0; display: flex; justify-content: space-between; width: 100%; box-sizing: border-box;">
+        <button class="btn btn-ghost" id="btn-clear-notifications">Clear All</button>
+        <button class="btn btn-primary modal-cancel" data-modal="pNotifModal">Close</button>
       </div>
     </div>
   </div>
@@ -1002,41 +1092,6 @@
 
     <!-- Main call screen tile (matches screenshot) -->
     <div class="video-main">
-      <div class="video-feed">
-        <!-- Remote Participant Webcam Image Simulation -->
-        <img id="partnerVideoImage" style="width: 100%; height: 100%; object-fit: cover; border-radius: inherit; display: none; position: absolute; inset: 0; z-index: 1;" alt="Consultation Live Video Feed">
-        
-        <!-- Remote Peer Live Video Feed -->
-        <video id="remoteVideo" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover; border-radius: inherit; display: none; position: absolute; inset: 0; z-index: 1; background: #000;"></video>
-        
-        <!-- Screen Share Viewport -->
-        <video id="mainScreenShareVideo" autoplay playsinline style="width: 100%; height: 100%; object-fit: contain; border-radius: inherit; display: none; position: absolute; inset: 0; z-index: 2; background: #000;"></video>
-        
-        <!-- Recording Overlay Badge -->
-        <div class="rec-indicator" id="recIndicatorBadge" style="display: none; align-items: center; gap: 0.4rem; background: rgba(0,0,0,0.6); padding: 0.35rem 0.65rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700; color: white; position: absolute; top: 1rem; left: 1rem; z-index: 4;">
-          <span style="width: 8px; height: 8px; border-radius: 50%; background: #ef4444;" class="rec-dot"></span>
-          <span>REC</span>
-          <span id="recTimer">00:00</span>
-        </div>
-        
-        <!-- Emoji Reactions Animation Layer -->
-        <div class="reactions-layer" id="videoReactionsLayer" style="position: absolute; inset: 0; pointer-events: none; z-index: 5; overflow: hidden;"></div>
-        
-        <div class="pulse-ring" id="videoPulseRing"></div>
-        <div style="display: flex; align-items: center; gap: 0.5rem; color: rgba(255,255,255,0.7); z-index: 3;" id="video-partner-name-wrapper">
-          <span id="video-partner-name">Dr. Sarah Johnson · Connecting...</span>
-          <div class="audio-indicator-bars" id="partner-audio-bars" style="display: none; align-items: flex-end; gap: 2px; height: 12px; width: 14px;">
-            <div class="audio-bar" style="height: 4px; width: 2px; background: #22c55e;"></div>
-            <div class="audio-bar" style="height: 8px; width: 2px; background: #22c55e;"></div>
-            <div class="audio-bar" style="height: 6px; width: 2px; background: #22c55e;"></div>
-            <div class="audio-bar" style="height: 10px; width: 2px; background: #22c55e;"></div>
-          </div>
-        </div>
-        <div style="color:rgba(255,255,255,.4);font-size:.8rem;margin-top:.5rem; z-index: 3;" id="video-partner-sub">Secure end-to-end encrypted call</div>
-        
-        <div class="video-self" style="z-index: 3;">
-          <video id="localVideo" autoplay muted playsinline style="width: 100%; height: 100%; object-fit: cover; border-radius: inherit; transform: scaleX(-1); display: none;"></video>
-          <span id="localVideoPlaceholder">You (Camera Off)</span>
       <div class="video-feed-wrapper">
         <div class="video-feed meet-main-tile">
           <!-- The main participant video feed (camera active) -->
@@ -1263,7 +1318,6 @@
     </div>
   </div>
 
-  <script src="/socket.io/socket.io.js"></script>
   <script type="module" src="./src/main.js"></script>
 </body>
 </html>
