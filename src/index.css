@@ -1980,4 +1980,114 @@ select.form-control {
   display: none;
 }
 
+/* ── CALENDAR STYLES ── */
+.calendar-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+.calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+.calendar-header h4 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+.calendar-header-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  text-align: center;
+}
+.calendar-day-header {
+  font-weight: 700;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  color: var(--text3);
+  padding: 0.5rem 0;
+}
+.calendar-day {
+  min-height: 72px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.35rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-end;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: white;
+}
+.calendar-day:hover {
+  background: var(--bg);
+  border-color: var(--primary-light);
+}
+.calendar-day.empty {
+  background: var(--surface2);
+  border: 1px dashed var(--border);
+  cursor: default;
+}
+.calendar-day.empty:hover {
+  background: var(--surface2);
+  border-color: var(--border);
+}
+.calendar-day.today {
+  border: 2px solid var(--primary-light);
+  background: var(--success-bg);
+}
+.calendar-day.active {
+  background: #ccfbf1;
+  border-color: var(--primary);
+}
+.calendar-day .day-num {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text2);
+}
+.calendar-day .appt-indicators {
+  display: flex;
+  gap: 4px;
+  width: 100%;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+}
+.appt-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.appt-dot.video {
+  background: var(--info);
+  box-shadow: 0 0 4px var(--info);
+}
+.appt-dot.in-clinic {
+  background: var(--primary-light);
+  box-shadow: 0 0 4px var(--primary-light);
+}
+.calendar-appt-list-item {
+  padding: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.calendar-appt-list-item:hover {
+  border-color: var(--primary-light);
+  box-shadow: var(--shadow);
+}
+
 

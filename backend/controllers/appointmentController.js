@@ -66,7 +66,7 @@ const bookAppointment = async (req, res) => {
             time: dateTime ? new Date(dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "10:00 AM",
             dateTime: dateTime || new Date().toISOString(),
             type: type || "Video Consultation",
-            status: "Confirmed",
+            status: req.body.status || "Pending",
             reason: reason || "General Consult"
         });
 
@@ -74,6 +74,83 @@ const bookAppointment = async (req, res) => {
 
         const allAppointments = await Appointment.find({});
         res.json({ success: true, message: "Appointment booked successfully", appointments: allAppointments });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Get available slots for a doctor on a specific date
+// @route   GET /api/appointments/available-slots
+// @access  Private
+const getAvailableSlots = async (req, res) => {
+    try {
+        const { doctorId, date } = req.query;
+        if (!doctorId || !date) {
+            return res.status(400).json({ error: "Doctor ID and date are required" });
+        }
+
+        // Find all appointments for doctor on date (excluding cancelled ones)
+        const appointments = await Appointment.find({
+            doctorId,
+            date,
+            status: { $ne: "Cancelled" }
+        });
+
+        // Hardcoded standard time slots
+        const standardSlots = [
+            "09:00 AM", "09:30 AM", "10:00 AM", "10:30 AM", 
+            "11:00 AM", "11:30 AM", "02:00 PM", "02:30 PM", 
+            "03:00 PM", "03:30 PM", "04:00 PM", "04:30 PM"
+        ];
+
+        // Filter out already booked slots
+        const bookedTimes = appointments.map(appt => appt.time);
+        const availableSlots = standardSlots.filter(slot => !bookedTimes.includes(slot));
+
+        res.json({ success: true, slots: availableSlots });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Reschedule an appointment
+// @route   POST /api/appointments/reschedule/:id
+// @access  Private
+const rescheduleAppointment = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { dateTime, rescheduledBy } = req.body;
+
+        if (!dateTime) {
+            return res.status(400).json({ error: "New date and time are required" });
+        }
+
+        const appointment = await Appointment.findOne({ id });
+        if (!appointment) {
+            return res.status(404).json({ error: "Appointment not found" });
+        }
+
+        const date = dateTime.split("T")[0];
+        const time = new Date(dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        appointment.date = date;
+        appointment.time = time;
+        appointment.dateTime = dateTime;
+        
+        // If patient rescheduled, status becomes Pending (needs doctor approval). If doctor/admin rescheduled, it remains Confirmed or becomes Confirmed.
+        if (rescheduledBy === "patient") {
+            appointment.status = "Pending";
+        } else {
+            appointment.status = "Confirmed";
+        }
+
+        await appointment.save();
+
+        const logMsg = `Rescheduled appointment slot ID: ${appointment.id} to ${date} at ${time}`;
+        await addLog(appointment.patientName, logMsg);
+
+        const allAppointments = await Appointment.find({});
+        res.json({ success: true, message: "Appointment rescheduled successfully", appointments: allAppointments });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -172,5 +249,7 @@ export {
     bookAppointment,
     cancelAppointment,
     verifyRoomAccess,
-    updateAppointmentStatus
+    updateAppointmentStatus,
+    getAvailableSlots,
+    rescheduleAppointment
 };

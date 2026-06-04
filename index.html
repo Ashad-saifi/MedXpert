@@ -167,31 +167,54 @@
 
       <!-- PATIENT APPOINTMENTS -->
       <div id="pAppointments" class="page">
-        <div style="display:flex;justify-content:flex-end;margin-bottom:1.5rem;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:1.5rem;align-items:center;">
+          <div style="display:flex;gap:0.5rem;align-items:center;">
+            <button class="btn btn-sm btn-ghost active" id="btn-p-view-table" onclick="window.switchAppointmentView('p', 'table')">Table View</button>
+            <button class="btn btn-sm btn-ghost" id="btn-p-view-calendar" onclick="window.switchAppointmentView('p', 'calendar')">Calendar View</button>
+          </div>
           <button class="btn btn-primary" id="btn-p-book-new">📅 Book New Appointment</button>
         </div>
-        <div class="card mb-2">
-          <div class="section-hd"><h3>Upcoming Appointments</h3></div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Doctor</th><th>Date & Time</th><th>Type</th><th>Status</th><th>Action</th></tr></thead>
-              <tbody id="p-appointments-table-body">
-                <!-- Dynamically populated -->
-              </tbody>
-            </table>
+
+        <div id="p-appointments-table-container">
+          <div class="card mb-2">
+            <div class="section-hd"><h3>Upcoming Appointments</h3></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Doctor</th><th>Date & Time</th><th>Type</th><th>Status</th><th>Action</th></tr></thead>
+                <tbody id="p-appointments-table-body">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <div class="section-hd"><h3>Past Appointments</h3></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Doctor</th><th>Date</th><th>Type</th><th>Notes</th></tr></thead>
+                <tbody>
+                  <tr><td><div class="font-semibold">Dr. Neha Kapoor</div><div class="text-muted">Endocrinology</div></td><td>May 10, 2026</td><td><span class="badge badge-blue">Video</span></td><td>Follow-up for diabetes management</td></tr>
+                  <tr><td><div class="font-semibold">Dr. Shreya Joshi</div><div class="text-muted">General Medicine</div></td><td>Apr 22, 2026</td><td><span class="badge badge-teal">In-Clinic</span></td><td>Annual physical check-up</td></tr>
+                  <tr><td><div class="font-semibold">Dr. Raj Patel</div><div class="text-muted">Cardiology</div></td><td>Mar 15, 2026</td><td><span class="badge badge-blue">Video</span></td><td>Routine heart check</td></tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
-        <div class="card">
-          <div class="section-hd"><h3>Past Appointments</h3></div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Doctor</th><th>Date</th><th>Type</th><th>Notes</th></tr></thead>
-              <tbody>
-                <tr><td><div class="font-semibold">Dr. Neha Kapoor</div><div class="text-muted">Endocrinology</div></td><td>May 10, 2026</td><td><span class="badge badge-blue">Video</span></td><td>Follow-up for diabetes management</td></tr>
-                <tr><td><div class="font-semibold">Dr. Shreya Joshi</div><div class="text-muted">General Medicine</div></td><td>Apr 22, 2026</td><td><span class="badge badge-teal">In-Clinic</span></td><td>Annual physical check-up</td></tr>
-                <tr><td><div class="font-semibold">Dr. Raj Patel</div><div class="text-muted">Cardiology</div></td><td>Mar 15, 2026</td><td><span class="badge badge-blue">Video</span></td><td>Routine heart check</td></tr>
-              </tbody>
-            </table>
+
+        <div id="p-appointments-calendar-container" style="display:none;">
+          <div class="grid-2">
+            <div class="card">
+              <div class="calendar-wrapper" id="p-calendar-wrapper">
+                <!-- Dynamically populated calendar -->
+              </div>
+            </div>
+            <div class="card">
+              <div class="section-hd"><h3 id="p-calendar-selected-date-label">Schedule for Selected Date</h3></div>
+              <div class="space-y" id="p-calendar-day-appointments">
+                <div class="text-muted text-center" style="padding: 2rem 0;">Click on a calendar day to view schedule</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -434,15 +457,38 @@
 
       <!-- DOCTOR APPOINTMENTS -->
       <div id="dAppointments" class="page">
-        <div class="card mb-2">
-          <div class="section-hd"><h3>All Appointments</h3></div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Patient</th><th>Date & Time</th><th>Type</th><th>Reason</th><th>Status</th><th>Action</th></tr></thead>
-              <tbody id="d-appointments-table-body">
-                <!-- Dynamically populated -->
-              </tbody>
-            </table>
+        <div style="display:flex;justify-content:flex-start;margin-bottom:1.5rem;align-items:center;gap:0.5rem;">
+          <button class="btn btn-sm btn-ghost active" id="btn-d-view-table" onclick="window.switchAppointmentView('d', 'table')">Table View</button>
+          <button class="btn btn-sm btn-ghost" id="btn-d-view-calendar" onclick="window.switchAppointmentView('d', 'calendar')">Calendar View</button>
+        </div>
+
+        <div id="d-appointments-table-container">
+          <div class="card mb-2">
+            <div class="section-hd"><h3>All Appointments</h3></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Patient</th><th>Date & Time</th><th>Type</th><th>Reason</th><th>Status</th><th>Action</th></tr></thead>
+                <tbody id="d-appointments-table-body">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div id="d-appointments-calendar-container" style="display:none;">
+          <div class="grid-2">
+            <div class="card">
+              <div class="calendar-wrapper" id="d-calendar-wrapper">
+                <!-- Dynamically populated calendar -->
+              </div>
+            </div>
+            <div class="card">
+              <div class="section-hd"><h3 id="d-calendar-selected-date-label">Schedule for Selected Date</h3></div>
+              <div class="space-y" id="d-calendar-day-appointments">
+                <div class="text-muted text-center" style="padding: 2rem 0;">Click on a calendar day to view schedule</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -678,15 +724,39 @@
           <div class="stat-card"><div class="label">Completed</div><div class="value">184</div></div>
           <div class="stat-card"><div class="label">Cancelled</div><div class="value">12</div></div>
         </div>
-        <div class="card">
-          <div class="section-hd"><h3>Recent Appointments</h3></div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Patient</th><th>Doctor</th><th>Date</th><th>Type</th><th>Status</th></tr></thead>
-              <tbody id="a-appointments-table-body">
-                <!-- Dynamically populated -->
-              </tbody>
-            </table>
+
+        <div style="display:flex;justify-content:flex-start;margin-bottom:1.5rem;align-items:center;gap:0.5rem;">
+          <button class="btn btn-sm btn-ghost active" id="btn-a-view-table" onclick="window.switchAppointmentView('a', 'table')">Table View</button>
+          <button class="btn btn-sm btn-ghost" id="btn-a-view-calendar" onclick="window.switchAppointmentView('a', 'calendar')">Calendar View</button>
+        </div>
+
+        <div id="a-appointments-table-container">
+          <div class="card">
+            <div class="section-hd"><h3>Recent Appointments</h3></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Patient</th><th>Doctor</th><th>Date</th><th>Type</th><th>Status</th></tr></thead>
+                <tbody id="a-appointments-table-body">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div id="a-appointments-calendar-container" style="display:none;">
+          <div class="grid-2">
+            <div class="card">
+              <div class="calendar-wrapper" id="a-calendar-wrapper">
+                <!-- Dynamically populated calendar -->
+              </div>
+            </div>
+            <div class="card">
+              <div class="section-hd"><h3 id="a-calendar-selected-date-label">Schedule for Selected Date</h3></div>
+              <div class="space-y" id="a-calendar-day-appointments">
+                <div class="text-muted text-center" style="padding: 2rem 0;">Click on a calendar day to view schedule</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -761,15 +831,31 @@
     <div class="modal">
       <div class="modal-header"><h3>📅 Book Appointment</h3><button class="modal-close modal-cancel" data-modal="bookApptModal">✕</button></div>
       <div class="form-row">
-        <div class="form-group"><label>Doctor</label><select class="form-control" id="book-appt-doctor-select"></select></div>
+        <div class="form-group"><label>Doctor</label><select class="form-control" id="book-appt-doctor-select" onchange="window.loadAvailableBookingSlots()"></select></div>
         <div class="form-group"><label>Appointment Type</label><select class="form-control" id="book-appt-type"><option>Video Consultation</option><option>In-Clinic</option></select></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Date</label><input type="date" class="form-control" id="book-appt-date"></div>
-        <div class="form-group"><label>Time</label><select class="form-control" id="book-appt-time"><option>09:00 AM</option><option>10:00 AM</option><option>11:00 AM</option><option>02:00 PM</option><option>03:00 PM</option></select></div>
+        <div class="form-group"><label>Date</label><input type="date" class="form-control" id="book-appt-date" onchange="window.loadAvailableBookingSlots()"></div>
+        <div class="form-group"><label>Time</label><select class="form-control" id="book-appt-time"><option value="">Select doctor & date first...</option></select></div>
       </div>
       <div class="form-group"><label>Reason for Visit</label><textarea class="form-control" id="book-appt-reason" placeholder="Describe your symptoms or reason for consultation..."></textarea></div>
       <div class="modal-footer"><button class="btn btn-ghost modal-cancel" data-modal="bookApptModal">Cancel</button><button class="btn btn-primary" id="btn-book-appt-submit">Confirm Booking</button></div>
+    </div>
+  </div>
+
+  <!-- Reschedule Appointment Modal -->
+  <div id="rescheduleApptModal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header"><h3>🔄 Reschedule Appointment</h3><button class="modal-close modal-cancel" data-modal="rescheduleApptModal">✕</button></div>
+      <input type="hidden" id="reschedule-appt-id">
+      <input type="hidden" id="reschedule-appt-doctor-id">
+      <div class="form-group">
+        <label>Doctor</label>
+        <input type="text" class="form-control" id="reschedule-appt-doctor-name" readonly style="background:var(--surface2);">
+      </div>
+      <div class="form-group"><label>New Date</label><input type="date" class="form-control" id="reschedule-appt-date" onchange="window.loadAvailableRescheduleSlots()"></div>
+      <div class="form-group"><label>Available Slots</label><select class="form-control" id="reschedule-appt-time"><option value="">Select date first...</option></select></div>
+      <div class="modal-footer"><button class="btn btn-ghost modal-cancel" data-modal="rescheduleApptModal">Cancel</button><button class="btn btn-primary" id="btn-reschedule-submit" onclick="window.submitRescheduleAppointment()">Confirm Reschedule</button></div>
     </div>
   </div>
 

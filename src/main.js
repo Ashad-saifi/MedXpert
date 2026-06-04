@@ -1745,7 +1745,7 @@ function renderPatientAppointments() {
   myAppts.forEach(appt => {
     const formattedDate = new Date(appt.dateTime).toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
     const badgeClass = appt.type === 'Video' ? 'badge-blue' : 'badge-teal';
-    const statusBadge = appt.status === 'Confirmed' ? 'badge-green' : appt.status === 'Cancelled' ? 'badge-red' : 'badge-gray';
+    const statusBadge = appt.status === 'Confirmed' ? 'badge-green' : appt.status === 'Cancelled' ? 'badge-red' : appt.status === 'Pending' ? 'badge-yellow' : 'badge-gray';
 
     // Append to appointments page table
     if (tableBody && appt.status !== 'Completed') {
@@ -1756,14 +1756,15 @@ function renderPatientAppointments() {
         <td><span class="badge ${badgeClass}">${appt.type}</span></td>
         <td><span class="badge ${statusBadge}">${appt.status}</span></td>
         <td>
-          ${appt.status === 'Confirmed' && appt.type === 'Video'
-          ? `<div style="display:flex;gap:0.5rem;align-items:center;">
-               <button class="btn btn-sm btn-primary" onclick="window.joinVideoRoom('${appt.doctorName}')">Join Call</button>
-               <button class="btn btn-sm btn-ghost" onclick="window.cancelAppointment('${appt.id}')">Cancel</button>
-             </div>`
-          : appt.status === 'Confirmed'
-            ? `<button class="btn btn-sm btn-ghost" onclick="window.cancelAppointment('${appt.id}')">Cancel</button>`
+          <div style="display:flex;gap:0.5rem;align-items:center;">
+            ${appt.status === 'Confirmed' && appt.type === 'Video'
+            ? `<button class="btn btn-sm btn-primary" onclick="window.joinVideoRoom('${appt.doctorName}')">Join Call</button>`
+            : ''}
+            ${appt.status === 'Confirmed' || appt.status === 'Pending'
+            ? `<button class="btn btn-sm btn-outline" onclick="window.openRescheduleModal('${appt.id}')">Reschedule</button>
+               <button class="btn btn-sm btn-ghost" onclick="window.cancelAppointment('${appt.id}')">Cancel</button>`
             : `–`}
+          </div>
         </td>
       `;
       tableBody.appendChild(tr);
@@ -2068,7 +2069,23 @@ async function cancelAppointment(id) {
     });
 
     notify('Appointment cancelled', '');
-    await loadPatientData();
+    
+    if (currentRole === 'patient') {
+      await loadPatientData();
+      if (document.getElementById('p-appointments-calendar-container').style.display === 'block') {
+        window.renderCalendar('p');
+      }
+    } else if (currentRole === 'doctor') {
+      await loadDoctorData();
+      if (document.getElementById('d-appointments-calendar-container').style.display === 'block') {
+        window.renderCalendar('d');
+      }
+    } else {
+      await loadAdminData();
+      if (document.getElementById('a-appointments-calendar-container').style.display === 'block') {
+        window.renderCalendar('a');
+      }
+    }
   } catch (err) {
     notify(err.message, 'error');
   }
@@ -2465,6 +2482,26 @@ function renderDoctorAppointments() {
     // Render Appointments page list
     if (tableBody) {
       const tr = document.createElement('tr');
+      let actions = '';
+      if (appt.status === 'Pending') {
+        actions = `
+          <button class="btn btn-sm btn-primary" onclick="window.acceptAppointment('${appt.id}')">Accept</button>
+          <button class="btn btn-sm btn-danger" onclick="window.rejectAppointment('${appt.id}')">Reject</button>
+        `;
+      } else if (appt.status === 'Confirmed') {
+        if (appt.type === 'Video') {
+          actions += `<button class="btn btn-sm btn-primary" onclick="window.joinVideoRoom('${appt.patientName}')">Join Call</button> `;
+        }
+        actions += `
+          <button class="btn btn-sm btn-outline" onclick="window.openRescheduleModal('${appt.id}')">Reschedule</button>
+          <button class="btn btn-sm btn-ghost" onclick="window.cancelAppointment('${appt.id}')">Cancel</button>
+        `;
+      } else if (appt.status === 'Completed') {
+        actions = `<button class="btn btn-sm btn-ghost" onclick="window.openPrescriptionModal('${appt.patientId}')">Add Rx</button>`;
+      } else {
+        actions = '–';
+      }
+
       tr.innerHTML = `
         <td><div class="font-semibold">${appt.patientName}</div><div class="text-muted">${appt.patientId}</div></td>
         <td>${formattedDate}</td>
@@ -2472,13 +2509,9 @@ function renderDoctorAppointments() {
         <td>${appt.reason}</td>
         <td><span class="badge ${statusClass}">${appt.status}</span></td>
         <td>
-          ${appt.status === 'Confirmed' && appt.type === 'Video'
-          ? `<button class="btn btn-sm btn-primary" onclick="window.joinVideoRoom('${appt.patientName}')">Join</button>`
-          : appt.status === 'Confirmed'
-            ? `<button class="btn btn-sm btn-ghost" onclick="window.cancelAppointment('${appt.id}')">Cancel</button>`
-            : appt.status === 'Completed'
-              ? `<button class="btn btn-sm btn-ghost" onclick="window.openPrescriptionModal('${appt.patientId}')">Add Rx</button>`
-              : `–`}
+          <div style="display:flex;gap:0.5rem;align-items:center;">
+            ${actions}
+          </div>
         </td>
       `;
       tableBody.appendChild(tr);
@@ -3079,7 +3112,21 @@ function editUser(id) {
     
     document.getElementById('editUser-patient-age').value = userObj.age || '';
     document.getElementById('editUser-patient-blood').value = userObj.bloodType || 'O+';
-    document.async function submitEditUserAdmin() {
+    document.getElementById('editUser-patient-conditions').value = userObj.conditions || userObj.chronicConditions || '';
+  } else if (isDoctor) {
+    if (patientFields) patientFields.style.display = 'none';
+    if (doctorFields) doctorFields.style.display = 'block';
+    
+    document.getElementById('editUser-doctor-specialty').value = userObj.specialty || '';
+    document.getElementById('editUser-doctor-exp').value = userObj.exp || '';
+    document.getElementById('editUser-doctor-fee').value = userObj.fee || '';
+    document.getElementById('editUser-doctor-hospital').value = userObj.hospital || '';
+  }
+
+  openModal('adminEditUserModal');
+}
+
+async function submitEditUserAdmin() {
   const id = document.getElementById('editUser-id').value;
   const name = document.getElementById('editUser-name').value.trim();
   const email = document.getElementById('editUser-email').value.trim();
@@ -3178,36 +3225,6 @@ function editUser(id) {
 
   if (!isValid) {
     notify('Please correct the errors in the form', 'error');
-    return;
-  }
-
-  try {
-    const res = await fetch(`${API_BASE}/admin/users/edit/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(bodyData)
-    });
-
-    if (!res.ok) {
-      const data = await res.json();
-      throw new Error(data.message || 'Failed to update user');
-    }
-
-    closeModal('adminEditUserModal');
-    notify('User account updated successfully', 'success');
-    await loadAdminData();
-  } catch (err) {
-    notify(err.message, 'error');
-  }
-}
-
-ue;
-    bodyData.fee = document.getElementById('editUser-doctor-fee').value;
-    bodyData.hospital = document.getElementById('editUser-doctor-hospital').value;
-  }
-
-  if (!name || !email) {
-    notify('Name and Email are required', 'error');
     return;
   }
 
@@ -3726,3 +3743,461 @@ window.openSearchModal = openSearchModal;
 window.openNotificationsModal = openNotificationsModal;
 window.closeModal = closeModal;
 window.openModal = openModal;
+
+// ── CALENDAR & SLOTS CLIENT LOGIC ──
+let currentCalendarMonth = new Date().getMonth(); // 0-11
+let currentCalendarYear = new Date().getFullYear();
+let activeCalendarDay = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+window.switchAppointmentView = function(prefix, view) {
+  const tableBtn = document.getElementById(`btn-${prefix}-view-table`);
+  const calendarBtn = document.getElementById(`btn-${prefix}-view-calendar`);
+  const tableContainer = document.getElementById(`${prefix}-appointments-table-container`);
+  const calendarContainer = document.getElementById(`${prefix}-appointments-calendar-container`);
+
+  if (view === 'table') {
+    tableBtn?.classList.add('active');
+    calendarBtn?.classList.remove('active');
+    if (tableContainer) tableContainer.style.display = 'block';
+    if (calendarContainer) calendarContainer.style.display = 'none';
+  } else {
+    calendarBtn?.classList.add('active');
+    tableBtn?.classList.remove('active');
+    if (tableContainer) tableContainer.style.display = 'none';
+    if (calendarContainer) calendarContainer.style.display = 'block';
+    
+    // Default selected date to today when opening calendar
+    activeCalendarDay = new Date().toISOString().split('T')[0];
+    window.renderCalendar(prefix);
+  }
+};
+
+window.renderCalendar = function(prefix) {
+  const wrapperId = `${prefix}-calendar-wrapper`;
+  const container = document.getElementById(wrapperId);
+  if (!container) return;
+
+  const monthNames = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+
+  // Filter appointments for this panel
+  let prefixAppointments = [];
+  if (prefix === 'p') {
+    const patId = patientData ? patientData.id : (currentUser && currentUser.profile ? currentUser.profile.id : "P-10421");
+    prefixAppointments = appointmentsData.filter(a => a.patientId === patId && a.status !== 'Cancelled');
+  } else if (prefix === 'd') {
+    const docId = currentUser && currentUser.profile ? currentUser.profile.id : 'D-101';
+    prefixAppointments = appointmentsData.filter(a => a.doctorId === docId && a.status !== 'Cancelled');
+  } else {
+    prefixAppointments = appointmentsData.filter(a => a.status !== 'Cancelled');
+  }
+
+  // Get first day of the month and number of days
+  const firstDayIndex = new Date(currentCalendarYear, currentCalendarMonth, 1).getDay(); // 0 (Sun) - 6 (Sat)
+  const numDays = new Date(currentCalendarYear, currentCalendarMonth + 1, 0).getDate();
+
+  // Previous month days count to render empty spaces or offsets
+  const prevMonthNumDays = new Date(currentCalendarYear, currentCalendarMonth, 0).getDate();
+
+  let html = `
+    <div class="calendar-header">
+      <h4>${monthNames[currentCalendarMonth]} ${currentCalendarYear}</h4>
+      <div class="calendar-header-actions">
+        <button class="btn btn-sm btn-ghost" onclick="window.navigateCalendar('${prefix}', -1)">◀</button>
+        <button class="btn btn-sm btn-ghost" onclick="window.navigateCalendar('${prefix}', 0)">Today</button>
+        <button class="btn btn-sm btn-ghost" onclick="window.navigateCalendar('${prefix}', 1)">▶</button>
+      </div>
+    </div>
+    <div class="calendar-grid">
+      <div class="calendar-day-header">Sun</div>
+      <div class="calendar-day-header">Mon</div>
+      <div class="calendar-day-header">Tue</div>
+      <div class="calendar-day-header">Wed</div>
+      <div class="calendar-day-header">Thu</div>
+      <div class="calendar-day-header">Fri</div>
+      <div class="calendar-day-header">Sat</div>
+  `;
+
+  // Render empty leading days from previous month
+  for (let i = firstDayIndex - 1; i >= 0; i--) {
+    html += `<div class="calendar-day empty"><span class="day-num">${prevMonthNumDays - i}</span></div>`;
+  }
+
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  // Render current month days
+  for (let day = 1; day <= numDays; day++) {
+    const dateStr = `${currentCalendarYear}-${String(currentCalendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    
+    // Find appointments on this day
+    const dayAppts = prefixAppointments.filter(a => a.date === dateStr);
+    
+    let dotsHtml = '';
+    if (dayAppts.length > 0) {
+      dotsHtml = '<div class="appt-indicators">';
+      dayAppts.forEach(a => {
+        const dotClass = a.type === 'Video' ? 'video' : 'in-clinic';
+        dotsHtml += `<span class="appt-dot ${dotClass}" title="${a.time} - ${prefix === 'p' ? a.doctorName : a.patientName}"></span>`;
+      });
+      dotsHtml += '</div>';
+    }
+
+    const isToday = dateStr === todayStr ? 'today' : '';
+    const isActive = dateStr === activeCalendarDay ? 'active' : '';
+
+    html += `
+      <div class="calendar-day ${isToday} ${isActive}" onclick="window.selectCalendarDay('${prefix}', '${dateStr}')">
+        <span class="day-num">${day}</span>
+        ${dotsHtml}
+      </div>
+    `;
+  }
+
+  // Render trailing empty days of next month to fill grid row
+  const totalCells = firstDayIndex + numDays;
+  const nextMonthEmptyDays = (7 - (totalCells % 7)) % 7;
+  for (let i = 1; i <= nextMonthEmptyDays; i++) {
+    html += `<div class="calendar-day empty"><span class="day-num">${i}</span></div>`;
+  }
+
+  html += `</div>`;
+  container.innerHTML = html;
+
+  // Render the selected day's appointments in the details list
+  window.renderSelectedDayAppointments(prefix);
+};
+
+window.navigateCalendar = function(prefix, direction) {
+  if (direction === 0) {
+    currentCalendarMonth = new Date().getMonth();
+    currentCalendarYear = new Date().getFullYear();
+    activeCalendarDay = new Date().toISOString().split('T')[0];
+  } else {
+    currentCalendarMonth += direction;
+    if (currentCalendarMonth < 0) {
+      currentCalendarMonth = 11;
+      currentCalendarYear -= 1;
+    } else if (currentCalendarMonth > 11) {
+      currentCalendarMonth = 0;
+      currentCalendarYear += 1;
+    }
+  }
+  window.renderCalendar(prefix);
+};
+
+window.selectCalendarDay = function(prefix, dateStr) {
+  activeCalendarDay = dateStr;
+  
+  // Rerender grid to update active highlights
+  window.renderCalendar(prefix);
+};
+
+window.renderSelectedDayAppointments = function(prefix) {
+  const label = document.getElementById(`${prefix}-calendar-selected-date-label`);
+  const listContainer = document.getElementById(`${prefix}-calendar-day-appointments`);
+  if (!listContainer) return;
+
+  if (!activeCalendarDay) {
+    listContainer.innerHTML = '<div class="text-muted text-center" style="padding: 2rem 0;">Click on a calendar day to view schedule</div>';
+    return;
+  }
+
+  const formattedDate = new Date(activeCalendarDay).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+  if (label) label.textContent = `Schedule for ${formattedDate}`;
+
+  // Filter appointments for this panel on selected day
+  let dayAppts = [];
+  if (prefix === 'p') {
+    const patId = patientData ? patientData.id : (currentUser && currentUser.profile ? currentUser.profile.id : "P-10421");
+    dayAppts = appointmentsData.filter(a => a.patientId === patId && a.date === activeCalendarDay && a.status !== 'Cancelled');
+  } else if (prefix === 'd') {
+    const docId = currentUser && currentUser.profile ? currentUser.profile.id : 'D-101';
+    dayAppts = appointmentsData.filter(a => a.doctorId === docId && a.date === activeCalendarDay && a.status !== 'Cancelled');
+  } else {
+    dayAppts = appointmentsData.filter(a => a.date === activeCalendarDay && a.status !== 'Cancelled');
+  }
+
+  if (dayAppts.length === 0) {
+    listContainer.innerHTML = '<div class="text-muted text-center" style="padding: 2rem 0;">No appointments scheduled for this day.</div>';
+    return;
+  }
+
+  listContainer.innerHTML = '';
+  dayAppts.forEach(appt => {
+    const badgeClass = appt.type === 'Video' ? 'badge-blue' : 'badge-teal';
+    const statusBadge = appt.status === 'Confirmed' ? 'badge-green' : appt.status === 'Pending' ? 'badge-yellow' : 'badge-gray';
+    const otherPartyName = prefix === 'p' ? appt.doctorName : appt.patientName;
+    const roleLabel = prefix === 'p' ? 'Doctor' : 'Patient';
+
+    let actionButtons = '';
+    if (appt.status === 'Confirmed' && appt.type === 'Video') {
+      actionButtons += `<button class="btn btn-sm btn-primary" onclick="window.joinVideoRoom('${prefix === 'p' ? appt.doctorName : appt.patientName}')">Join Call</button> `;
+    }
+    if (appt.status === 'Pending' && prefix === 'd') {
+      actionButtons += `
+        <button class="btn btn-sm btn-primary" onclick="window.acceptAppointment('${appt.id}')">Accept</button>
+        <button class="btn btn-sm btn-danger" onclick="window.rejectAppointment('${appt.id}')">Reject</button>
+      `;
+    }
+    if (appt.status === 'Confirmed' || appt.status === 'Pending') {
+      actionButtons += `
+        <button class="btn btn-sm btn-outline" onclick="window.openRescheduleModal('${appt.id}')">Reschedule</button>
+        <button class="btn btn-sm btn-ghost" onclick="window.cancelAppointment('${appt.id}')">Cancel</button>
+      `;
+    }
+
+    const item = document.createElement('div');
+    item.className = 'calendar-appt-list-item';
+    item.innerHTML = `
+      <div class="flex justify-between items-start">
+        <div>
+          <div style="font-size: 0.95rem; font-weight: 700; color: var(--text);">${appt.time}</div>
+          <div class="text-muted text-sm" style="margin-top: 0.15rem;">${roleLabel}: <span class="font-semibold" style="color: var(--text2);">${otherPartyName}</span></div>
+          <div class="text-muted text-xs" style="margin-top: 0.15rem;">Reason: ${appt.reason || 'General Consult'}</div>
+        </div>
+        <div style="display:flex; flex-direction:column; align-items:flex-end; gap: 0.25rem;">
+          <span class="badge ${badgeClass}">${appt.type}</span>
+          <span class="badge ${statusBadge}">${appt.status}</span>
+        </div>
+      </div>
+      ${actionButtons ? `<div style="display:flex; gap:0.5rem; justify-content:flex-end; margin-top:0.25rem;">${actionButtons}</div>` : ''}
+    `;
+    listContainer.appendChild(item);
+  });
+};
+
+window.loadAvailableBookingSlots = async function() {
+  const doctorId = document.getElementById('book-appt-doctor-select')?.value;
+  const date = document.getElementById('book-appt-date')?.value;
+  const timeSelect = document.getElementById('book-appt-time');
+
+  if (!timeSelect) return;
+
+  if (!doctorId || !date) {
+    timeSelect.innerHTML = '<option value="">Select doctor & date first...</option>';
+    return;
+  }
+
+  try {
+    timeSelect.innerHTML = '<option value="">Loading available slots...</option>';
+    const res = await fetch(`/api/appointments/available-slots?doctorId=${doctorId}&date=${date}`);
+    const data = await res.json();
+
+    if (data.success && Array.isArray(data.slots)) {
+      if (data.slots.length === 0) {
+        timeSelect.innerHTML = '<option value="">No slots available for this date</option>';
+      } else {
+        timeSelect.innerHTML = data.slots.map(slot => `<option value="${slot}">${slot}</option>`).join('');
+      }
+    } else {
+      timeSelect.innerHTML = '<option value="">Error loading slots</option>';
+    }
+  } catch (error) {
+    console.error("Error fetching slots", error);
+    timeSelect.innerHTML = '<option value="">Error loading slots</option>';
+  }
+};
+
+window.openRescheduleModal = async function(id) {
+  const appt = appointmentsData.find(a => String(a.id) === String(id));
+  if (!appt) {
+    notify('Appointment details not found', 'error');
+    return;
+  }
+
+  document.getElementById('reschedule-appt-id').value = id;
+  document.getElementById('reschedule-appt-doctor-id').value = appt.doctorId;
+  document.getElementById('reschedule-appt-doctor-name').value = appt.doctorName;
+  document.getElementById('reschedule-appt-date').value = appt.date;
+  
+  document.getElementById('reschedule-appt-time').innerHTML = '<option value="">Loading available slots...</option>';
+  openModal('rescheduleApptModal');
+  
+  await window.loadAvailableRescheduleSlots();
+  
+  const timeSelect = document.getElementById('reschedule-appt-time');
+  if (timeSelect) {
+    let exists = false;
+    for (let option of timeSelect.options) {
+      if (option.value === appt.time) {
+        exists = true;
+        break;
+      }
+    }
+    if (!exists && appt.time) {
+      const opt = document.createElement('option');
+      opt.value = appt.time;
+      opt.textContent = `${appt.time} (Current)`;
+      timeSelect.appendChild(opt);
+    }
+    timeSelect.value = appt.time;
+  }
+};
+
+window.loadAvailableRescheduleSlots = async function() {
+  const doctorId = document.getElementById('reschedule-appt-doctor-id')?.value;
+  const date = document.getElementById('reschedule-appt-date')?.value;
+  const timeSelect = document.getElementById('reschedule-appt-time');
+
+  if (!timeSelect) return;
+
+  if (!doctorId || !date) {
+    timeSelect.innerHTML = '<option value="">Select date first...</option>';
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/appointments/available-slots?doctorId=${doctorId}&date=${date}`);
+    const data = await res.json();
+
+    if (data.success && Array.isArray(data.slots)) {
+      if (data.slots.length === 0) {
+        timeSelect.innerHTML = '<option value="">No slots available for this date</option>';
+      } else {
+        timeSelect.innerHTML = data.slots.map(slot => `<option value="${slot}">${slot}</option>`).join('');
+      }
+    } else {
+      timeSelect.innerHTML = '<option value="">Error loading slots</option>';
+    }
+  } catch (error) {
+    console.error("Error fetching slots", error);
+    timeSelect.innerHTML = '<option value="">Error loading slots</option>';
+  }
+};
+
+window.submitRescheduleAppointment = async function() {
+  const id = document.getElementById('reschedule-appt-id').value;
+  const date = document.getElementById('reschedule-appt-date').value;
+  const time = document.getElementById('reschedule-appt-time').value;
+
+  if (!date || !time) {
+    notify('Please select a date and an available slot', 'error');
+    return;
+  }
+
+  try {
+    let timeStr = time;
+    if (timeStr.includes('AM') || timeStr.includes('PM')) {
+      const [timePart, period] = timeStr.trim().split(' ');
+      let [h, m] = timePart.split(':').map(Number);
+      if (period === 'PM' && h !== 12) h += 12;
+      if (period === 'AM' && h === 12) h = 0;
+      timeStr = `${String(h).padStart(2,'0')}:${String(m || 0).padStart(2,'0')}`;
+    }
+    const dateTime = `${date}T${timeStr}:00`;
+
+    const res = await fetch(`/api/appointments/reschedule/${id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        dateTime,
+        rescheduledBy: currentRole
+      })
+    });
+
+    if (!res.ok) throw new Error('Reschedule failed');
+
+    closeModal('rescheduleApptModal');
+    notify('Appointment rescheduled successfully!', 'success');
+
+    const appt = appointmentsData.find(a => String(a.id) === String(id));
+    const docName = appt ? appt.doctorName : 'Doctor';
+    const statusLabel = currentRole === 'patient' ? 'pending doctor approval' : 'confirmed';
+    notificationsData.unshift({
+      id: Date.now(),
+      text: `Your appointment with Dr. ${docName} has been rescheduled and is now ${statusLabel}.`,
+      time: "Just now",
+      read: false,
+      type: "info",
+      page: "pAppointments"
+    });
+
+    if (currentRole === 'patient') {
+      await loadPatientData();
+      if (document.getElementById('p-appointments-calendar-container').style.display === 'block') {
+        window.renderCalendar('p');
+      }
+    } else if (currentRole === 'doctor') {
+      await loadDoctorData();
+      if (document.getElementById('d-appointments-calendar-container').style.display === 'block') {
+        window.renderCalendar('d');
+      }
+    } else {
+      await loadAdminData();
+      if (document.getElementById('a-appointments-calendar-container').style.display === 'block') {
+        window.renderCalendar('a');
+      }
+    }
+  } catch (err) {
+    notify(err.message, 'error');
+  }
+};
+
+window.acceptAppointment = async function(id) {
+  try {
+    const res = await fetch(`/api/appointments/${id}/status`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'Confirmed' })
+    });
+
+    if (!res.ok) throw new Error('Failed to accept appointment');
+
+    notify('Appointment confirmed successfully!', 'success');
+
+    const appt = appointmentsData.find(a => String(a.id) === String(id));
+    if (appt) {
+      notificationsData.unshift({
+        id: Date.now(),
+        text: `Your appointment with Dr. ${appt.doctorName} on ${appt.date} at ${appt.time} has been confirmed.`,
+        time: "Just now",
+        read: false,
+        type: "success",
+        page: "pAppointments"
+      });
+    }
+
+    await loadDoctorData();
+    if (document.getElementById('d-appointments-calendar-container').style.display === 'block') {
+      window.renderCalendar('d');
+    }
+  } catch (err) {
+    notify(err.message, 'error');
+  }
+};
+
+window.rejectAppointment = async function(id) {
+  if (!confirm('Are you sure you want to reject this appointment?')) return;
+  try {
+    const res = await fetch(`/api/appointments/${id}/status`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'Cancelled' })
+    });
+
+    if (!res.ok) throw new Error('Failed to reject appointment');
+
+    notify('Appointment rejected/cancelled successfully', '');
+
+    const appt = appointmentsData.find(a => String(a.id) === String(id));
+    if (appt) {
+      notificationsData.unshift({
+        id: Date.now(),
+        text: `Your appointment request with Dr. ${appt.doctorName} has been rejected/cancelled.`,
+        time: "Just now",
+        read: false,
+        type: "danger",
+        page: "pAppointments"
+      });
+    }
+
+    await loadDoctorData();
+    if (document.getElementById('d-appointments-calendar-container').style.display === 'block') {
+      window.renderCalendar('d');
+    }
+  } catch (err) {
+    notify(err.message, 'error');
+  }
+};
