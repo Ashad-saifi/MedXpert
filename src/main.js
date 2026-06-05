@@ -73,6 +73,12 @@ function initEventListeners() {
   document.getElementById('btn-do-login')?.addEventListener('click', doLogin);
   document.getElementById('btn-close-login')?.addEventListener('click', closeLogin);
 
+  // Registration and Tab controls
+  document.getElementById('tab-login-signin')?.addEventListener('click', () => switchLoginTab('signin'));
+  document.getElementById('tab-login-signup')?.addEventListener('click', () => switchLoginTab('signup'));
+  document.getElementById('signupRole')?.addEventListener('change', toggleSignupRoleFields);
+  document.getElementById('btn-do-signup')?.addEventListener('click', doSignUp);
+
   // Back to home controls (sidebar footers)
   document.querySelectorAll('.back-to-home').forEach(btn => {
     btn.addEventListener('click', goLanding);
@@ -428,6 +434,168 @@ function closeModal(id) {
   document.getElementById(id)?.classList.remove('open');
 }
 
+function switchLoginTab(tab) {
+  const tabSignin = document.getElementById('tab-login-signin');
+  const tabSignup = document.getElementById('tab-login-signup');
+  const formSignin = document.getElementById('signInForm');
+  const formSignup = document.getElementById('signUpForm');
+  const demoHint = document.getElementById('demo-creds-hint');
+
+  if (tab === 'signin') {
+    if (tabSignin) {
+      tabSignin.classList.add('active');
+      tabSignin.style.borderBottom = '2px solid var(--primary)';
+      tabSignin.style.color = 'var(--primary)';
+    }
+    if (tabSignup) {
+      tabSignup.classList.remove('active');
+      tabSignup.style.borderBottom = '2px solid transparent';
+      tabSignup.style.color = 'var(--text3)';
+    }
+    if (formSignin) formSignin.style.display = 'block';
+    if (formSignup) formSignup.style.display = 'none';
+    if (demoHint) demoHint.style.display = 'inline';
+  } else {
+    if (tabSignup) {
+      tabSignup.classList.add('active');
+      tabSignup.style.borderBottom = '2px solid var(--primary)';
+      tabSignup.style.color = 'var(--primary)';
+    }
+    if (tabSignin) {
+      tabSignin.classList.remove('active');
+      tabSignin.style.borderBottom = '2px solid transparent';
+      tabSignin.style.color = 'var(--text3)';
+    }
+    if (formSignin) formSignin.style.display = 'none';
+    if (formSignup) formSignup.style.display = 'block';
+    if (demoHint) demoHint.style.display = 'none';
+  }
+}
+
+function toggleSignupRoleFields() {
+  const role = document.getElementById('signupRole')?.value;
+  const patientFields = document.getElementById('signup-patient-fields');
+  const doctorFields = document.getElementById('signup-doctor-fields');
+  
+  if (role === 'patient') {
+    if (patientFields) patientFields.style.display = 'block';
+    if (doctorFields) doctorFields.style.display = 'none';
+  } else {
+    if (patientFields) patientFields.style.display = 'none';
+    if (doctorFields) doctorFields.style.display = 'block';
+  }
+}
+
+async function doSignUp() {
+  const name = document.getElementById('signupName')?.value.trim();
+  const email = document.getElementById('signupEmail')?.value.trim();
+  const password = document.getElementById('signupPassword')?.value;
+  const phone = document.getElementById('signupPhone')?.value.trim();
+  const role = document.getElementById('signupRole')?.value;
+
+  if (!name || !email || !password) {
+    notify('Please fill in Full Name, Email, and Password.', 'error');
+    return;
+  }
+
+  // Regex validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    notify('Please enter a valid email address.', 'error');
+    return;
+  }
+
+  const payload = { name, email, password, phone, role };
+
+  if (role === 'patient') {
+    const age = Number(document.getElementById('signupAge')?.value);
+    const gender = document.getElementById('signupGender')?.value;
+    const bloodType = document.getElementById('signupBlood')?.value;
+    const chronicConditions = document.getElementById('signupConditions')?.value.trim();
+
+    if (isNaN(age) || age < 0 || age > 120) {
+      notify('Please enter a valid age between 0 and 120.', 'error');
+      return;
+    }
+
+    payload.age = age;
+    payload.gender = gender;
+    payload.bloodType = bloodType;
+    payload.chronicConditions = chronicConditions;
+  } else if (role === 'doctor') {
+    const specialty = document.getElementById('signupSpecialty')?.value.trim();
+    const exp = document.getElementById('signupExp')?.value.trim();
+    const fee = document.getElementById('signupFee')?.value.trim();
+    const hospital = document.getElementById('signupHospital')?.value.trim();
+
+    if (!specialty || !exp || !fee || !hospital) {
+      notify('Please fill in all Doctor professional fields.', 'error');
+      return;
+    }
+
+    payload.specialty = specialty;
+    payload.exp = exp;
+    payload.fee = fee;
+    payload.hospital = hospital;
+  }
+
+  try {
+    let res;
+    try {
+      res = await fetch(`${API_BASE}/users/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    } catch (networkErr) {
+      notify('Cannot connect to server. Make sure the backend is running.', 'error');
+      return;
+    }
+
+    let data;
+    try {
+      data = await res.json();
+    } catch (parseErr) {
+      notify('Server returned an invalid response.', 'error');
+      return;
+    }
+
+    if (!res.ok) throw new Error(data.message || data.error || 'Server error during registration');
+
+    notify('Account created successfully!', 'success');
+
+    // Automatically log in the user
+    currentUser = data.user;
+    if (currentUser) {
+      currentUser.profile = data.profile || (role === 'patient' ? { id: `P-${Math.floor(Math.random()*10000)}`, name } : { id: `D-${Math.floor(Math.random()*100)}`, name });
+    }
+    
+    closeLogin();
+
+    // Hide all panel screens
+    document.getElementById('landing').style.display = 'none';
+    document.getElementById('patientPanel').style.display = 'none';
+    document.getElementById('doctorPanel').style.display = 'none';
+    document.getElementById('adminPanel').style.display = 'none';
+
+    // Display dashboard
+    currentRole = role;
+    if (role === 'patient') {
+      document.getElementById('patientPanel').style.display = 'flex';
+      await loadPatientData();
+      showPage('p', 'pDashboard', document.querySelector('#patient-nav [data-page="pDashboard"]'));
+    } else if (role === 'doctor') {
+      document.getElementById('doctorPanel').style.display = 'flex';
+      await loadDoctorData();
+      showPage('d', 'dDashboard', document.querySelector('#doctor-nav [data-page="dDashboard"]'));
+    }
+
+    notify(`Welcome, ${name}!`, 'success');
+  } catch (err) {
+    notify(err.message, 'error');
+  }
+}
+
 // ── APP SCREEN CONTROL ──
 function openLogin(role) {
   currentRole = role;
@@ -448,6 +616,39 @@ function openLogin(role) {
     }
     pwdInput.value = 'password123';
   }
+
+  // Set up signup tab visibility and default role selector
+  const signupTab = document.getElementById('tab-login-signup');
+  if (signupTab) {
+    if (role === 'admin') {
+      signupTab.style.display = 'none';
+    } else {
+      signupTab.style.display = 'block';
+      const signupRoleSelect = document.getElementById('signupRole');
+      if (signupRoleSelect) {
+        signupRoleSelect.value = role;
+        toggleSignupRoleFields();
+      }
+    }
+  }
+
+  // Reset tabs to Sign In by default and clear inputs
+  switchLoginTab('signin');
+  
+  // Clear Sign Up fields
+  const fields = ['signupName', 'signupEmail', 'signupPassword', 'signupPhone', 'signupAge', 'signupConditions', 'signupSpecialty', 'signupExp', 'signupFee', 'signupHospital'];
+  fields.forEach(fId => {
+    const el = document.getElementById(fId);
+    if (el) {
+      if (fId === 'signupAge') el.value = '30';
+      else if (fId === 'signupConditions') el.value = 'None';
+      else if (fId === 'signupSpecialty') el.value = 'General Medicine';
+      else if (fId === 'signupExp') el.value = '5 yrs';
+      else if (fId === 'signupFee') el.value = '₹500';
+      else if (fId === 'signupHospital') el.value = 'City Medical Center';
+      else el.value = '';
+    }
+  });
 
   const loginOverlay = document.getElementById('loginOverlay');
   if (loginOverlay) loginOverlay.style.display = 'flex';

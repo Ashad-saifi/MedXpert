@@ -91,6 +91,13 @@ const registerUser = async (req, res) => {
             });
         }
 
+        let profile = null;
+        if (user.role === "doctor") {
+            profile = await Doctor.findOne({ user: user._id });
+        } else if (user.role === "patient") {
+            profile = await Patient.findOne({ user: user._id });
+        }
+
         res.status(201).json({
             user: {
                 id: user._id,
@@ -99,6 +106,7 @@ const registerUser = async (req, res) => {
                 role: user.role,
                 phone: user.phone
             },
+            profile,
             token: generateToken(user._id)
         });
     } catch (error) {

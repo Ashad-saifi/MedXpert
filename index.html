@@ -51,23 +51,122 @@
         <span style="color: inherit;">Med<span>X</span>pert</span>
       </div>
       <div class="login-sub" id="loginSubtitle">Patient Login</div>
-      <div class="form-group">
-        <label>Email Address</label>
-        <input type="email" class="form-control" id="loginEmail" placeholder="your@email.com" value="demo@medxpert.com">
+
+      <!-- Tab Switcher for Sign In / Sign Up -->
+      <div class="login-tabs" style="display: flex; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border);">
+        <button id="tab-login-signin" class="login-tab-btn active" style="flex: 1; padding: 0.75rem; background: none; border: none; border-bottom: 2px solid var(--primary); font-weight: 600; color: var(--primary); cursor: pointer; font-size: 0.9rem;">Sign In</button>
+        <button id="tab-login-signup" class="login-tab-btn" style="flex: 1; padding: 0.75rem; background: none; border: none; border-bottom: 2px solid transparent; font-weight: 600; color: var(--text3); cursor: pointer; font-size: 0.9rem;">Sign Up</button>
       </div>
-      <div class="form-group">
-        <label>Password</label>
-        <input type="password" class="form-control" id="loginPwd" placeholder="••••••••" value="password123">
+
+      <!-- Sign In Form -->
+      <div id="signInForm">
+        <div class="form-group">
+          <label>Email Address</label>
+          <input type="email" class="form-control" id="loginEmail" placeholder="your@email.com" value="demo@medxpert.com">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" class="form-control" id="loginPwd" placeholder="••••••••" value="password123">
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+          <label style="display:flex;gap:.5rem;align-items:center;font-size:.85rem;color:var(--text2);cursor:pointer;">
+            <input type="checkbox" checked> Remember me
+          </label>
+          <a style="font-size:.83rem;color:var(--primary);cursor:pointer;">Forgot password?</a>
+        </div>
+        <button class="btn btn-primary w-full" style="justify-content:center;" id="btn-do-login">Sign In</button>
       </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
-        <label style="display:flex;gap:.5rem;align-items:center;font-size:.85rem;color:var(--text2);cursor:pointer;">
-          <input type="checkbox" checked> Remember me
-        </label>
-        <a style="font-size:.83rem;color:var(--primary);cursor:pointer;">Forgot password?</a>
+
+      <!-- Sign Up Form (Initially Hidden) -->
+      <div id="signUpForm" style="display:none; max-height: 400px; overflow-y: auto; padding-right: 0.25rem;">
+        <div class="form-group">
+          <label>Full Name</label>
+          <input type="text" class="form-control" id="signupName" placeholder="John Doe">
+        </div>
+        <div class="form-group">
+          <label>Email Address</label>
+          <input type="email" class="form-control" id="signupEmail" placeholder="your@email.com">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" class="form-control" id="signupPassword" placeholder="••••••••">
+        </div>
+        <div class="form-group">
+          <label>Phone Number</label>
+          <input type="tel" class="form-control" id="signupPhone" placeholder="+91 XXXXX XXXXX">
+        </div>
+        <div class="form-group">
+          <label>Role</label>
+          <select class="form-control" id="signupRole">
+            <option value="patient">Patient</option>
+            <option value="doctor">Doctor</option>
+          </select>
+        </div>
+
+        <!-- Patient Specific Fields -->
+        <div id="signup-patient-fields">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Age</label>
+              <input type="number" class="form-control" id="signupAge" placeholder="30" value="30">
+            </div>
+            <div class="form-group">
+              <label>Gender</label>
+              <select class="form-control" id="signupGender">
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Blood Type</label>
+            <select class="form-control" id="signupBlood">
+              <option value="O+">O+</option>
+              <option value="A+">A+</option>
+              <option value="A-">A-</option>
+              <option value="B+">B+</option>
+              <option value="B-">B-</option>
+              <option value="AB+">AB+</option>
+              <option value="AB-">AB-</option>
+              <option value="O-">O-</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Chronic Conditions</label>
+            <input type="text" class="form-control" id="signupConditions" placeholder="e.g. None" value="None">
+          </div>
+        </div>
+
+        <!-- Doctor Specific Fields -->
+        <div id="signup-doctor-fields" style="display:none;">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Specialty</label>
+              <input type="text" class="form-control" id="signupSpecialty" placeholder="e.g. General Medicine" value="General Medicine">
+            </div>
+            <div class="form-group">
+              <label>Experience</label>
+              <input type="text" class="form-control" id="signupExp" placeholder="e.g. 5 yrs" value="5 yrs">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Consultation Fee</label>
+              <input type="text" class="form-control" id="signupFee" placeholder="e.g. ₹500" value="₹500">
+            </div>
+            <div class="form-group">
+              <label>Hospital</label>
+              <input type="text" class="form-control" id="signupHospital" placeholder="e.g. City Medical Center" value="City Medical Center">
+            </div>
+          </div>
+        </div>
+
+        <button class="btn btn-primary w-full" style="justify-content:center; margin-top: 1rem;" id="btn-do-signup">Sign Up</button>
       </div>
-      <button class="btn btn-primary w-full" style="justify-content:center;" id="btn-do-login">Sign In</button>
+
       <div style="text-align:center;margin-top:1rem;font-size:.83rem;color:var(--text3);">
-        Demo credentials pre-filled · <a style="color:var(--primary);cursor:pointer;" id="btn-close-login">← Back</a>
+        <span id="demo-creds-hint">Demo credentials pre-filled · </span><a style="color:var(--primary);cursor:pointer;" id="btn-close-login">← Back</a>
       </div>
     </div>
   </div>
