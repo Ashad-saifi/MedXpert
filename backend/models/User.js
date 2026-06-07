@@ -1,6 +1,10 @@
 import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema({
+    profileImage: {
+  type: String,
+  default: "/images/default-avatar.png"
+},
     name: {
         type: String,
         required: true
