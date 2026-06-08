@@ -1,8 +1,14 @@
 import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 import basicSsl from '@vitejs/plugin-basic-ssl';
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 export default defineConfig({
-  plugins: [basicSsl()],
+  plugins: [react(), basicSsl()],
   server: {
     port: 3000,
     host: true,
@@ -24,6 +30,14 @@ export default defineConfig({
         ws: true,
         changeOrigin: true,
         secure: false,
+      }
+    }
+  },
+  build: {
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        medxpert: resolve(__dirname, 'medxpert.html')
       }
     }
   }

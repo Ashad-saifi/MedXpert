@@ -1,1323 +1,1504 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MedXpert – Advanced Telemedicine & EHR Platform</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --primary: #0f766e;
-    --primary-light: #14b8a6;
-    --primary-dark: #0d9488;
-    --accent: #f97316;
-    --accent-light: #fed7aa;
-    --bg: #f0fdf9;
-    --bg2: #ffffff;
-    --surface: #ffffff;
-    --surface2: #f8fafc;
-    --border: #e2e8f0;
-    --text: #0f172a;
-    --text2: #475569;
-    --text3: #94a3b8;
-    --danger: #ef4444;
-    --danger-bg: #fef2f2;
-    --success: #22c55e;
-    --success-bg: #f0fdf4;
-    --warning: #f59e0b;
-    --warning-bg: #fffbeb;
-    --info: #3b82f6;
-    --info-bg: #eff6ff;
-    --radius: 12px;
-    --radius-sm: 8px;
-    --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
-    --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
-    --shadow-lg: 0 10px 30px rgba(0,0,0,0.1);
-    --sidebar-w: 260px;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
-
-  /* ── LANDING ── */
-  .landing { min-height: 100vh; background: linear-gradient(135deg, #0f766e 0%, #0d9488 40%, #115e59 100%); color: white; display: flex; flex-direction: column; }
-  .land-nav { display: flex; justify-content: space-between; align-items: center; padding: 1.5rem 3rem; }
-  .land-logo { font-family: 'Playfair Display', serif; font-size: 1.6rem; font-weight: 700; letter-spacing: -0.5px; }
-  .land-logo span { color: #f97316; }
-  .land-hero { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 4rem 2rem; }
-  .land-hero h1 { font-family: 'Playfair Display', serif; font-size: 3.5rem; font-weight: 700; line-height: 1.15; margin-bottom: 1.25rem; }
-  .land-hero h1 em { color: #f97316; font-style: normal; }
-  .land-hero p { font-size: 1.15rem; opacity: 0.85; max-width: 520px; line-height: 1.7; margin-bottom: 3rem; }
-  .role-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; max-width: 860px; width: 100%; }
-  .role-card { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); border-radius: var(--radius); padding: 2rem 1.5rem; cursor: pointer; transition: all .25s; text-align: center; backdrop-filter: blur(4px); }
-  .role-card:hover { background: rgba(255,255,255,0.22); transform: translateY(-4px); box-shadow: var(--shadow-lg); }
-  .role-card .icon { font-size: 2.8rem; margin-bottom: 1rem; }
-  .role-card h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: .4rem; }
-  .role-card p { font-size: .85rem; opacity: .75; }
-  .land-footer { text-align: center; padding: 1.5rem; opacity: .5; font-size: .85rem; }
-
-  /* ── APP SHELL ── */
-  .app-shell { display: flex; min-height: 100vh; }
-  .sidebar { width: var(--sidebar-w); background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; top: 0; left: 0; height: 100vh; z-index: 100; overflow-y: auto; }
-  .sidebar-logo { padding: 1.5rem; border-bottom: 1px solid var(--border); }
-  .sidebar-logo .logo-text { font-family: 'Playfair Display', serif; font-size: 1.3rem; font-weight: 700; color: var(--primary); }
-  .sidebar-logo .logo-text span { color: var(--accent); }
-  .sidebar-logo .role-badge { margin-top: .4rem; font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--text3); }
-  .sidebar-nav { flex: 1; padding: 1rem 0; }
-  .nav-section { padding: .5rem 1rem .25rem; font-size: .68rem; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--text3); }
-  .nav-item { display: flex; align-items: center; gap: .75rem; padding: .65rem 1.25rem; cursor: pointer; color: var(--text2); font-size: .88rem; font-weight: 500; border-radius: 0; transition: all .2s; margin: 0 .5rem; border-radius: var(--radius-sm); }
-  .nav-item:hover { background: var(--bg); color: var(--primary); }
-  .nav-item.active { background: #e6fffa; color: var(--primary); font-weight: 600; }
-  .nav-item .nav-icon { font-size: 1.1rem; width: 20px; text-align: center; }
-  .nav-badge { margin-left: auto; background: var(--accent); color: white; font-size: .65rem; font-weight: 700; padding: 2px 7px; border-radius: 99px; }
-  .sidebar-footer { padding: 1rem; border-top: 1px solid var(--border); }
-  .user-chip { display: flex; align-items: center; gap: .75rem; padding: .6rem; border-radius: var(--radius-sm); cursor: pointer; transition: background .2s; }
-  .user-chip:hover { background: var(--bg); }
-  .avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; flex-shrink: 0; }
-  .avatar-teal { background: #ccfbf1; color: var(--primary); }
-  .avatar-orange { background: #fed7aa; color: #c2410c; }
-  .avatar-blue { background: #dbeafe; color: #1d4ed8; }
-  .user-info .name { font-size: .85rem; font-weight: 600; color: var(--text); }
-  .user-info .role { font-size: .72rem; color: var(--text3); }
-  .back-btn { font-size: .75rem; color: var(--text3); cursor: pointer; margin-top: .5rem; display: flex; align-items: center; gap: .3rem; transition: color .2s; }
-  .back-btn:hover { color: var(--primary); }
-
-  .main-content { margin-left: var(--sidebar-w); flex: 1; }
-  .topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 50; }
-  .topbar h2 { font-size: 1.1rem; font-weight: 600; color: var(--text); }
-  .topbar-actions { display: flex; gap: .75rem; align-items: center; }
-  .icon-btn { width: 36px; height: 36px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1rem; transition: all .2s; }
-  .icon-btn:hover { background: var(--bg); border-color: var(--primary-light); }
-  .page { display: none; padding: 2rem; }
-  .page.active { display: block; }
-
-  /* ── CARDS & GRID ── */
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; box-shadow: var(--shadow); }
-  .card-sm { padding: 1.25rem; }
-  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
-  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
-  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.25rem; }
-  .grid-auto { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; }
-
-  /* ── STAT CARDS ── */
-  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem 1.5rem; box-shadow: var(--shadow); }
-  .stat-card .label { font-size: .78rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text3); margin-bottom: .4rem; }
-  .stat-card .value { font-size: 2rem; font-weight: 700; color: var(--text); line-height: 1; margin-bottom: .4rem; }
-  .stat-card .delta { font-size: .8rem; color: var(--success); font-weight: 500; }
-  .stat-card .delta.neg { color: var(--danger); }
-  .stat-card .icon-wrap { width: 42px; height: 42px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; margin-bottom: 1rem; }
-
-  /* ── SECTION HEADERS ── */
-  .section-hd { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
-  .section-hd h3 { font-size: 1rem; font-weight: 600; color: var(--text); }
-  .section-hd a { font-size: .8rem; color: var(--primary); cursor: pointer; }
-
-  /* ── BADGES ── */
-  .badge { display: inline-flex; align-items: center; gap: .3rem; font-size: .72rem; font-weight: 600; padding: 3px 8px; border-radius: 99px; }
-  .badge-green { background: var(--success-bg); color: #166534; }
-  .badge-red { background: var(--danger-bg); color: #991b1b; }
-  .badge-yellow { background: var(--warning-bg); color: #92400e; }
-  .badge-blue { background: var(--info-bg); color: #1e40af; }
-  .badge-gray { background: #f1f5f9; color: #475569; }
-  .badge-teal { background: #ccfbf1; color: #0d5048; }
-
-  /* ── BUTTONS ── */
-  .btn { display: inline-flex; align-items: center; gap: .4rem; padding: .55rem 1.2rem; border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif; font-size: .85rem; font-weight: 600; cursor: pointer; transition: all .2s; border: none; }
-  .btn-primary { background: var(--primary); color: white; }
-  .btn-primary:hover { background: var(--primary-dark); }
-  .btn-outline { background: white; color: var(--primary); border: 1.5px solid var(--primary); }
-  .btn-outline:hover { background: var(--bg); }
-  .btn-danger { background: var(--danger); color: white; }
-  .btn-danger:hover { background: #dc2626; }
-  .btn-sm { padding: .35rem .8rem; font-size: .78rem; }
-  .btn-ghost { background: transparent; color: var(--text2); border: 1px solid var(--border); }
-  .btn-ghost:hover { background: var(--bg); color: var(--text); }
-
-  /* ── TABLE ── */
-  .table-wrap { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; }
-  th { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text3); padding: .7rem 1rem; text-align: left; border-bottom: 1px solid var(--border); background: var(--surface2); }
-  td { padding: .85rem 1rem; font-size: .88rem; color: var(--text2); border-bottom: 1px solid var(--border); vertical-align: middle; }
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: var(--bg); }
-
-  /* ── FORM ELEMENTS ── */
-  .form-group { margin-bottom: 1.25rem; }
-  .form-group label { display: block; font-size: .82rem; font-weight: 600; color: var(--text2); margin-bottom: .4rem; }
-  .form-control { width: 100%; padding: .6rem .9rem; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif; font-size: .9rem; color: var(--text); background: white; transition: border .2s; outline: none; }
-  .form-control:focus { border-color: var(--primary-light); box-shadow: 0 0 0 3px rgba(20,184,166,.12); }
-  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-  textarea.form-control { resize: vertical; min-height: 80px; }
-  select.form-control { cursor: pointer; }
-
-  /* ── MODALS ── */
-  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 999; display: flex; align-items: center; justify-content: center; padding: 1rem; opacity: 0; pointer-events: none; transition: opacity .2s; }
-  .modal-overlay.open { opacity: 1; pointer-events: all; }
-  .modal { background: white; border-radius: var(--radius); padding: 2rem; max-width: 560px; width: 100%; max-height: 85vh; overflow-y: auto; box-shadow: var(--shadow-lg); transform: translateY(16px); transition: transform .2s; }
-  .modal-overlay.open .modal { transform: translateY(0); }
-  .modal-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; }
-  .modal-header h3 { font-size: 1.1rem; font-weight: 700; color: var(--text); }
-  .modal-close { background: none; border: none; font-size: 1.3rem; cursor: pointer; color: var(--text3); padding: .2rem; line-height: 1; }
-  .modal-footer { display: flex; justify-content: flex-end; gap: .75rem; margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--border); }
-
-  /* ── TIMELINE ── */
-  .timeline { position: relative; }
-  .tl-item { display: flex; gap: 1rem; margin-bottom: 1.5rem; position: relative; }
-  .tl-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--primary-light); flex-shrink: 0; margin-top: 4px; position: relative; z-index: 1; }
-  .tl-item::before { content: ''; position: absolute; left: 5px; top: 16px; bottom: -16px; width: 2px; background: var(--border); }
-  .tl-item:last-child::before { display: none; }
-  .tl-content { flex: 1; }
-  .tl-title { font-size: .9rem; font-weight: 600; color: var(--text); margin-bottom: .2rem; }
-  .tl-sub { font-size: .8rem; color: var(--text3); }
-
-  /* ── APPOINTMENT CARD ── */
-  .appt-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; display: flex; align-items: center; gap: 1rem; cursor: pointer; transition: all .2s; }
-  .appt-card:hover { border-color: var(--primary-light); box-shadow: var(--shadow-md); }
-  .appt-time { min-width: 70px; text-align: center; background: var(--bg); border-radius: var(--radius-sm); padding: .5rem; }
-  .appt-time .time { font-size: 1rem; font-weight: 700; color: var(--primary); }
-  .appt-time .period { font-size: .68rem; color: var(--text3); }
-  .appt-info { flex: 1; }
-  .appt-info .name { font-size: .92rem; font-weight: 600; color: var(--text); }
-  .appt-info .type { font-size: .8rem; color: var(--text3); margin-top: .2rem; }
-
-  /* ── PATIENT CARD ── */
-  .patient-row { display: flex; align-items: center; gap: 1rem; padding: .75rem 0; border-bottom: 1px solid var(--border); }
-  .patient-row:last-child { border-bottom: none; }
-  .patient-info .name { font-size: .9rem; font-weight: 600; color: var(--text); }
-  .patient-info .meta { font-size: .78rem; color: var(--text3); }
-
-  /* ── NOTIFICATION ── */
-  .notification { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--text); color: white; padding: 1rem 1.5rem; border-radius: var(--radius); box-shadow: var(--shadow-lg); z-index: 9999; font-size: .9rem; transform: translateY(80px); opacity: 0; transition: all .3s; max-width: 320px; }
-  .notification.show { transform: translateY(0); opacity: 1; }
-  .notification.success { background: var(--primary); }
-
-  /* ── VITAL CARD ── */
-  .vital-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: .75rem; }
-  .vital-card { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 1rem; text-align: center; }
-  .vital-card .v-val { font-size: 1.4rem; font-weight: 700; color: var(--text); }
-  .vital-card .v-unit { font-size: .7rem; color: var(--text3); font-weight: 600; margin-left: 2px; }
-  .vital-card .v-label { font-size: .72rem; color: var(--text3); margin-top: .2rem; }
-  .vital-card .v-status { font-size: .7rem; font-weight: 600; margin-top: .3rem; }
-
-  /* ── LOGIN PANEL ── */
-  .login-overlay { position: fixed; inset: 0; background: rgba(15,118,110,.92); z-index: 500; display: flex; align-items: center; justify-content: center; }
-  .login-box { background: white; border-radius: var(--radius); padding: 2.5rem; max-width: 420px; width: 90%; box-shadow: var(--shadow-lg); }
-  .login-box .login-logo { font-family: 'Playfair Display', serif; font-size: 1.6rem; font-weight: 700; color: var(--primary); margin-bottom: .3rem; }
-  .login-box .login-logo span { color: var(--accent); }
-  .login-box .login-sub { font-size: .85rem; color: var(--text3); margin-bottom: 2rem; }
-
-  /* ── VIDEO ROOM ── */
-  .video-overlay { position: fixed; inset: 0; background: #0f1117; z-index: 600; display: flex; flex-direction: column; }
-  .video-main { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; }
-  .video-feed { width: 100%; max-width: 900px; height: 480px; background: #1a1f2e; border-radius: var(--radius); display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; font-size: 1.1rem; position: relative; overflow: hidden; }
-  .video-feed .pulse-ring { width: 80px; height: 80px; border-radius: 50%; background: var(--primary-light); opacity: .15; animation: pulse 2s ease-in-out infinite; margin-bottom: 1rem; }
-  @keyframes pulse { 0%,100%{transform:scale(1);opacity:.15;} 50%{transform:scale(1.3);opacity:.25;} }
-  .video-self { position: absolute; bottom: 1rem; right: 1rem; width: 160px; height: 100px; background: #2a3040; border-radius: var(--radius-sm); border: 2px solid rgba(255,255,255,.2); display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,.5); font-size: .8rem; }
-  .video-controls { padding: 1.5rem; display: flex; justify-content: center; gap: 1rem; }
-  .ctrl-btn { width: 52px; height: 52px; border-radius: 50%; border: none; cursor: pointer; font-size: 1.3rem; display: flex; align-items: center; justify-content: center; transition: all .2s; }
-  .ctrl-btn:hover { transform: scale(1.08); }
-  .ctrl-end { background: var(--danger); color: white; }
-  .ctrl-normal { background: rgba(255,255,255,.12); color: white; }
-  .ctrl-normal:hover { background: rgba(255,255,255,.22); }
-
-  /* ── PROGRESS BAR ── */
-  .progress-bar { background: var(--border); border-radius: 99px; height: 6px; overflow: hidden; }
-  .progress-fill { height: 100%; background: var(--primary-light); border-radius: 99px; transition: width .5s; }
-
-  /* ── SEARCH BAR ── */
-  .search-wrap { position: relative; }
-  .search-wrap input { padding-left: 2.2rem; }
-  .search-icon { position: absolute; left: .7rem; top: 50%; transform: translateY(-50%); color: var(--text3); font-size: .95rem; }
-
-  /* ── CHART BARS (CSS only) ── */
-  .mini-chart { display: flex; align-items: flex-end; gap: 4px; height: 60px; }
-  .bar { border-radius: 3px 3px 0 0; min-width: 10px; flex: 1; background: var(--primary-light); opacity: .6; transition: opacity .2s; }
-  .bar:hover { opacity: 1; }
-  .bar.accent { background: var(--accent); opacity: .8; }
-
-  /* ── MISC ── */
-  .divider { border: none; border-top: 1px solid var(--border); margin: 1.25rem 0; }
-  .text-muted { color: var(--text3); font-size: .85rem; }
-  .text-sm { font-size: .85rem; }
-  .font-semibold { font-weight: 600; }
-  .mt-1 { margin-top: .5rem; } .mt-2 { margin-top: 1rem; } .mt-3 { margin-top: 1.5rem; }
-  .mb-1 { margin-bottom: .5rem; } .mb-2 { margin-bottom: 1rem; } .mb-3 { margin-bottom: 1.5rem; }
-  .flex { display: flex; } .items-center { align-items: center; } .justify-between { justify-content: space-between; }
-  .gap-1 { gap: .5rem; } .gap-2 { gap: 1rem; }
-  .w-full { width: 100%; }
-  .inline-flex { display: inline-flex; }
-  .space-y > * + * { margin-top: .75rem; }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MedXpert – Advanced Telemedicine & EHR Platform</title>
+  <link rel="icon" type="image/png" href="./favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./src/index.css">
 </head>
-<body>
+<body class="font-sans bg-[var(--bg)] text-[#0f172a] min-h-screen">
 
-<!-- LANDING PAGE -->
-<div id="landing" class="landing">
-  <nav class="land-nav">
-    <div class="land-logo">Med<span>X</span>pert</div>
-    <div style="font-size:.85rem;opacity:.7">Advanced Telemedicine & EHR</div>
-  </nav>
-  <div class="land-hero">
-    <h1>Smart Healthcare<br>for a <em>Better Tomorrow</em></h1>
-    <p>Connect with doctors, manage your health records, and access telemedicine services — all in one secure platform.</p>
-    <div class="role-cards">
-      <div class="role-card" onclick="openLogin('patient')">
-        <div class="icon">🧑‍💼</div>
-        <h3>Patient Portal</h3>
-        <p>Book appointments, view records & consult doctors</p>
+  <!-- LANDING PAGE -->
+  <div id="landing" class="landing">
+    <nav class="land-nav" style="display: flex; justify-content: space-between; align-items: center; padding: 1.5rem 3rem;">
+      <div class="land-logo" style="display: flex; align-items: center; gap: 0.5rem; font-family: 'DM Sans', sans-serif; font-size: 1.6rem; font-weight: 800; color: #1e3a8a;">
+        <div style="width: 40px; height: 40px; border-radius: 12px; background: #f97316; color: white; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; font-weight: 800; box-shadow: 0 4px 6px -1px rgba(249,115,22,0.2);">X</div>
+        <span>Med<span style="color: #f97316;">X</span>pert</span>
       </div>
-      <div class="role-card" onclick="openLogin('doctor')">
-        <div class="icon">👨‍⚕️</div>
-        <h3>Doctor Dashboard</h3>
-        <p>Manage patients, consultations & prescriptions</p>
-      </div>
-      <div class="role-card" onclick="openLogin('admin')">
-        <div class="icon">🛡️</div>
-        <h3>Admin Panel</h3>
-        <p>System management, reports & user control</p>
-      </div>
-    </div>
-  </div>
-  <div class="land-footer">© 2026 MedXpert · MIT License · Smart Healthcare Platform</div>
-</div>
-
-<!-- LOGIN OVERLAY -->
-<div id="loginOverlay" class="login-overlay" style="display:none;">
-  <div class="login-box">
-    <div class="login-logo">Med<span>X</span>pert</div>
-    <div class="login-sub" id="loginSubtitle">Patient Login</div>
-    <div class="form-group">
-      <label>Email Address</label>
-      <input type="email" class="form-control" id="loginEmail" placeholder="your@email.com" value="demo@medxpert.com">
-    </div>
-    <div class="form-group">
-      <label>Password</label>
-      <input type="password" class="form-control" id="loginPwd" placeholder="••••••••" value="password123">
-    </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
-      <label style="display:flex;gap:.5rem;align-items:center;font-size:.85rem;color:var(--text2);cursor:pointer;">
-        <input type="checkbox" checked> Remember me
-      </label>
-      <a style="font-size:.83rem;color:var(--primary);cursor:pointer;">Forgot password?</a>
-    </div>
-    <button class="btn btn-primary w-full" style="justify-content:center;" onclick="doLogin()">Sign In</button>
-    <div style="text-align:center;margin-top:1rem;font-size:.83rem;color:var(--text3);">
-      Demo credentials pre-filled · <a style="color:var(--primary);cursor:pointer;" onclick="closeLogin()">← Back</a>
-    </div>
-  </div>
-</div>
-
-<!-- NOTIFICATION -->
-<div id="notification" class="notification"></div>
-
-<!-- ═══════════════════════════════ PATIENT PANEL ═══════════════════════════════ -->
-<div id="patientPanel" style="display:none;" class="app-shell">
-  <div class="sidebar">
-    <div class="sidebar-logo">
-      <div class="logo-text">Med<span>X</span>pert</div>
-      <div class="role-badge">🧑‍💼 Patient Portal</div>
-    </div>
-    <nav class="sidebar-nav">
-      <div class="nav-section">Main</div>
-      <div class="nav-item active" onclick="showPage('p','pDashboard',this)"><span class="nav-icon">🏠</span>Dashboard</div>
-      <div class="nav-item" onclick="showPage('p','pAppointments',this)"><span class="nav-icon">📅</span>Appointments<span class="nav-badge">2</span></div>
-      <div class="nav-item" onclick="showPage('p','pDoctors',this)"><span class="nav-icon">👨‍⚕️</span>Find Doctors</div>
-      <div class="nav-item" onclick="showPage('p','pConsultation',this)"><span class="nav-icon">🎥</span>Video Consult</div>
-      <div class="nav-section">Health</div>
-      <div class="nav-item" onclick="showPage('p','pRecords',this)"><span class="nav-icon">📋</span>Medical Records</div>
-      <div class="nav-item" onclick="showPage('p','pPrescriptions',this)"><span class="nav-icon">💊</span>Prescriptions</div>
-      <div class="nav-item" onclick="showPage('p','pReports',this)"><span class="nav-icon">🧪</span>Lab Reports</div>
-      <div class="nav-section">Account</div>
-      <div class="nav-item" onclick="showPage('p','pProfile',this)"><span class="nav-icon">👤</span>My Profile</div>
+      <div style="font-size:.85rem;opacity:.7;color:#475569;font-weight:600;">Advanced Telemedicine & EHR</div>
     </nav>
-    <div class="sidebar-footer">
-      <div class="user-chip">
-        <div class="avatar avatar-teal">AS</div>
-        <div class="user-info"><div class="name">Alex Smith</div><div class="role">Patient ID: P-10421</div></div>
+    <div class="land-hero">
+      <h1>Smart Healthcare<br>for a <em>Better Tomorrow</em></h1>
+      <p>Connect with doctors, manage your health records, and access telemedicine services — all in one secure platform.</p>
+      <div class="role-cards">
+        <div class="role-card" id="btn-patient-login">
+          <div class="icon">🧑‍💼</div>
+          <h3>Patient Portal</h3>
+          <p>Book appointments, view records & consult doctors</p>
+        </div>
+        <div class="role-card" id="btn-doctor-login">
+          <div class="icon">👨‍⚕️</div>
+          <h3>Doctor Dashboard</h3>
+          <p>Manage patients, consultations & prescriptions</p>
+        </div>
       </div>
-      <div class="back-btn" onclick="goLanding()">← Back to Home</div>
+    </div>
+    <div class="land-footer">© 2026 MedXpert · MIT License · Smart Healthcare Platform</div>
+  </div>
+
+  <!-- LOGIN OVERLAY -->
+  <div id="loginOverlay" class="login-overlay" style="display:none;">
+    <div class="login-box">
+      <div class="login-logo" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 0.5rem; font-family: 'DM Sans', sans-serif; font-size: 1.6rem; font-weight: 800; color: #1e3a8a;">
+        <div style="width: 36px; height: 36px; border-radius: 10px; background: #f97316; color: white; display: flex; align-items: center; justify-content: center; font-size: 1.15rem; font-weight: 800; box-shadow: 0 4px 6px -1px rgba(249,115,22,0.2);">X</div>
+        <span>Med<span style="color: #f97316;">X</span>pert</span>
+      </div>
+      <div class="login-sub" id="loginSubtitle">Patient Login</div>
+
+      <!-- Tab Switcher for Sign In / Sign Up -->
+      <div class="login-tabs" style="display: flex; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border);">
+        <button id="tab-login-signin" class="login-tab-btn active" style="flex: 1; padding: 0.75rem; background: none; border: none; border-bottom: 2px solid var(--primary); font-weight: 600; color: var(--primary); cursor: pointer; font-size: 0.9rem;">Sign In</button>
+        <button id="tab-login-signup" class="login-tab-btn" style="flex: 1; padding: 0.75rem; background: none; border: none; border-bottom: 2px solid transparent; font-weight: 600; color: var(--text3); cursor: pointer; font-size: 0.9rem;">Sign Up</button>
+      </div>
+
+      <!-- Sign In Form -->
+      <div id="signInForm">
+        <div class="form-group">
+          <label>Email Address</label>
+          <input type="email" class="form-control" id="loginEmail" placeholder="your@email.com" value="demo@medxpert.com">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" class="form-control" id="loginPwd" placeholder="••••••••" value="password123">
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+          <label style="display:flex;gap:.5rem;align-items:center;font-size:.85rem;color:var(--text2);cursor:pointer;">
+            <input type="checkbox" checked> Remember me
+          </label>
+          <a style="font-size:.83rem;color:var(--primary);cursor:pointer;">Forgot password?</a>
+        </div>
+        <button class="btn btn-primary w-full" style="justify-content:center;" id="btn-do-login">Sign In</button>
+      </div>
+
+      <!-- Sign Up Form (Initially Hidden) -->
+      <div id="signUpForm" style="display:none; max-height: 400px; overflow-y: auto; padding-right: 0.25rem;">
+        <div class="form-group">
+          <label>Full Name</label>
+          <input type="text" class="form-control" id="signupName" placeholder="John Doe">
+        </div>
+        <div class="form-group">
+          <label>Email Address</label>
+          <input type="email" class="form-control" id="signupEmail" placeholder="your@email.com">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" class="form-control" id="signupPassword" placeholder="••••••••">
+        </div>
+        <div class="form-group">
+          <label>Phone Number</label>
+          <input type="tel" class="form-control" id="signupPhone" placeholder="+91 XXXXX XXXXX">
+        </div>
+        <div class="form-group">
+          <label>Role</label>
+          <select class="form-control" id="signupRole">
+            <option value="patient">Patient</option>
+            <option value="doctor">Doctor</option>
+          </select>
+        </div>
+
+        <!-- Patient Specific Fields -->
+        <div id="signup-patient-fields">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Age</label>
+              <input type="number" class="form-control" id="signupAge" placeholder="30" value="30">
+            </div>
+            <div class="form-group">
+              <label>Gender</label>
+              <select class="form-control" id="signupGender">
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Blood Type</label>
+            <select class="form-control" id="signupBlood">
+              <option value="O+">O+</option>
+              <option value="A+">A+</option>
+              <option value="A-">A-</option>
+              <option value="B+">B+</option>
+              <option value="B-">B-</option>
+              <option value="AB+">AB+</option>
+              <option value="AB-">AB-</option>
+              <option value="O-">O-</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Chronic Conditions</label>
+            <input type="text" class="form-control" id="signupConditions" placeholder="e.g. None" value="None">
+          </div>
+        </div>
+
+        <!-- Doctor Specific Fields -->
+        <div id="signup-doctor-fields" style="display:none;">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Specialty</label>
+              <input type="text" class="form-control" id="signupSpecialty" placeholder="e.g. General Medicine" value="General Medicine">
+            </div>
+            <div class="form-group">
+              <label>Experience</label>
+              <input type="text" class="form-control" id="signupExp" placeholder="e.g. 5 yrs" value="5 yrs">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Consultation Fee</label>
+              <input type="text" class="form-control" id="signupFee" placeholder="e.g. ₹500" value="₹500">
+            </div>
+            <div class="form-group">
+              <label>Hospital</label>
+              <input type="text" class="form-control" id="signupHospital" placeholder="e.g. City Medical Center" value="City Medical Center">
+            </div>
+          </div>
+        </div>
+
+        <button class="btn btn-primary w-full" style="justify-content:center; margin-top: 1rem;" id="btn-do-signup">Sign Up</button>
+      </div>
+
+      <div style="text-align:center;margin-top:1rem;font-size:.83rem;color:var(--text3);">
+        <span id="demo-creds-hint">Demo credentials pre-filled · </span><a style="color:var(--primary);cursor:pointer;" id="btn-close-login">← Back</a>
+      </div>
     </div>
   </div>
-  <div class="main-content">
-    <div class="topbar">
-      <h2 id="pPageTitle">Dashboard</h2>
-      <div class="topbar-actions">
-        <div class="icon-btn" title="Notifications" onclick="notify('You have 2 upcoming appointments','success')">🔔</div>
-        <div class="icon-btn" title="Search" onclick="showPage('p','pDoctors',null)">🔍</div>
+
+  <!-- NOTIFICATION -->
+  <div id="notification" class="notification"></div>
+
+  <!-- ═══════════════════════════════ PATIENT PANEL ═══════════════════════════════ -->
+  <div id="patientPanel" style="display:none;" class="app-shell">
+    <div class="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-text" style="display: flex; align-items: center; gap: 0.5rem; font-family: 'DM Sans', sans-serif; font-size: 1.3rem; font-weight: 800; color: #1e3a8a;">
+          <div style="width: 28px; height: 28px; border-radius: 8px; background: #f97316; color: white; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; font-weight: 800; box-shadow: 0 4px 6px -1px rgba(249,115,22,0.2);">X</div>
+          <span>Med<span style="color: #f97316;">X</span>pert</span>
+        </div>
+        <div class="role-badge">🧑‍💼 Patient Portal</div>
+      </div>
+      <nav class="sidebar-nav" id="patient-nav">
+        <div class="nav-section">Main</div>
+        <div class="nav-item active" data-page="pDashboard"><span class="nav-icon">🏠</span>Dashboard</div>
+        <div class="nav-item" data-page="pAppointments"><span class="nav-icon">📅</span>Appointments<span class="nav-badge">2</span></div>
+        <div class="nav-item" data-page="pDoctors"><span class="nav-icon">👨‍⚕️</span>Find Doctors</div>
+        <div class="nav-item" data-page="pConsultation"><span class="nav-icon">🎥</span>Video Consult</div>
+        <div class="nav-section">Health</div>
+        <div class="nav-item" data-page="pRecords"><span class="nav-icon">📋</span>Medical Records</div>
+        <div class="nav-item" data-page="pPrescriptions"><span class="nav-icon">💊</span>Prescriptions</div>
+        <div class="nav-item" data-page="pReports"><span class="nav-icon">🧪</span>Lab Reports</div>
+        <div class="nav-section">Account</div>
+        <div class="nav-item" data-page="pProfile"><span class="nav-icon">👤</span>My Profile</div>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-chip">
+          <div class="avatar avatar-teal">AS</div>
+          <div class="user-info"><div class="name" id="p-user-display-name">Aarav Mehta</div><div class="role" id="p-user-display-id">Patient ID: P-10421</div></div>
+        </div>
+        <div class="back-btn back-to-home">← Back to Home</div>
       </div>
     </div>
+    <div class="sidebar-mobile-overlay" id="p-sidebar-overlay"></div>
+    <div class="main-content">
+      <div class="topbar">
+        <button class="menu-toggle-btn" id="p-menu-toggle" aria-label="Toggle Menu">☰</button>
+        <h2 id="pPageTitle">Dashboard</h2>
+        <div class="topbar-actions">
+          <div class="icon-btn" title="Notifications" id="p-notif-bell" style="position: relative;">🔔<span id="p-notif-badge" class="nav-badge" style="position: absolute; top: -5px; right: -5px; background: var(--warning); margin: 0; padding: 0.15rem 0.35rem; font-size: 0.65rem; display: none;">0</span></div>
+          <div class="icon-btn" title="Search" id="p-search-trigger">🔍</div>
+        </div>
+      </div>
 
-    <!-- PATIENT DASHBOARD -->
-    <div id="pDashboard" class="page active">
-      <div class="grid-4 mb-3">
-        <div class="stat-card"><div class="label">Upcoming</div><div class="value">2</div><div class="delta">Appointments</div></div>
-        <div class="stat-card"><div class="label">Prescriptions</div><div class="value">3</div><div class="delta">Active</div></div>
-        <div class="stat-card"><div class="label">Lab Reports</div><div class="value">5</div><div class="delta">Available</div></div>
-        <div class="stat-card"><div class="label">Doctors</div><div class="value">4</div><div class="delta">Consulted</div></div>
+      <!-- PATIENT DASHBOARD -->
+      <div id="pDashboard" class="page active">
+        <div class="grid-4 mb-3">
+          <div class="stat-card"><div class="label">Upcoming</div><div class="value" id="p-stat-upcoming">2</div><div class="delta">Appointments</div></div>
+          <div class="stat-card"><div class="label">Prescriptions</div><div class="value" id="p-stat-prescriptions">3</div><div class="delta">Active</div></div>
+          <div class="stat-card"><div class="label">Lab Reports</div><div class="value" id="p-stat-lab-reports">5</div><div class="delta">Available</div></div>
+          <div class="stat-card"><div class="label">Doctors</div><div class="value">4</div><div class="delta">Consulted</div></div>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="section-hd"><h3>Upcoming Appointments</h3><a class="nav-link" data-page="pAppointments">View all →</a></div>
+            <div class="space-y" id="p-dashboard-appts">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+          <div class="card">
+            <div class="section-hd"><h3>Recent Vitals</h3><a class="nav-link" data-page="pRecords">Full history →</a></div>
+            <div class="vital-grid" id="p-dashboard-vitals">
+              <!-- Dynamically populated or standard static -->
+              <div class="vital-card"><div class="v-val">118<span class="v-unit">/76</span></div><div class="v-label">Blood Pressure</div><div class="v-status" style="color:var(--success)">Normal</div></div>
+              <div class="vital-card"><div class="v-val">72<span class="v-unit">bpm</span></div><div class="v-label">Heart Rate</div><div class="v-status" style="color:var(--success)">Normal</div></div>
+              <div class="vital-card"><div class="v-val">36.7<span class="v-unit">°C</span></div><div class="v-label">Temperature</div><div class="v-status" style="color:var(--success)">Normal</div></div>
+              <div class="vital-card"><div class="v-val">98<span class="v-unit">%</span></div><div class="v-label">SpO₂</div><div class="v-status" style="color:var(--success)">Normal</div></div>
+            </div>
+            <div style="margin-top:1rem;">
+              <div class="flex justify-between mb-1"><span class="text-sm text-muted">Last checked</span><span class="text-sm font-semibold">Today, 9:15 AM</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="grid-2 mt-3">
+          <div class="card">
+            <div class="section-hd"><h3>Active Prescriptions</h3></div>
+            <div class="space-y" id="p-dashboard-prescriptions">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+          <div class="card">
+            <div class="section-hd"><h3>Health Timeline</h3></div>
+            <div class="timeline">
+              <div class="tl-item"><div class="tl-dot"></div><div class="tl-content"><div class="tl-title">Lab results uploaded</div><div class="tl-sub">CBC & Lipid Panel · May 15</div></div></div>
+              <div class="tl-item"><div class="tl-dot"></div><div class="tl-content"><div class="tl-title">Video consultation</div><div class="tl-sub">Dr. Johnson – Follow-up · May 10</div></div></div>
+              <div class="tl-item"><div class="tl-dot"></div><div class="tl-content"><div class="tl-title">Prescription renewed</div><div class="tl-sub">Metformin 500mg · May 8</div></div></div>
+              <div class="tl-item"><div class="tl-dot"></div><div class="tl-content"><div class="tl-title">Annual health check</div><div class="tl-sub">Complete physical · Apr 22</div></div></div>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="grid-2">
-        <div class="card">
-          <div class="section-hd"><h3>Upcoming Appointments</h3><a onclick="showPage('p','pAppointments',null)">View all →</a></div>
-          <div class="space-y">
-            <div class="appt-card"><div class="appt-time"><div class="time">10:30</div><div class="period">Tomorrow</div></div><div class="appt-info"><div class="name">Dr. Sarah Johnson</div><div class="type">General Consultation</div></div><span class="badge badge-blue">Video</span></div>
-            <div class="appt-card"><div class="appt-time"><div class="time">02:00</div><div class="period">Mon Jun 3</div></div><div class="appt-info"><div class="name">Dr. Raj Patel</div><div class="type">Follow-up – Cardiology</div></div><span class="badge badge-teal">In-Clinic</span></div>
-          </div>
-        </div>
-        <div class="card">
-          <div class="section-hd"><h3>Recent Vitals</h3><a onclick="showPage('p','pRecords',null)">Full history →</a></div>
-          <div class="vital-grid">
-            <div class="vital-card"><div class="v-val">118<span class="v-unit">/76</span></div><div class="v-label">Blood Pressure</div><div class="v-status" style="color:var(--success)">Normal</div></div>
-            <div class="vital-card"><div class="v-val">72<span class="v-unit">bpm</span></div><div class="v-label">Heart Rate</div><div class="v-status" style="color:var(--success)">Normal</div></div>
-            <div class="vital-card"><div class="v-val">36.7<span class="v-unit">°C</span></div><div class="v-label">Temperature</div><div class="v-status" style="color:var(--success)">Normal</div></div>
-            <div class="vital-card"><div class="v-val">98<span class="v-unit">%</span></div><div class="v-label">SpO₂</div><div class="v-status" style="color:var(--success)">Normal</div></div>
-          </div>
-          <div style="margin-top:1rem;">
-            <div class="flex justify-between mb-1"><span class="text-sm text-muted">Last checked</span><span class="text-sm font-semibold">Today, 9:15 AM</span></div>
-          </div>
-        </div>
-      </div>
-      <div class="grid-2 mt-3">
-        <div class="card">
-          <div class="section-hd"><h3>Active Prescriptions</h3></div>
-          <div class="space-y">
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:.7rem 0;border-bottom:1px solid var(--border)"><div><div class="text-sm font-semibold">Metformin 500mg</div><div class="text-muted">Twice daily · Dr. Patel</div></div><span class="badge badge-green">Active</span></div>
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:.7rem 0;border-bottom:1px solid var(--border)"><div><div class="text-sm font-semibold">Atorvastatin 10mg</div><div class="text-muted">Once daily · Dr. Johnson</div></div><span class="badge badge-green">Active</span></div>
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:.7rem 0"><div><div class="text-sm font-semibold">Vitamin D3 1000IU</div><div class="text-muted">Once daily · Dr. Kim</div></div><span class="badge badge-yellow">Refill soon</span></div>
-          </div>
-        </div>
-        <div class="card">
-          <div class="section-hd"><h3>Health Timeline</h3></div>
-          <div class="timeline">
-            <div class="tl-item"><div class="tl-dot"></div><div class="tl-content"><div class="tl-title">Lab results uploaded</div><div class="tl-sub">CBC & Lipid Panel · May 15</div></div></div>
-            <div class="tl-item"><div class="tl-dot"></div><div class="tl-content"><div class="tl-title">Video consultation</div><div class="tl-sub">Dr. Johnson – Follow-up · May 10</div></div></div>
-            <div class="tl-item"><div class="tl-dot"></div><div class="tl-content"><div class="tl-title">Prescription renewed</div><div class="tl-sub">Metformin 500mg · May 8</div></div></div>
-            <div class="tl-item"><div class="tl-dot"></div><div class="tl-content"><div class="tl-title">Annual health check</div><div class="tl-sub">Complete physical · Apr 22</div></div></div>
-          </div>
-        </div>
-      </div>
-    </div>
 
-    <!-- PATIENT APPOINTMENTS -->
-    <div id="pAppointments" class="page">
-      <div style="display:flex;justify-content:flex-end;margin-bottom:1.5rem;">
-        <button class="btn btn-primary" onclick="openModal('bookApptModal')">📅 Book New Appointment</button>
-      </div>
-      <div class="card mb-2">
-        <div class="section-hd"><h3>Upcoming Appointments</h3></div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Doctor</th><th>Date & Time</th><th>Type</th><th>Status</th><th>Action</th></tr></thead>
-            <tbody>
-              <tr><td><div class="font-semibold">Dr. Sarah Johnson</div><div class="text-muted">General Medicine</div></td><td>May 19, 2026 · 10:30 AM</td><td><span class="badge badge-blue">Video</span></td><td><span class="badge badge-green">Confirmed</span></td><td><button class="btn btn-sm btn-primary" onclick="openVideoCall()">Join Call</button></td></tr>
-              <tr><td><div class="font-semibold">Dr. Raj Patel</div><div class="text-muted">Cardiology</div></td><td>Jun 3, 2026 · 2:00 PM</td><td><span class="badge badge-teal">In-Clinic</span></td><td><span class="badge badge-green">Confirmed</span></td><td><button class="btn btn-sm btn-ghost" onclick="notify('Appointment cancelled','')">Cancel</button></td></tr>
-            </tbody>
-          </table>
+      <!-- PATIENT APPOINTMENTS -->
+      <div id="pAppointments" class="page">
+        <div style="display:flex;justify-content:space-between;margin-bottom:1.5rem;align-items:center;">
+          <div style="display:flex;gap:0.5rem;align-items:center;">
+            <button class="btn btn-sm btn-ghost active" id="btn-p-view-table" onclick="window.switchAppointmentView('p', 'table')">Table View</button>
+            <button class="btn btn-sm btn-ghost" id="btn-p-view-calendar" onclick="window.switchAppointmentView('p', 'calendar')">Calendar View</button>
+          </div>
+          <button class="btn btn-primary" id="btn-p-book-new">📅 Book New Appointment</button>
         </div>
-      </div>
-      <div class="card">
-        <div class="section-hd"><h3>Past Appointments</h3></div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Doctor</th><th>Date</th><th>Type</th><th>Notes</th></tr></thead>
-            <tbody>
-              <tr><td><div class="font-semibold">Dr. Kim</div><div class="text-muted">Endocrinology</div></td><td>May 10, 2026</td><td><span class="badge badge-blue">Video</span></td><td>Follow-up for diabetes management</td></tr>
-              <tr><td><div class="font-semibold">Dr. Johnson</div><div class="text-muted">General Medicine</div></td><td>Apr 22, 2026</td><td><span class="badge badge-teal">In-Clinic</span></td><td>Annual physical check-up</td></tr>
-              <tr><td><div class="font-semibold">Dr. Patel</div><div class="text-muted">Cardiology</div></td><td>Mar 15, 2026</td><td><span class="badge badge-blue">Video</span></td><td>Routine heart check</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
 
-    <!-- FIND DOCTORS -->
-    <div id="pDoctors" class="page">
-      <div class="grid-3" style="margin-bottom:1.5rem;">
-        <div class="search-wrap"><span class="search-icon">🔍</span><input type="text" class="form-control" placeholder="Search doctors, specialties..." style="padding-left:2.2rem;"></div>
-        <select class="form-control"><option>All Specialties</option><option>General Medicine</option><option>Cardiology</option><option>Endocrinology</option><option>Neurology</option><option>Dermatology</option></select>
-        <select class="form-control"><option>Available Anytime</option><option>Today</option><option>This Week</option></select>
-      </div>
-      <div class="grid-2">
-        <div class="card" id="docCard1">
-          <div style="display:flex;gap:1rem;align-items:flex-start;">
-            <div class="avatar avatar-teal" style="width:52px;height:52px;font-size:1rem;">SJ</div>
-            <div style="flex:1;">
-              <div class="font-semibold">Dr. Sarah Johnson</div>
-              <div class="text-muted mb-1">General Medicine · 12 yrs exp.</div>
-              <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
-                <span class="badge badge-teal">MBBS, MD</span>
-                <span class="badge badge-green">Available Today</span>
-                <span>⭐ 4.9</span>
+        <div id="p-appointments-table-container">
+          <div class="card mb-2">
+            <div class="section-hd"><h3>Upcoming Appointments</h3></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Doctor</th><th>Date & Time</th><th>Type</th><th>Status</th><th>Action</th></tr></thead>
+                <tbody id="p-appointments-table-body">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <div class="section-hd"><h3>Past Appointments</h3></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Doctor</th><th>Date</th><th>Type</th><th>Notes</th></tr></thead>
+                <tbody>
+                  <tr><td><div class="font-semibold">Dr. Neha Kapoor</div><div class="text-muted">Endocrinology</div></td><td>May 10, 2026</td><td><span class="badge badge-blue">Video</span></td><td>Follow-up for diabetes management</td></tr>
+                  <tr><td><div class="font-semibold">Dr. Shreya Joshi</div><div class="text-muted">General Medicine</div></td><td>Apr 22, 2026</td><td><span class="badge badge-teal">In-Clinic</span></td><td>Annual physical check-up</td></tr>
+                  <tr><td><div class="font-semibold">Dr. Raj Patel</div><div class="text-muted">Cardiology</div></td><td>Mar 15, 2026</td><td><span class="badge badge-blue">Video</span></td><td>Routine heart check</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div id="p-appointments-calendar-container" style="display:none;">
+          <div class="grid-2">
+            <div class="card">
+              <div class="calendar-wrapper" id="p-calendar-wrapper">
+                <!-- Dynamically populated calendar -->
+              </div>
+            </div>
+            <div class="card">
+              <div class="section-hd"><h3 id="p-calendar-selected-date-label">Schedule for Selected Date</h3></div>
+              <div class="space-y" id="p-calendar-day-appointments">
+                <div class="text-muted text-center" style="padding: 2rem 0;">Click on a calendar day to view schedule</div>
               </div>
             </div>
           </div>
-          <hr class="divider">
-          <div class="flex gap-2" style="font-size:.83rem;color:var(--text3);margin-bottom:1rem;">
-            <span>📍 City Medical Center</span>
-            <span>💰 ₹500/consult</span>
-          </div>
-          <div style="display:flex;gap:.5rem;">
-            <button class="btn btn-primary btn-sm" onclick="openModal('bookApptModal')">Book Appointment</button>
-            <button class="btn btn-outline btn-sm" onclick="openVideoCall()">Quick Video</button>
-          </div>
-        </div>
-        <div class="card">
-          <div style="display:flex;gap:1rem;align-items:flex-start;">
-            <div class="avatar avatar-blue" style="width:52px;height:52px;font-size:1rem;">RP</div>
-            <div style="flex:1;">
-              <div class="font-semibold">Dr. Raj Patel</div>
-              <div class="text-muted mb-1">Cardiology · 18 yrs exp.</div>
-              <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
-                <span class="badge badge-blue">MBBS, DM</span>
-                <span class="badge badge-yellow">Tomorrow</span>
-                <span>⭐ 4.8</span>
-              </div>
-            </div>
-          </div>
-          <hr class="divider">
-          <div style="display:flex;gap:.5rem;font-size:.83rem;color:var(--text3);margin-bottom:1rem;"><span>📍 Heart Institute</span><span>💰 ₹800/consult</span></div>
-          <div style="display:flex;gap:.5rem;">
-            <button class="btn btn-primary btn-sm" onclick="openModal('bookApptModal')">Book Appointment</button>
-            <button class="btn btn-ghost btn-sm">View Profile</button>
-          </div>
-        </div>
-        <div class="card">
-          <div style="display:flex;gap:1rem;align-items:flex-start;">
-            <div class="avatar avatar-orange" style="width:52px;height:52px;font-size:1rem;">NK</div>
-            <div style="flex:1;">
-              <div class="font-semibold">Dr. Neha Kim</div>
-              <div class="text-muted mb-1">Endocrinology · 9 yrs exp.</div>
-              <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
-                <span class="badge badge-teal">MBBS, MD</span>
-                <span class="badge badge-green">Available Today</span>
-                <span>⭐ 4.7</span>
-              </div>
-            </div>
-          </div>
-          <hr class="divider">
-          <div style="display:flex;gap:.5rem;font-size:.83rem;color:var(--text3);margin-bottom:1rem;"><span>📍 Diabetes Clinic</span><span>💰 ₹600/consult</span></div>
-          <div style="display:flex;gap:.5rem;">
-            <button class="btn btn-primary btn-sm" onclick="openModal('bookApptModal')">Book Appointment</button>
-            <button class="btn btn-ghost btn-sm">View Profile</button>
-          </div>
-        </div>
-        <div class="card">
-          <div style="display:flex;gap:1rem;align-items:flex-start;">
-            <div class="avatar avatar-teal" style="width:52px;height:52px;font-size:1rem;">AM</div>
-            <div style="flex:1;">
-              <div class="font-semibold">Dr. Arun Mehta</div>
-              <div class="text-muted mb-1">Neurology · 15 yrs exp.</div>
-              <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
-                <span class="badge badge-blue">MBBS, DNB</span>
-                <span class="badge badge-gray">Mon/Wed/Fri</span>
-                <span>⭐ 4.9</span>
-              </div>
-            </div>
-          </div>
-          <hr class="divider">
-          <div style="display:flex;gap:.5rem;font-size:.83rem;color:var(--text3);margin-bottom:1rem;"><span>📍 Neuro Center</span><span>💰 ₹900/consult</span></div>
-          <div style="display:flex;gap:.5rem;">
-            <button class="btn btn-primary btn-sm" onclick="openModal('bookApptModal')">Book Appointment</button>
-            <button class="btn btn-ghost btn-sm">View Profile</button>
-          </div>
         </div>
       </div>
-    </div>
 
-    <!-- VIDEO CONSULT -->
-    <div id="pConsultation" class="page">
-      <div class="grid-2">
-        <div class="card">
-          <div class="section-hd"><h3>Scheduled Video Consultations</h3></div>
-          <div class="space-y">
-            <div class="appt-card"><div class="appt-time"><div class="time">10:30</div><div class="period">Tomorrow</div></div><div class="appt-info"><div class="name">Dr. Sarah Johnson</div><div class="type">General Consultation</div></div><button class="btn btn-primary btn-sm" onclick="openVideoCall()">Join</button></div>
-          </div>
-          <div style="margin-top:1.5rem;padding:1.5rem;background:var(--surface2);border-radius:var(--radius-sm);text-align:center;">
-            <div style="font-size:3rem;margin-bottom:.75rem;">🎥</div>
-            <div class="font-semibold mb-1">Start Instant Consultation</div>
-            <div class="text-muted mb-2">Connect with an available doctor right now</div>
-            <button class="btn btn-primary" onclick="openVideoCall()">Connect Now</button>
-          </div>
+      <!-- FIND DOCTORS -->
+      <div id="pDoctors" class="page">
+        <div class="grid-3" style="margin-bottom:1.5rem;">
+          <div class="search-wrap"><span class="search-icon">🔍</span><input type="text" id="p-doctors-search" class="form-control" placeholder="Search doctors, specialties..." style="padding-left:2.2rem;"></div>
+          <select id="p-doctors-specialty-filter" class="form-control"><option>All Specialties</option><option>General Medicine</option><option>Cardiology</option><option>Endocrinology</option><option>Neurology</option><option>Dermatology</option></select>
+          <select class="form-control"><option>Available Anytime</option><option>Today</option><option>This Week</option></select>
         </div>
-        <div class="card">
-          <div class="section-hd"><h3>Pre-Consultation Checklist</h3></div>
-          <div class="space-y">
-            <label style="display:flex;align-items:center;gap:.75rem;cursor:pointer;"><input type="checkbox" checked><div><div class="text-sm font-semibold">Camera & microphone tested</div><div class="text-muted">Ensure audio/video works</div></div></label>
-            <label style="display:flex;align-items:center;gap:.75rem;cursor:pointer;"><input type="checkbox" checked><div><div class="text-sm font-semibold">Medical documents ready</div><div class="text-muted">Recent reports and prescriptions</div></div></label>
-            <label style="display:flex;align-items:center;gap:.75rem;cursor:pointer;"><input type="checkbox"><div><div class="text-sm font-semibold">List of current medications</div><div class="text-muted">Include dosages and frequency</div></div></label>
-            <label style="display:flex;align-items:center;gap:.75rem;cursor:pointer;"><input type="checkbox"><div><div class="text-sm font-semibold">Symptom notes prepared</div><div class="text-muted">When started, severity, triggers</div></div></label>
-          </div>
+        <div class="grid-2" id="p-doctors-list">
+          <!-- Dynamically populated -->
         </div>
       </div>
-    </div>
 
-    <!-- MEDICAL RECORDS -->
-    <div id="pRecords" class="page">
-      <div style="display:flex;justify-content:flex-end;margin-bottom:1.5rem;gap:.75rem;">
-        <button class="btn btn-outline" onclick="notify('File upload dialog opened','success')">📤 Upload Report</button>
-        <button class="btn btn-primary" onclick="notify('Records downloaded as PDF','success')">⬇ Download All</button>
-      </div>
-      <div class="grid-2 mb-3">
-        <div class="card">
-          <div class="section-hd"><h3>EHR Summary</h3></div>
-          <div class="space-y" style="font-size:.88rem;">
-            <div class="flex justify-between"><span class="text-muted">Blood Type</span><span class="font-semibold">O+</span></div>
-            <div class="flex justify-between"><span class="text-muted">Height</span><span class="font-semibold">175 cm</span></div>
-            <div class="flex justify-between"><span class="text-muted">Weight</span><span class="font-semibold">72 kg</span></div>
-            <div class="flex justify-between"><span class="text-muted">BMI</span><span class="font-semibold">23.5 – Normal</span></div>
-            <div class="flex justify-between"><span class="text-muted">Allergies</span><span class="font-semibold">Penicillin, Dust</span></div>
-            <div class="flex justify-between"><span class="text-muted">Chronic Conditions</span><span class="font-semibold">Type 2 Diabetes</span></div>
+      <!-- VIDEO CONSULT -->
+      <div id="pConsultation" class="page">
+        <div class="grid-2">
+          <div class="card">
+            <div class="section-hd"><h3>Scheduled Video Consultations</h3></div>
+            <div class="space-y" id="p-video-appts-list">
+              <!-- Dynamically populated -->
+            </div>
+            <div style="margin-top:1.5rem;padding:1.5rem;background:var(--surface2);border-radius:var(--radius-sm);text-align:center;">
+              <div style="font-size:3rem;margin-bottom:.75rem;">🎥</div>
+              <div class="font-semibold mb-1">Start Instant Consultation</div>
+              <div class="text-muted mb-2">Connect with an available doctor right now</div>
+              <button class="btn btn-primary" id="btn-p-connect-now">Connect Now</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="section-hd"><h3>Pre-Consultation Checklist</h3></div>
+            <div class="space-y">
+              <label style="display:flex;align-items:center;gap:.75rem;cursor:pointer;"><input type="checkbox" checked><div><div class="text-sm font-semibold">Camera & microphone tested</div><div class="text-muted">Ensure audio/video works</div></div></label>
+              <label style="display:flex;align-items:center;gap:.75rem;cursor:pointer;"><input type="checkbox" checked><div><div class="text-sm font-semibold">Medical documents ready</div><div class="text-muted">Recent reports and prescriptions</div></div></label>
+              <label style="display:flex;align-items:center;gap:.75rem;cursor:pointer;"><input type="checkbox"><div><div class="text-sm font-semibold">List of current medications</div><div class="text-muted">Include dosages and frequency</div></div></label>
+              <label style="display:flex;align-items:center;gap:.75rem;cursor:pointer;"><input type="checkbox"><div><div class="text-sm font-semibold">Symptom notes prepared</div><div class="text-muted">When started, severity, triggers</div></div></label>
+            </div>
           </div>
         </div>
-        <div class="card">
-          <div class="section-hd"><h3>Vaccination Records</h3></div>
-          <div class="space-y">
-            <div class="flex justify-between"><div><div class="text-sm font-semibold">COVID-19 (Booster)</div><div class="text-muted">Jan 2025</div></div><span class="badge badge-green">✓ Done</span></div>
-            <div class="flex justify-between"><div><div class="text-sm font-semibold">Influenza</div><div class="text-muted">Nov 2025</div></div><span class="badge badge-green">✓ Done</span></div>
-            <div class="flex justify-between"><div><div class="text-sm font-semibold">Hepatitis B</div><div class="text-muted">Mar 2024</div></div><span class="badge badge-green">✓ Done</span></div>
-            <div class="flex justify-between"><div><div class="text-sm font-semibold">Pneumococcal</div><div class="text-muted">Due: Dec 2026</div></div><span class="badge badge-yellow">Upcoming</span></div>
-          </div>
-        </div>
       </div>
-      <div class="card">
-        <div class="section-hd"><h3>Uploaded Documents</h3></div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Document</th><th>Type</th><th>Date</th><th>Doctor</th><th>Action</th></tr></thead>
-            <tbody>
-              <tr><td class="font-semibold">CBC Blood Test</td><td><span class="badge badge-blue">Lab Report</span></td><td>May 15, 2026</td><td>Dr. Kim</td><td><button class="btn btn-sm btn-ghost" onclick="notify('Report opened','success')">View</button></td></tr>
-              <tr><td class="font-semibold">Lipid Panel</td><td><span class="badge badge-blue">Lab Report</span></td><td>May 15, 2026</td><td>Dr. Kim</td><td><button class="btn btn-sm btn-ghost" onclick="notify('Report opened','success')">View</button></td></tr>
-              <tr><td class="font-semibold">ECG Report</td><td><span class="badge badge-teal">Cardiac</span></td><td>Mar 10, 2026</td><td>Dr. Patel</td><td><button class="btn btn-sm btn-ghost" onclick="notify('Report opened','success')">View</button></td></tr>
-              <tr><td class="font-semibold">Chest X-Ray</td><td><span class="badge badge-gray">Radiology</span></td><td>Feb 5, 2026</td><td>Dr. Johnson</td><td><button class="btn btn-sm btn-ghost" onclick="notify('Report opened','success')">View</button></td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
 
-    <!-- PRESCRIPTIONS PAGE -->
-    <div id="pPrescriptions" class="page">
-      <div class="grid-2">
-        <div class="card">
-          <div class="section-hd"><h3>Active Prescriptions</h3></div>
-          <div class="space-y">
-            <div class="card card-sm" style="border-left:3px solid var(--primary-light);">
-              <div class="flex justify-between mb-1"><span class="font-semibold">Metformin 500mg</span><span class="badge badge-green">Active</span></div>
-              <div class="text-muted text-sm">Twice daily – Morning & Evening</div>
-              <div class="text-muted text-sm">Duration: 3 months · Dr. Raj Patel</div>
-              <div style="margin-top:.75rem;"><div class="flex justify-between text-sm mb-1"><span>Refills left</span><span>2 of 3</span></div><div class="progress-bar"><div class="progress-fill" style="width:66%"></div></div></div>
+      <!-- MEDICAL RECORDS -->
+      <div id="pRecords" class="page">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:1.5rem;gap:.75rem;">
+          <button class="btn btn-outline btn-p-upload-report">📤 Upload Report</button>
+          <button class="btn btn-primary btn-p-download-all">⬇ Download All</button>
+        </div>
+        <div class="grid-2 mb-3">
+          <div class="card">
+            <div class="section-hd"><h3>EHR Summary</h3></div>
+            <div class="space-y" style="font-size:.88rem;" id="p-ehr-summary">
+              <!-- Dynamically populated -->
             </div>
-            <div class="card card-sm" style="border-left:3px solid var(--primary-light);">
-              <div class="flex justify-between mb-1"><span class="font-semibold">Atorvastatin 10mg</span><span class="badge badge-green">Active</span></div>
-              <div class="text-muted text-sm">Once daily – Bedtime</div>
-              <div class="text-muted text-sm">Duration: 6 months · Dr. Sarah Johnson</div>
-              <div style="margin-top:.75rem;"><div class="flex justify-between text-sm mb-1"><span>Refills left</span><span>4 of 6</span></div><div class="progress-bar"><div class="progress-fill" style="width:34%"></div></div></div>
-            </div>
-            <div class="card card-sm" style="border-left:3px solid var(--warning);">
-              <div class="flex justify-between mb-1"><span class="font-semibold">Vitamin D3 1000IU</span><span class="badge badge-yellow">Refill Soon</span></div>
-              <div class="text-muted text-sm">Once daily – Morning</div>
-              <div class="text-muted text-sm">Duration: 3 months · Dr. Neha Kim</div>
-              <div style="margin-top:.75rem;"><div class="flex justify-between text-sm mb-1"><span>Refills left</span><span>0 of 3</span></div><div class="progress-bar"><div class="progress-fill" style="width:2%"></div></div></div>
+          </div>
+          <div class="card">
+            <div class="section-hd"><h3>Vaccination Records</h3></div>
+            <div class="space-y">
+              <div class="flex justify-between"><div><div class="text-sm font-semibold">COVID-19 (Booster)</div><div class="text-muted">Jan 2025</div></div><span class="badge badge-green">✓ Done</span></div>
+              <div class="flex justify-between"><div><div class="text-sm font-semibold">Influenza</div><div class="text-muted">Nov 2025</div></div><span class="badge badge-green">✓ Done</span></div>
+              <div class="flex justify-between"><div><div class="text-sm font-semibold">Hepatitis B</div><div class="text-muted">Mar 2024</div></div><span class="badge badge-green">✓ Done</span></div>
+              <div class="flex justify-between"><div><div class="text-sm font-semibold">Pneumococcal</div><div class="text-muted">Due: Dec 2026</div></div><span class="badge badge-yellow">Upcoming</span></div>
             </div>
           </div>
         </div>
         <div class="card">
-          <div class="section-hd"><h3>Prescription History</h3></div>
+          <div class="section-hd"><h3>Uploaded Documents</h3></div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Medicine</th><th>Prescribed</th><th>Status</th></tr></thead>
-              <tbody>
-                <tr><td><div class="font-semibold">Amoxicillin 500mg</div><div class="text-muted">Dr. Johnson</div></td><td>Apr 2, 2026</td><td><span class="badge badge-gray">Completed</span></td></tr>
-                <tr><td><div class="font-semibold">Pantoprazole 40mg</div><div class="text-muted">Dr. Mehta</div></td><td>Mar 15, 2026</td><td><span class="badge badge-gray">Completed</span></td></tr>
-                <tr><td><div class="font-semibold">Cetirizine 10mg</div><div class="text-muted">Dr. Johnson</div></td><td>Feb 20, 2026</td><td><span class="badge badge-gray">Completed</span></td></tr>
+              <thead><tr><th>Document</th><th>Type</th><th>Date</th><th>Doctor</th><th>Action</th></tr></thead>
+              <tbody id="p-documents-table-body">
+                <!-- Dynamically populated -->
               </tbody>
             </table>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- LAB REPORTS -->
-    <div id="pReports" class="page">
-      <div style="display:flex;justify-content:flex-end;margin-bottom:1.5rem;">
-        <button class="btn btn-primary" onclick="notify('Upload file dialog opened','success')">📤 Upload Report</button>
-      </div>
-      <div class="card">
-        <div class="section-hd"><h3>Lab Reports</h3></div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Test Name</th><th>Date</th><th>Lab</th><th>Result</th><th>Action</th></tr></thead>
-            <tbody>
-              <tr><td class="font-semibold">Complete Blood Count</td><td>May 15, 2026</td><td>CityPath Lab</td><td><span class="badge badge-green">Normal</span></td><td><button class="btn btn-sm btn-ghost" onclick="notify('Report opened','success')">View</button></td></tr>
-              <tr><td class="font-semibold">HbA1c</td><td>May 15, 2026</td><td>CityPath Lab</td><td><span class="badge badge-yellow">6.8% – Borderline</span></td><td><button class="btn btn-sm btn-ghost" onclick="notify('Report opened','success')">View</button></td></tr>
-              <tr><td class="font-semibold">Lipid Panel</td><td>May 15, 2026</td><td>CityPath Lab</td><td><span class="badge badge-green">Normal</span></td><td><button class="btn btn-sm btn-ghost" onclick="notify('Report opened','success')">View</button></td></tr>
-              <tr><td class="font-semibold">Thyroid (TSH)</td><td>Mar 10, 2026</td><td>MedLab</td><td><span class="badge badge-green">Normal</span></td><td><button class="btn btn-sm btn-ghost" onclick="notify('Report opened','success')">View</button></td></tr>
-              <tr><td class="font-semibold">Vitamin B12</td><td>Feb 5, 2026</td><td>CityPath Lab</td><td><span class="badge badge-red">Low – 178 pg/mL</span></td><td><button class="btn btn-sm btn-ghost" onclick="notify('Report opened','success')">View</button></td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- PROFILE -->
-    <div id="pProfile" class="page">
-      <div class="grid-2">
-        <div class="card">
-          <div style="text-align:center;padding:1rem 0 1.5rem;">
-            <div class="avatar avatar-teal" style="width:80px;height:80px;font-size:1.5rem;margin:0 auto 1rem;">AS</div>
-            <div style="font-size:1.2rem;font-weight:700;">Alex Smith</div>
-            <div class="text-muted">Patient ID: P-10421</div>
-            <div style="margin-top:.75rem;"><span class="badge badge-teal">Verified Patient</span></div>
-          </div>
-          <hr class="divider">
-          <div class="space-y" style="font-size:.88rem;">
-            <div class="flex justify-between"><span class="text-muted">📧 Email</span><span>alex.smith@email.com</span></div>
-            <div class="flex justify-between"><span class="text-muted">📱 Phone</span><span>+91 98765 43210</span></div>
-            <div class="flex justify-between"><span class="text-muted">🎂 DOB</span><span>March 14, 1988</span></div>
-            <div class="flex justify-between"><span class="text-muted">🩸 Blood</span><span>O+</span></div>
-            <div class="flex justify-between"><span class="text-muted">📍 City</span><span>Meerut, UP</span></div>
-          </div>
-          <button class="btn btn-outline w-full mt-3" onclick="notify('Profile update saved','success')" style="justify-content:center;">Edit Profile</button>
-        </div>
-        <div class="card">
-          <div class="section-hd"><h3>Emergency Contact</h3></div>
-          <div class="space-y" style="font-size:.88rem;margin-bottom:1.5rem;">
-            <div class="flex justify-between"><span class="text-muted">Name</span><span>Priya Smith</span></div>
-            <div class="flex justify-between"><span class="text-muted">Relation</span><span>Spouse</span></div>
-            <div class="flex justify-between"><span class="text-muted">Phone</span><span>+91 98765 00000</span></div>
-          </div>
-          <hr class="divider">
-          <div class="section-hd"><h3>Insurance</h3></div>
-          <div class="space-y" style="font-size:.88rem;">
-            <div class="flex justify-between"><span class="text-muted">Provider</span><span>StarHealth</span></div>
-            <div class="flex justify-between"><span class="text-muted">Policy No.</span><span>SH-204881</span></div>
-            <div class="flex justify-between"><span class="text-muted">Valid Until</span><span>Dec 2026</span></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════ DOCTOR PANEL ═══════════════════════════════ -->
-<div id="doctorPanel" style="display:none;" class="app-shell">
-  <div class="sidebar">
-    <div class="sidebar-logo">
-      <div class="logo-text">Med<span>X</span>pert</div>
-      <div class="role-badge">👨‍⚕️ Doctor Dashboard</div>
-    </div>
-    <nav class="sidebar-nav">
-      <div class="nav-section">Main</div>
-      <div class="nav-item active" onclick="showPage('d','dDashboard',this)"><span class="nav-icon">🏠</span>Dashboard</div>
-      <div class="nav-item" onclick="showPage('d','dAppointments',this)"><span class="nav-icon">📅</span>Appointments<span class="nav-badge">5</span></div>
-      <div class="nav-item" onclick="showPage('d','dPatients',this)"><span class="nav-icon">👥</span>My Patients</div>
-      <div class="nav-item" onclick="showPage('d','dConsultation',this)"><span class="nav-icon">🎥</span>Consultation Room</div>
-      <div class="nav-section">Clinical</div>
-      <div class="nav-item" onclick="showPage('d','dPrescriptions',this)"><span class="nav-icon">💊</span>Prescriptions</div>
-      <div class="nav-item" onclick="showPage('d','dReports',this)"><span class="nav-icon">📊</span>Patient Reports</div>
-      <div class="nav-section">Account</div>
-      <div class="nav-item" onclick="showPage('d','dProfile',this)"><span class="nav-icon">👤</span>My Profile</div>
-    </nav>
-    <div class="sidebar-footer">
-      <div class="user-chip">
-        <div class="avatar avatar-blue" style="font-size:.75rem;">SJ</div>
-        <div class="user-info"><div class="name">Dr. Sarah Johnson</div><div class="role">General Medicine</div></div>
-      </div>
-      <div class="back-btn" onclick="goLanding()">← Back to Home</div>
-    </div>
-  </div>
-  <div class="main-content">
-    <div class="topbar">
-      <h2 id="dPageTitle">Dashboard</h2>
-      <div class="topbar-actions">
-        <div class="icon-btn" onclick="notify('3 new patient messages','success')">🔔</div>
-        <button class="btn btn-primary btn-sm" onclick="openVideoCall()">🎥 Start Consult</button>
-      </div>
-    </div>
-
-    <!-- DOCTOR DASHBOARD -->
-    <div id="dDashboard" class="page active">
-      <div class="grid-4 mb-3">
-        <div class="stat-card"><div class="label">Today's Patients</div><div class="value">8</div><div class="delta">↑ 2 vs yesterday</div></div>
-        <div class="stat-card"><div class="label">Pending Appointments</div><div class="value">5</div><div class="delta">Next at 10:30 AM</div></div>
-        <div class="stat-card"><div class="label">Active Patients</div><div class="value">147</div><div class="delta">↑ 12 this month</div></div>
-        <div class="stat-card"><div class="label">Rating</div><div class="value">4.9</div><div class="delta">⭐ 286 reviews</div></div>
-      </div>
-      <div class="grid-2">
-        <div class="card">
-          <div class="section-hd"><h3>Today's Schedule</h3></div>
-          <div class="space-y">
-            <div class="appt-card"><div class="appt-time"><div class="time">09:00</div><div class="period">Done</div></div><div class="appt-info"><div class="name">Rahul Sharma</div><div class="type">Follow-up · Hypertension</div></div><span class="badge badge-gray">Completed</span></div>
-            <div class="appt-card" style="border-color:var(--primary-light);"><div class="appt-time"><div class="time">10:30</div><div class="period">Now</div></div><div class="appt-info"><div class="name">Alex Smith</div><div class="type">General Consultation</div></div><button class="btn btn-primary btn-sm" onclick="openVideoCall()">Join</button></div>
-            <div class="appt-card"><div class="appt-time"><div class="time">11:30</div><div class="period">Next</div></div><div class="appt-info"><div class="name">Priya Verma</div><div class="type">New Patient – Fever</div></div><span class="badge badge-yellow">Pending</span></div>
-            <div class="appt-card"><div class="appt-time"><div class="time">14:00</div><div class="period">Afternoon</div></div><div class="appt-info"><div class="name">Mohit Singh</div><div class="type">Prescription Renewal</div></div><span class="badge badge-blue">Video</span></div>
-          </div>
-        </div>
-        <div class="card">
-          <div class="section-hd"><h3>Pending Actions</h3></div>
-          <div class="space-y">
-            <div style="padding:.75rem;background:var(--warning-bg);border-radius:var(--radius-sm);border-left:3px solid var(--warning);">
-              <div class="text-sm font-semibold">Lab result review</div>
-              <div class="text-muted" style="font-size:.78rem;">Alex Smith – CBC results pending review</div>
-              <button class="btn btn-sm btn-outline mt-1" onclick="notify('Lab results opened','success')">Review Now</button>
+      <!-- PRESCRIPTIONS PAGE -->
+      <div id="pPrescriptions" class="page">
+        <div class="grid-2">
+          <div class="card">
+            <div class="section-hd"><h3>Active Prescriptions</h3></div>
+            <div class="space-y" id="p-prescriptions-active-list">
+              <!-- Dynamically populated -->
             </div>
-            <div style="padding:.75rem;background:var(--info-bg);border-radius:var(--radius-sm);border-left:3px solid var(--info);">
-              <div class="text-sm font-semibold">Prescription to issue</div>
-              <div class="text-muted" style="font-size:.78rem;">Priya Verma – awaiting prescription after today's consult</div>
-              <button class="btn btn-sm btn-outline mt-1" onclick="openModal('prescModal')">Issue Rx</button>
-            </div>
-            <div style="padding:.75rem;background:var(--success-bg);border-radius:var(--radius-sm);border-left:3px solid var(--success);">
-              <div class="text-sm font-semibold">Referral letter</div>
-              <div class="text-muted" style="font-size:.78rem;">Mohit Singh – cardiology referral needed</div>
-              <button class="btn btn-sm btn-outline mt-1" onclick="notify('Referral letter created','success')">Create Letter</button>
+          </div>
+          <div class="card">
+            <div class="section-hd"><h3>Prescription History</h3></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Medicine</th><th>Prescribed</th><th>Status</th><th style="text-align:right;">Action</th></tr></thead>
+                <tbody id="p-prescriptions-history-table">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
       </div>
-      <div class="card mt-3">
-        <div class="section-hd"><h3>Patient Stats – This Month</h3></div>
-        <div class="vital-grid">
-          <div class="vital-card"><div class="v-val">62</div><div class="v-label">Consultations</div></div>
-          <div class="vital-card"><div class="v-val">41</div><div class="v-label">Video Calls</div></div>
-          <div class="vital-card"><div class="v-val">28</div><div class="v-label">Prescriptions</div></div>
-          <div class="vital-card"><div class="v-val">97<span class="v-unit">%</span></div><div class="v-label">Patient Satisfaction</div></div>
-        </div>
-      </div>
-    </div>
 
-    <!-- DOCTOR APPOINTMENTS -->
-    <div id="dAppointments" class="page">
-      <div class="card mb-2">
-        <div class="section-hd"><h3>All Appointments</h3></div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Patient</th><th>Date & Time</th><th>Type</th><th>Reason</th><th>Status</th><th>Action</th></tr></thead>
-            <tbody>
-              <tr><td><div class="font-semibold">Alex Smith</div><div class="text-muted">P-10421</div></td><td>May 19 · 10:30 AM</td><td><span class="badge badge-blue">Video</span></td><td>General Consult</td><td><span class="badge badge-yellow">In Progress</span></td><td><button class="btn btn-sm btn-primary" onclick="openVideoCall()">Join</button></td></tr>
-              <tr><td><div class="font-semibold">Priya Verma</div><div class="text-muted">P-10388</div></td><td>May 19 · 11:30 AM</td><td><span class="badge badge-teal">In-Clinic</span></td><td>Fever, Cough</td><td><span class="badge badge-yellow">Upcoming</span></td><td><button class="btn btn-sm btn-ghost" onclick="notify('Appointment accepted','success')">Accept</button></td></tr>
-              <tr><td><div class="font-semibold">Mohit Singh</div><div class="text-muted">P-10445</div></td><td>May 19 · 2:00 PM</td><td><span class="badge badge-blue">Video</span></td><td>Rx Renewal</td><td><span class="badge badge-yellow">Upcoming</span></td><td><button class="btn btn-sm btn-ghost" onclick="notify('Appointment accepted','success')">Accept</button></td></tr>
-              <tr><td><div class="font-semibold">Rahul Sharma</div><div class="text-muted">P-10299</div></td><td>May 19 · 9:00 AM</td><td><span class="badge badge-teal">In-Clinic</span></td><td>Hypertension FU</td><td><span class="badge badge-gray">Completed</span></td><td><button class="btn btn-sm btn-ghost" onclick="openModal('prescModal')">Add Notes</button></td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- DOCTOR PATIENTS -->
-    <div id="dPatients" class="page">
-      <div style="display:flex;gap:1rem;margin-bottom:1.5rem;">
-        <div class="search-wrap" style="flex:1;"><span class="search-icon">🔍</span><input type="text" class="form-control" placeholder="Search patients..." style="padding-left:2.2rem;"></div>
-        <select class="form-control" style="max-width:200px;"><option>All Conditions</option><option>Diabetes</option><option>Hypertension</option><option>Cardiac</option></select>
-      </div>
-      <div class="card">
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Patient</th><th>Age</th><th>Condition</th><th>Last Visit</th><th>Next Visit</th><th>Action</th></tr></thead>
-            <tbody>
-              <tr><td><div class="flex items-center gap-2"><div class="avatar avatar-teal" style="width:32px;height:32px;font-size:.72rem;">AS</div><div><div class="font-semibold">Alex Smith</div><div class="text-muted">P-10421</div></div></div></td><td>38</td><td><span class="badge badge-yellow">Diabetes T2</span></td><td>May 10, 2026</td><td>May 19, 2026</td><td><button class="btn btn-sm btn-outline" onclick="notify('Patient record opened','success')">View EHR</button></td></tr>
-              <tr><td><div class="flex items-center gap-2"><div class="avatar avatar-orange" style="width:32px;height:32px;font-size:.72rem;">PV</div><div><div class="font-semibold">Priya Verma</div><div class="text-muted">P-10388</div></div></div></td><td>29</td><td><span class="badge badge-red">Fever (Acute)</span></td><td>May 19, 2026</td><td>–</td><td><button class="btn btn-sm btn-outline" onclick="notify('Patient record opened','success')">View EHR</button></td></tr>
-              <tr><td><div class="flex items-center gap-2"><div class="avatar avatar-blue" style="width:32px;height:32px;font-size:.72rem;">MS</div><div><div class="font-semibold">Mohit Singh</div><div class="text-muted">P-10445</div></div></div></td><td>52</td><td><span class="badge badge-yellow">Hypertension</span></td><td>Apr 30, 2026</td><td>May 19, 2026</td><td><button class="btn btn-sm btn-outline" onclick="notify('Patient record opened','success')">View EHR</button></td></tr>
-              <tr><td><div class="flex items-center gap-2"><div class="avatar avatar-teal" style="width:32px;height:32px;font-size:.72rem;">RS</div><div><div class="font-semibold">Rahul Sharma</div><div class="text-muted">P-10299</div></div></div></td><td>45</td><td><span class="badge badge-yellow">Hypertension</span></td><td>May 19, 2026</td><td>Jun 10, 2026</td><td><button class="btn btn-sm btn-outline" onclick="notify('Patient record opened','success')">View EHR</button></td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- DOCTOR CONSULTATION -->
-    <div id="dConsultation" class="page">
-      <div class="grid-2">
-        <div class="card">
-          <div class="section-hd"><h3>Active Consultation Queue</h3></div>
-          <div class="space-y">
-            <div class="appt-card" style="border-color:var(--primary-light);"><div class="appt-time"><div class="time">10:30</div><div class="period">Now</div></div><div class="appt-info"><div class="name">Alex Smith</div><div class="type">General Consultation</div></div><button class="btn btn-primary btn-sm" onclick="openVideoCall()">Join Call</button></div>
-            <div class="appt-card"><div class="appt-time"><div class="time">11:30</div><div class="period">Next</div></div><div class="appt-info"><div class="name">Priya Verma</div><div class="type">Fever Consultation</div></div><span class="badge badge-yellow">Waiting</span></div>
-          </div>
+      <!-- LAB REPORTS -->
+      <div id="pReports" class="page">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:1.5rem;">
+          <button class="btn btn-primary btn-p-upload-report">📤 Upload Report</button>
         </div>
         <div class="card">
-          <div class="section-hd"><h3>Consultation Notes</h3></div>
-          <div class="form-group"><label>Patient</label><select class="form-control"><option>Alex Smith – P-10421</option><option>Priya Verma – P-10388</option></select></div>
-          <div class="form-group"><label>Chief Complaint</label><input type="text" class="form-control" placeholder="Patient's main complaint..."></div>
-          <div class="form-group"><label>Clinical Notes</label><textarea class="form-control" rows="4" placeholder="Examination findings, diagnosis, plan..."></textarea></div>
-          <div class="modal-footer" style="padding-top:.75rem;border-top:1px solid var(--border);margin-top:0;">
-            <button class="btn btn-ghost" onclick="notify('Notes saved as draft','')">Save Draft</button>
-            <button class="btn btn-primary" onclick="notify('Consultation notes saved','success')">Save & Proceed to Rx</button>
+          <div class="section-hd"><h3>Lab Reports</h3></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Test Name</th><th>Date</th><th>Lab</th><th>Result</th><th>Action</th></tr></thead>
+              <tbody id="p-reports-table-body">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- DOCTOR PRESCRIPTIONS -->
-    <div id="dPrescriptions" class="page">
-      <div style="display:flex;justify-content:flex-end;margin-bottom:1.5rem;">
-        <button class="btn btn-primary" onclick="openModal('prescModal')">💊 New Prescription</button>
-      </div>
-      <div class="card">
-        <div class="section-hd"><h3>Issued Prescriptions</h3></div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Patient</th><th>Medicine</th><th>Dosage</th><th>Duration</th><th>Date</th><th>Status</th></tr></thead>
-            <tbody>
-              <tr><td><div class="font-semibold">Alex Smith</div></td><td>Metformin 500mg</td><td>BD (Twice daily)</td><td>3 months</td><td>May 10, 2026</td><td><span class="badge badge-green">Active</span></td></tr>
-              <tr><td><div class="font-semibold">Alex Smith</div></td><td>Atorvastatin 10mg</td><td>OD at bedtime</td><td>6 months</td><td>Apr 22, 2026</td><td><span class="badge badge-green">Active</span></td></tr>
-              <tr><td><div class="font-semibold">Rahul Sharma</div></td><td>Amlodipine 5mg</td><td>OD Morning</td><td>3 months</td><td>May 19, 2026</td><td><span class="badge badge-green">Active</span></td></tr>
-              <tr><td><div class="font-semibold">Mohit Singh</div></td><td>Telmisartan 40mg</td><td>OD Morning</td><td>3 months</td><td>Apr 30, 2026</td><td><span class="badge badge-green">Active</span></td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- DOCTOR REPORTS -->
-    <div id="dReports" class="page">
-      <div class="card">
-        <div class="section-hd"><h3>Pending Lab Reviews</h3></div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Patient</th><th>Test</th><th>Date</th><th>Result</th><th>Action</th></tr></thead>
-            <tbody>
-              <tr><td class="font-semibold">Alex Smith</td><td>CBC</td><td>May 15, 2026</td><td><span class="badge badge-green">Normal</span></td><td><button class="btn btn-sm btn-ghost" onclick="notify('Lab report reviewed','success')">Review</button></td></tr>
-              <tr><td class="font-semibold">Alex Smith</td><td>HbA1c</td><td>May 15, 2026</td><td><span class="badge badge-yellow">6.8% – Borderline</span></td><td><button class="btn btn-sm btn-primary" onclick="notify('Flagged for follow-up','success')">Action Required</button></td></tr>
-              <tr><td class="font-semibold">Priya Verma</td><td>Typhoid IgM</td><td>May 19, 2026</td><td><span class="badge badge-yellow">Pending</span></td><td><button class="btn btn-sm btn-ghost">Awaiting</button></td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- DOCTOR PROFILE -->
-    <div id="dProfile" class="page">
-      <div class="grid-2">
-        <div class="card">
-          <div style="text-align:center;padding:1rem 0 1.5rem;">
-            <div class="avatar avatar-blue" style="width:80px;height:80px;font-size:1.5rem;margin:0 auto 1rem;">SJ</div>
-            <div style="font-size:1.2rem;font-weight:700;">Dr. Sarah Johnson</div>
-            <div class="text-muted">MBBS, MD – General Medicine</div>
-            <div style="margin-top:.75rem;"><span class="badge badge-blue">Verified Doctor</span></div>
+      <!-- PROFILE -->
+      <div id="pProfile" class="page">
+        <div class="grid-2">
+          <div class="card">
+            <div style="text-align:center;padding:1rem 0 1.5rem;">
+              <div class="avatar avatar-teal" style="width:80px;height:80px;font-size:1.5rem;margin:0 auto 1rem;">AS</div>
+              <div style="font-size:1.2rem;font-weight:700;" id="p-profile-name">Aarav Mehta</div>
+              <div class="text-muted" id="p-profile-id">Patient ID: P-10421</div>
+              <div style="margin-top:.75rem;"><span class="badge badge-teal">Verified Patient</span></div>
+            </div>
+            <hr class="divider">
+            <div class="space-y" style="font-size:.88rem;" id="p-profile-details">
+              <!-- Dynamically populated -->
+            </div>
+            <button class="btn btn-outline w-full mt-3" id="btn-p-profile-save" style="justify-content:center;">Edit Profile</button>
           </div>
-          <hr class="divider">
-          <div class="space-y" style="font-size:.88rem;">
-            <div class="flex justify-between"><span class="text-muted">License No.</span><span>MCI-2014-08821</span></div>
-            <div class="flex justify-between"><span class="text-muted">Experience</span><span>12 years</span></div>
-            <div class="flex justify-between"><span class="text-muted">Hospital</span><span>City Medical Center</span></div>
-            <div class="flex justify-between"><span class="text-muted">Consultation Fee</span><span>₹500</span></div>
-          </div>
-          <button class="btn btn-outline w-full mt-3" style="justify-content:center;" onclick="notify('Profile updated','success')">Edit Profile</button>
-        </div>
-        <div class="card">
-          <div class="section-hd"><h3>Availability Schedule</h3></div>
-          <div class="space-y" style="font-size:.88rem;">
-            <div class="flex justify-between"><span class="font-semibold">Monday – Friday</span><span>9:00 AM – 5:00 PM</span></div>
-            <div class="flex justify-between"><span class="font-semibold">Saturday</span><span>9:00 AM – 1:00 PM</span></div>
-            <div class="flex justify-between"><span class="font-semibold">Sunday</span><span class="text-muted">Off</span></div>
-          </div>
-          <hr class="divider">
-          <div class="section-hd"><h3>Specializations</h3></div>
-          <div style="display:flex;flex-wrap:wrap;gap:.4rem;">
-            <span class="badge badge-teal">General Medicine</span>
-            <span class="badge badge-teal">Diabetes Management</span>
-            <span class="badge badge-teal">Preventive Care</span>
-            <span class="badge badge-teal">Hypertension</span>
+          <div class="card">
+            <div class="section-hd"><h3>Emergency Contact</h3></div>
+            <div class="space-y" style="font-size:.88rem;margin-bottom:1.5rem;" id="p-profile-emergency">
+              <!-- Dynamically populated -->
+            </div>
+            <hr class="divider">
+            <div class="section-hd"><h3>Insurance</h3></div>
+            <div class="space-y" style="font-size:.88rem;" id="p-profile-insurance">
+              <!-- Dynamically populated -->
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
-</div>
 
-<!-- ═══════════════════════════════ ADMIN PANEL ═══════════════════════════════ -->
-<div id="adminPanel" style="display:none;" class="app-shell">
-  <div class="sidebar">
-    <div class="sidebar-logo">
-      <div class="logo-text">Med<span>X</span>pert</div>
-      <div class="role-badge">🛡️ Admin Panel</div>
-    </div>
-    <nav class="sidebar-nav">
-      <div class="nav-section">Main</div>
-      <div class="nav-item active" onclick="showPage('a','aDashboard',this)"><span class="nav-icon">📊</span>Dashboard</div>
-      <div class="nav-item" onclick="showPage('a','aUsers',this)"><span class="nav-icon">👥</span>Manage Users</div>
-      <div class="nav-item" onclick="showPage('a','aDoctors',this)"><span class="nav-icon">👨‍⚕️</span>Manage Doctors</div>
-      <div class="nav-item" onclick="showPage('a','aAppointments',this)"><span class="nav-icon">📅</span>Appointments</div>
-      <div class="nav-section">System</div>
-      <div class="nav-item" onclick="showPage('a','aReports',this)"><span class="nav-icon">📈</span>Reports</div>
-      <div class="nav-item" onclick="showPage('a','aActivity',this)"><span class="nav-icon">🔐</span>Activity Log</div>
-      <div class="nav-item" onclick="showPage('a','aSettings',this)"><span class="nav-icon">⚙️</span>Settings</div>
-    </nav>
-    <div class="sidebar-footer">
-      <div class="user-chip">
-        <div class="avatar avatar-orange">AD</div>
-        <div class="user-info"><div class="name">Admin</div><div class="role">System Administrator</div></div>
+  <!-- ═══════════════════════════════ DOCTOR PANEL ═══════════════════════════════ -->
+  <div id="doctorPanel" style="display:none;" class="app-shell">
+    <div class="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-text" style="display: flex; align-items: center; gap: 0.5rem; font-family: 'DM Sans', sans-serif; font-size: 1.3rem; font-weight: 800; color: #1e3a8a;">
+          <div style="width: 28px; height: 28px; border-radius: 8px; background: #f97316; color: white; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; font-weight: 800; box-shadow: 0 4px 6px -1px rgba(249,115,22,0.2);">X</div>
+          <span>Med<span style="color: #f97316;">X</span>pert</span>
+        </div>
+        <div class="role-badge">👨‍⚕️ Doctor Dashboard</div>
       </div>
-      <div class="back-btn" onclick="goLanding()">← Back to Home</div>
-    </div>
-  </div>
-  <div class="main-content">
-    <div class="topbar">
-      <h2 id="aPageTitle">Dashboard</h2>
-      <div class="topbar-actions">
-        <div class="icon-btn" onclick="notify('System alert: 2 new registrations pending','success')">🔔</div>
-        <button class="btn btn-primary btn-sm" onclick="notify('System health report generated','success')">📥 Export Report</button>
+      <nav class="sidebar-nav" id="doctor-nav">
+        <div class="nav-section">Main</div>
+        <div class="nav-item active" data-page="dDashboard"><span class="nav-icon">🏠</span>Dashboard</div>
+        <div class="nav-item" data-page="dAppointments"><span class="nav-icon">📅</span>Appointments<span class="nav-badge" id="d-badge-appt-count">5</span></div>
+        <div class="nav-item" data-page="dPatients"><span class="nav-icon">👥</span>My Patients</div>
+        <div class="nav-item" data-page="dConsultation"><span class="nav-icon">🎥</span>Consultation Room</div>
+        <div class="nav-section">Clinical</div>
+        <div class="nav-item" data-page="dPrescriptions"><span class="nav-icon">💊</span>Prescriptions</div>
+        <div class="nav-item" data-page="dReports"><span class="nav-icon">📊</span>Patient Reports</div>
+        <div class="nav-section">Account</div>
+        <div class="nav-item" data-page="dProfile"><span class="nav-icon">👤</span>My Profile</div>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-chip">
+          <div class="avatar avatar-blue" style="font-size:.75rem;">SJ</div>
+          <div class="user-info"><div class="name">Dr. Shreya Joshi</div><div class="role">General Medicine</div></div>
+        </div>
+        <div class="back-btn back-to-home">← Back to Home</div>
       </div>
     </div>
+    <div class="sidebar-mobile-overlay" id="d-sidebar-overlay"></div>
+    <div class="main-content">
+      <div class="topbar">
+        <button class="menu-toggle-btn" id="d-menu-toggle" aria-label="Toggle Menu">☰</button>
+        <h2 id="dPageTitle">Dashboard</h2>
+        <div class="topbar-actions">
+          <div class="icon-btn" id="d-notif-bell">🔔</div>
+          <button class="btn btn-primary btn-sm btn-start-consult">🎥 Start Consult</button>
+        </div>
+      </div>
 
-    <!-- ADMIN DASHBOARD -->
-    <div id="aDashboard" class="page active">
-      <div class="grid-4 mb-3">
-        <div class="stat-card"><div class="label">Total Patients</div><div class="value">3,842</div><div class="delta">↑ 48 this week</div></div>
-        <div class="stat-card"><div class="label">Active Doctors</div><div class="value">124</div><div class="delta">↑ 3 new this month</div></div>
-        <div class="stat-card"><div class="label">Consultations Today</div><div class="value">287</div><div class="delta">↑ 12% vs last Fri</div></div>
-        <div class="stat-card"><div class="label">System Uptime</div><div class="value">99.8%</div><div class="delta delta">30-day average</div></div>
-      </div>
-      <div class="grid-2">
-        <div class="card">
-          <div class="section-hd"><h3>Platform Overview</h3></div>
-          <div class="space-y">
-            <div><div class="flex justify-between text-sm mb-1"><span>Video Consultations</span><span>41% · 1,574</span></div><div class="progress-bar"><div class="progress-fill" style="width:41%"></div></div></div>
-            <div><div class="flex justify-between text-sm mb-1"><span>In-Clinic Appointments</span><span>35% · 1,344</span></div><div class="progress-bar"><div class="progress-fill" style="width:35%;background:var(--accent);"></div></div></div>
-            <div><div class="flex justify-between text-sm mb-1"><span>Prescriptions Issued</span><span>79% active rate</span></div><div class="progress-bar"><div class="progress-fill" style="width:79%"></div></div></div>
-            <div><div class="flex justify-between text-sm mb-1"><span>Lab Reports Uploaded</span><span>62%</span></div><div class="progress-bar"><div class="progress-fill" style="width:62%"></div></div></div>
+      <!-- DOCTOR DASHBOARD -->
+      <div id="dDashboard" class="page active">
+        <div class="grid-4 mb-3">
+          <div class="stat-card"><div class="label">Today's Patients</div><div class="value">8</div><div class="delta">↑ 2 vs yesterday</div></div>
+          <div class="stat-card"><div class="label">Pending Appointments</div><div class="value">5</div><div class="delta">Next at 10:30 AM</div></div>
+          <div class="stat-card"><div class="label">Active Patients</div><div class="value">147</div><div class="delta">↑ 12 this month</div></div>
+          <div class="stat-card"><div class="label">Rating</div><div class="value">4.9</div><div class="delta">⭐ 286 reviews</div></div>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="section-hd"><h3>Today's Schedule</h3></div>
+            <div class="space-y" id="d-dashboard-schedule">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+          <div class="card">
+            <div class="section-hd"><h3>Pending Actions</h3></div>
+            <div class="space-y">
+              <div style="padding:.75rem;background:var(--warning-bg);border-radius:var(--radius-sm);border-left:3px solid var(--warning);">
+                <div class="text-sm font-semibold">Lab result review</div>
+                <div class="text-muted" style="font-size:.78rem;">Aarav Mehta – CBC results pending review</div>
+                <button class="btn btn-sm btn-outline mt-1" id="d-action-review-now">Review Now</button>
+              </div>
+              <div style="padding:.75rem;background:var(--info-bg);border-radius:var(--radius-sm);border-left:3px solid var(--info);">
+                <div class="text-sm font-semibold">Prescription to issue</div>
+                <div class="text-muted" style="font-size:.78rem;">Priya Verma – awaiting prescription after today's consult</div>
+                <button class="btn btn-sm btn-outline mt-1" id="d-action-issue-rx">Issue Rx</button>
+              </div>
+              <div style="padding:.75rem;background:var(--success-bg);border-radius:var(--radius-sm);border-left:3px solid var(--success);">
+                <div class="text-sm font-semibold">Referral letter</div>
+                <div class="text-muted" style="font-size:.78rem;">Mohit Singh – cardiology referral needed</div>
+                <button class="btn btn-sm btn-outline mt-1" id="d-action-create-referral">Create Letter</button>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="card">
-          <div class="section-hd"><h3>Recent Activity</h3></div>
-          <div class="timeline">
-            <div class="tl-item"><div class="tl-dot"></div><div class="tl-content"><div class="tl-title">New doctor registered</div><div class="tl-sub">Dr. Kavita Rao – Dermatology · 2m ago</div></div></div>
-            <div class="tl-item"><div class="tl-dot"></div><div class="tl-content"><div class="tl-title">System backup completed</div><div class="tl-sub">All records backed up · 1h ago</div></div></div>
-            <div class="tl-item"><div class="tl-dot"></div><div class="tl-content"><div class="tl-title">Patient flag raised</div><div class="tl-sub">P-10388 – HbA1c borderline · 2h ago</div></div></div>
-            <div class="tl-item"><div class="tl-dot"></div><div class="tl-content"><div class="tl-title">Payment processed</div><div class="tl-sub">47 consultations settled · 3h ago</div></div></div>
-          </div>
-        </div>
-      </div>
-      <div class="card mt-3">
-        <div class="section-hd"><h3>System Health</h3></div>
-        <div class="vital-grid">
-          <div class="vital-card"><div class="v-val">12<span class="v-unit">ms</span></div><div class="v-label">API Latency</div><div class="v-status" style="color:var(--success)">Excellent</div></div>
-          <div class="vital-card"><div class="v-val">68<span class="v-unit">%</span></div><div class="v-label">DB Utilization</div><div class="v-status" style="color:var(--success)">Healthy</div></div>
-          <div class="vital-card"><div class="v-val">42<span class="v-unit">GB</span></div><div class="v-label">Storage Used</div><div class="v-status" style="color:var(--success)">Normal</div></div>
-          <div class="vital-card"><div class="v-val">99.8<span class="v-unit">%</span></div><div class="v-label">Uptime</div><div class="v-status" style="color:var(--success)">Normal</div></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- MANAGE USERS -->
-    <div id="aUsers" class="page">
-      <div style="display:flex;justify-content:space-between;margin-bottom:1.5rem;align-items:center;">
-        <div class="search-wrap" style="max-width:320px;"><span class="search-icon">🔍</span><input type="text" class="form-control" placeholder="Search users..." style="padding-left:2.2rem;"></div>
-        <button class="btn btn-primary" onclick="openModal('addUserModal')">+ Add User</button>
-      </div>
-      <div class="card">
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>User</th><th>Role</th><th>Email</th><th>Joined</th><th>Status</th><th>Action</th></tr></thead>
-            <tbody>
-              <tr><td><div class="flex items-center gap-2"><div class="avatar avatar-teal" style="width:32px;height:32px;font-size:.72rem;">AS</div><div class="font-semibold">Alex Smith</div></div></td><td><span class="badge badge-teal">Patient</span></td><td>alex@email.com</td><td>Jan 2026</td><td><span class="badge badge-green">Active</span></td><td><div style="display:flex;gap:.4rem;"><button class="btn btn-sm btn-ghost" onclick="notify('User edited','success')">Edit</button><button class="btn btn-sm btn-danger" onclick="notify('User suspended','')">Suspend</button></div></td></tr>
-              <tr><td><div class="flex items-center gap-2"><div class="avatar avatar-blue" style="width:32px;height:32px;font-size:.72rem;">SJ</div><div class="font-semibold">Dr. Sarah Johnson</div></div></td><td><span class="badge badge-blue">Doctor</span></td><td>sarah@hospital.com</td><td>Mar 2024</td><td><span class="badge badge-green">Active</span></td><td><div style="display:flex;gap:.4rem;"><button class="btn btn-sm btn-ghost" onclick="notify('User edited','success')">Edit</button><button class="btn btn-sm btn-danger" onclick="notify('User suspended','')">Suspend</button></div></td></tr>
-              <tr><td><div class="flex items-center gap-2"><div class="avatar avatar-orange" style="width:32px;height:32px;font-size:.72rem;">PV</div><div class="font-semibold">Priya Verma</div></div></td><td><span class="badge badge-teal">Patient</span></td><td>priya@email.com</td><td>May 2026</td><td><span class="badge badge-green">Active</span></td><td><div style="display:flex;gap:.4rem;"><button class="btn btn-sm btn-ghost" onclick="notify('User edited','success')">Edit</button><button class="btn btn-sm btn-danger" onclick="notify('User suspended','')">Suspend</button></div></td></tr>
-              <tr><td><div class="flex items-center gap-2"><div class="avatar avatar-blue" style="width:32px;height:32px;font-size:.72rem;">RP</div><div class="font-semibold">Dr. Raj Patel</div></div></td><td><span class="badge badge-blue">Doctor</span></td><td>raj@heartinstitute.com</td><td>Feb 2023</td><td><span class="badge badge-green">Active</span></td><td><div style="display:flex;gap:.4rem;"><button class="btn btn-sm btn-ghost" onclick="notify('User edited','success')">Edit</button><button class="btn btn-sm btn-danger" onclick="notify('User suspended','')">Suspend</button></div></td></tr>
-              <tr><td><div class="flex items-center gap-2"><div class="avatar avatar-teal" style="width:32px;height:32px;font-size:.72rem;">KR</div><div class="font-semibold">Dr. Kavita Rao</div></div></td><td><span class="badge badge-blue">Doctor</span></td><td>kavita@clinic.com</td><td>May 2026</td><td><span class="badge badge-yellow">Pending</span></td><td><div style="display:flex;gap:.4rem;"><button class="btn btn-sm btn-primary" onclick="notify('Doctor approved','success')">Approve</button><button class="btn btn-sm btn-danger" onclick="notify('Doctor rejected','')">Reject</button></div></td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- MANAGE DOCTORS -->
-    <div id="aDoctors" class="page">
-      <div class="card">
-        <div class="section-hd"><h3>All Doctors</h3></div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Doctor</th><th>Specialty</th><th>Patients</th><th>Consultations</th><th>Rating</th><th>Status</th></tr></thead>
-            <tbody>
-              <tr><td><div class="font-semibold">Dr. Sarah Johnson</div><div class="text-muted">MBBS, MD</div></td><td>General Medicine</td><td>147</td><td>1,284</td><td>⭐ 4.9</td><td><span class="badge badge-green">Active</span></td></tr>
-              <tr><td><div class="font-semibold">Dr. Raj Patel</div><div class="text-muted">MBBS, DM</div></td><td>Cardiology</td><td>89</td><td>742</td><td>⭐ 4.8</td><td><span class="badge badge-green">Active</span></td></tr>
-              <tr><td><div class="font-semibold">Dr. Neha Kim</div><div class="text-muted">MBBS, MD</div></td><td>Endocrinology</td><td>63</td><td>518</td><td>⭐ 4.7</td><td><span class="badge badge-green">Active</span></td></tr>
-              <tr><td><div class="font-semibold">Dr. Arun Mehta</div><div class="text-muted">MBBS, DNB</div></td><td>Neurology</td><td>54</td><td>481</td><td>⭐ 4.9</td><td><span class="badge badge-green">Active</span></td></tr>
-              <tr><td><div class="font-semibold">Dr. Kavita Rao</div><div class="text-muted">MBBS, MD</div></td><td>Dermatology</td><td>0</td><td>0</td><td>–</td><td><span class="badge badge-yellow">Pending</span></td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- ADMIN APPOINTMENTS -->
-    <div id="aAppointments" class="page">
-      <div class="grid-4 mb-3">
-        <div class="stat-card"><div class="label">Today's Total</div><div class="value">287</div></div>
-        <div class="stat-card"><div class="label">Video Calls</div><div class="value">118</div></div>
-        <div class="stat-card"><div class="label">Completed</div><div class="value">184</div></div>
-        <div class="stat-card"><div class="label">Cancelled</div><div class="value">12</div></div>
-      </div>
-      <div class="card">
-        <div class="section-hd"><h3>Recent Appointments</h3></div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Patient</th><th>Doctor</th><th>Date</th><th>Type</th><th>Status</th></tr></thead>
-            <tbody>
-              <tr><td>Alex Smith</td><td>Dr. Sarah Johnson</td><td>May 19, 2026 · 10:30</td><td><span class="badge badge-blue">Video</span></td><td><span class="badge badge-yellow">In Progress</span></td></tr>
-              <tr><td>Priya Verma</td><td>Dr. Sarah Johnson</td><td>May 19, 2026 · 11:30</td><td><span class="badge badge-teal">In-Clinic</span></td><td><span class="badge badge-yellow">Upcoming</span></td></tr>
-              <tr><td>Mohit Singh</td><td>Dr. Sarah Johnson</td><td>May 19, 2026 · 14:00</td><td><span class="badge badge-blue">Video</span></td><td><span class="badge badge-yellow">Upcoming</span></td></tr>
-              <tr><td>Rahul Sharma</td><td>Dr. Sarah Johnson</td><td>May 19, 2026 · 09:00</td><td><span class="badge badge-teal">In-Clinic</span></td><td><span class="badge badge-gray">Completed</span></td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- ADMIN REPORTS -->
-    <div id="aReports" class="page">
-      <div class="grid-2">
-        <div class="card">
-          <div class="section-hd"><h3>Monthly Statistics</h3></div>
-          <div class="space-y" style="font-size:.88rem;">
-            <div class="flex justify-between"><span class="text-muted">New Registrations</span><span class="font-semibold">284</span></div>
-            <div class="flex justify-between"><span class="text-muted">Total Consultations</span><span class="font-semibold">3,841</span></div>
-            <div class="flex justify-between"><span class="text-muted">Prescriptions Issued</span><span class="font-semibold">2,118</span></div>
-            <div class="flex justify-between"><span class="text-muted">Lab Reports</span><span class="font-semibold">1,492</span></div>
-            <div class="flex justify-between"><span class="text-muted">Revenue (Est.)</span><span class="font-semibold">₹18,42,000</span></div>
-          </div>
-          <button class="btn btn-outline w-full mt-3" style="justify-content:center;" onclick="notify('Report exported as PDF','success')">Export PDF</button>
-        </div>
-        <div class="card">
-          <div class="section-hd"><h3>Top Performing Doctors</h3></div>
-          <div class="space-y">
-            <div class="flex justify-between items-center"><div><div class="text-sm font-semibold">Dr. Sarah Johnson</div><div class="text-muted">General Medicine</div></div><div style="text-align:right;"><div class="font-semibold">1,284</div><div class="text-muted" style="font-size:.72rem;">consultations</div></div></div>
-            <div class="flex justify-between items-center"><div><div class="text-sm font-semibold">Dr. Raj Patel</div><div class="text-muted">Cardiology</div></div><div style="text-align:right;"><div class="font-semibold">742</div><div class="text-muted" style="font-size:.72rem;">consultations</div></div></div>
-            <div class="flex justify-between items-center"><div><div class="text-sm font-semibold">Dr. Neha Kim</div><div class="text-muted">Endocrinology</div></div><div style="text-align:right;"><div class="font-semibold">518</div><div class="text-muted" style="font-size:.72rem;">consultations</div></div></div>
+        <div class="card mt-3">
+          <div class="section-hd"><h3>Patient Stats – This Month</h3></div>
+          <div class="vital-grid">
+            <div class="vital-card"><div class="v-val">62</div><div class="v-label">Consultations</div></div>
+            <div class="vital-card"><div class="v-val">41</div><div class="v-label">Video Calls</div></div>
+            <div class="vital-card"><div class="v-val">28</div><div class="v-label">Prescriptions</div></div>
+            <div class="vital-card"><div class="v-val">97<span class="v-unit">%</span></div><div class="v-label">Patient Satisfaction</div></div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- ACTIVITY LOG -->
-    <div id="aActivity" class="page">
-      <div class="card">
-        <div class="section-hd"><h3>System Activity Log</h3></div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Time</th><th>User</th><th>Action</th><th>IP</th><th>Status</th></tr></thead>
-            <tbody>
-              <tr><td>10:32:18</td><td>Dr. Sarah Johnson</td><td>Started video consultation with P-10421</td><td>192.168.1.42</td><td><span class="badge badge-green">Success</span></td></tr>
-              <tr><td>10:29:44</td><td>Alex Smith</td><td>Logged in to patient portal</td><td>203.90.1.18</td><td><span class="badge badge-green">Success</span></td></tr>
-              <tr><td>10:15:02</td><td>System</td><td>Automated backup completed</td><td>Internal</td><td><span class="badge badge-green">Success</span></td></tr>
-              <tr><td>09:58:11</td><td>Dr. Sarah Johnson</td><td>Issued prescription – Amlodipine 5mg</td><td>192.168.1.42</td><td><span class="badge badge-green">Success</span></td></tr>
-              <tr><td>09:44:30</td><td>Unknown</td><td>Failed login attempt</td><td>45.33.112.9</td><td><span class="badge badge-red">Failed</span></td></tr>
-              <tr><td>09:30:00</td><td>System</td><td>Daily report generation</td><td>Internal</td><td><span class="badge badge-green">Success</span></td></tr>
-            </tbody>
-          </table>
+      <!-- DOCTOR APPOINTMENTS -->
+      <div id="dAppointments" class="page">
+        <div style="display:flex;justify-content:flex-start;margin-bottom:1.5rem;align-items:center;gap:0.5rem;">
+          <button class="btn btn-sm btn-ghost active" id="btn-d-view-table" onclick="window.switchAppointmentView('d', 'table')">Table View</button>
+          <button class="btn btn-sm btn-ghost" id="btn-d-view-calendar" onclick="window.switchAppointmentView('d', 'calendar')">Calendar View</button>
         </div>
-      </div>
-    </div>
 
-    <!-- SETTINGS -->
-    <div id="aSettings" class="page">
-      <div class="grid-2">
-        <div class="card">
-          <div class="section-hd"><h3>Platform Settings</h3></div>
-          <div class="form-group"><label>Platform Name</label><input type="text" class="form-control" value="MedXpert"></div>
-          <div class="form-group"><label>Support Email</label><input type="email" class="form-control" value="support@medxpert.com"></div>
-          <div class="form-group"><label>Default Consultation Duration</label><select class="form-control"><option>15 minutes</option><option selected>30 minutes</option><option>45 minutes</option><option>60 minutes</option></select></div>
-          <div class="form-group"><label>Max Patients per Doctor/Day</label><input type="number" class="form-control" value="20"></div>
-          <button class="btn btn-primary" onclick="notify('Settings saved','success')">Save Settings</button>
-        </div>
-        <div class="card">
-          <div class="section-hd"><h3>Security Settings</h3></div>
-          <div class="space-y">
-            <label style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;"><div><div class="text-sm font-semibold">Two-Factor Authentication</div><div class="text-muted">Require 2FA for all users</div></div><input type="checkbox" checked></label>
-            <hr class="divider" style="margin:.5rem 0;">
-            <label style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;"><div><div class="text-sm font-semibold">Auto Session Timeout</div><div class="text-muted">Logout after 30 min inactivity</div></div><input type="checkbox" checked></label>
-            <hr class="divider" style="margin:.5rem 0;">
-            <label style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;"><div><div class="text-sm font-semibold">Audit Logging</div><div class="text-muted">Log all user actions</div></div><input type="checkbox" checked></label>
-            <hr class="divider" style="margin:.5rem 0;">
-            <label style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;"><div><div class="text-sm font-semibold">End-to-End Encryption</div><div class="text-muted">For all video consultations</div></div><input type="checkbox" checked></label>
+        <div id="d-appointments-table-container">
+          <div class="card mb-2">
+            <div class="section-hd"><h3>All Appointments</h3></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Patient</th><th>Date & Time</th><th>Type</th><th>Reason</th><th>Status</th><th>Action</th></tr></thead>
+                <tbody id="d-appointments-table-body">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
           </div>
-          <button class="btn btn-primary mt-3" onclick="notify('Security settings updated','success')">Update Security</button>
+        </div>
+
+        <div id="d-appointments-calendar-container" style="display:none;">
+          <div class="grid-2">
+            <div class="card">
+              <div class="calendar-wrapper" id="d-calendar-wrapper">
+                <!-- Dynamically populated calendar -->
+              </div>
+            </div>
+            <div class="card">
+              <div class="section-hd"><h3 id="d-calendar-selected-date-label">Schedule for Selected Date</h3></div>
+              <div class="space-y" id="d-calendar-day-appointments">
+                <div class="text-muted text-center" style="padding: 2rem 0;">Click on a calendar day to view schedule</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DOCTOR PATIENTS -->
+      <div id="dPatients" class="page">
+        <div style="display:flex;gap:1rem;margin-bottom:1.5rem;">
+          <div class="search-wrap" style="flex:1;"><span class="search-icon">🔍</span><input type="text" id="d-patient-search" class="form-control" placeholder="Search patients..." style="padding-left:2.2rem;"></div>
+          <select id="d-patient-condition-filter" class="form-control" style="max-width:200px;"><option>All Conditions</option><option>Diabetes</option><option>Hypertension</option><option>Cardiac</option></select>
+        </div>
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Patient</th><th>Age</th><th>Condition</th><th>Last Visit</th><th>Next Visit</th><th>Action</th></tr></thead>
+              <tbody id="d-patients-table-body">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- DOCTOR CONSULTATION -->
+      <div id="dConsultation" class="page">
+        <div class="grid-2">
+          <div class="card">
+            <div class="section-hd"><h3>Active Consultation Queue</h3></div>
+            <div class="space-y" id="d-consultation-queue">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+          <div class="card">
+            <div class="section-hd"><h3>Consultation Notes</h3></div>
+            <div class="form-group"><label>Patient</label><select class="form-control" id="d-notes-patient-select"><option value="P-10421">Aarav Mehta – P-10421</option><option value="P-10388">Priya Verma – P-10388</option></select></div>
+            <div class="form-group"><label>Chief Complaint</label><input type="text" class="form-control" id="d-notes-complaint" placeholder="Patient's main complaint..."></div>
+            <div class="form-group"><label>Clinical Notes</label><textarea class="form-control" id="d-notes-clinical" rows="4" placeholder="Examination findings, diagnosis, plan..."></textarea></div>
+            <div class="modal-footer" style="padding-top:.75rem;border-top:1px solid var(--border);margin-top:0;">
+              <button class="btn btn-ghost" id="btn-d-save-draft">Save Draft</button>
+              <button class="btn btn-primary" id="btn-d-proceed-rx">Save & Proceed to Rx</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DOCTOR PRESCRIPTIONS -->
+      <div id="dPrescriptions" class="page">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:1.5rem;">
+          <button class="btn btn-primary" id="btn-d-new-rx">💊 New Prescription</button>
+        </div>
+        <div class="card">
+          <div class="section-hd"><h3>Issued Prescriptions</h3></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Patient</th><th>Medicine</th><th>Dosage</th><th>Duration</th><th>Date</th><th>Status</th><th style="text-align:right;">Action</th></tr></thead>
+              <tbody id="d-prescriptions-table-body">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- DOCTOR REPORTS -->
+      <div id="dReports" class="page">
+        <div class="card">
+          <div class="section-hd"><h3>Pending Lab Reviews</h3></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Patient</th><th>Test</th><th>Date</th><th>Result</th><th>Action</th></tr></thead>
+              <tbody id="d-reports-table-body">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- DOCTOR PROFILE -->
+      <div id="dProfile" class="page">
+        <div class="grid-2">
+          <div class="card">
+            <div style="text-align:center;padding:1rem 0 1.5rem;">
+              <div class="avatar avatar-blue" style="width:80px;height:80px;font-size:1.5rem;margin:0 auto 1rem;" id="d-profile-avatar">SJ</div>
+              <div style="font-size:1.2rem;font-weight:700;" id="d-profile-name">Dr. Shreya Joshi</div>
+              <div class="text-muted" id="d-profile-degree-specialty">MBBS, MD – General Medicine</div>
+              <div style="margin-top:.75rem;"><span class="badge badge-blue">Verified Doctor</span></div>
+            </div>
+            <hr class="divider">
+            <div class="space-y" style="font-size:.88rem;">
+              <div class="flex justify-between"><span class="text-muted">License No.</span><span id="d-profile-license">MCI-2014-08821</span></div>
+              <div class="flex justify-between"><span class="text-muted">Experience</span><span id="d-profile-exp">12 years</span></div>
+              <div class="flex justify-between"><span class="text-muted">Hospital</span><span id="d-profile-hospital">City Medical Center</span></div>
+              <div class="flex justify-between"><span class="text-muted">Consultation Fee</span><span id="d-profile-fee">₹500</span></div>
+              <div class="flex justify-between"><span class="text-muted">Availability</span><span id="d-profile-availability">Available Today</span></div>
+            </div>
+            <button class="btn btn-outline w-full mt-3" style="justify-content:center;" id="btn-d-profile-edit">Edit Profile</button>
+          </div>
+          <div class="card">
+            <div class="section-hd"><h3>Availability Schedule</h3></div>
+            <div class="space-y" style="font-size:.88rem;">
+              <div class="flex justify-between"><span class="font-semibold">Monday – Friday</span><span>9:00 AM – 5:00 PM</span></div>
+              <div class="flex justify-between"><span class="font-semibold">Saturday</span><span>9:00 AM – 1:00 PM</span></div>
+              <div class="flex justify-between"><span class="font-semibold">Sunday</span><span class="text-muted">Off</span></div>
+            </div>
+            <hr class="divider">
+            <div class="section-hd"><h3>Specializations</h3></div>
+            <div style="display:flex;flex-wrap:wrap;gap:.4rem;">
+              <span class="badge badge-teal">General Medicine</span>
+              <span class="badge badge-teal">Diabetes Management</span>
+              <span class="badge badge-teal">Preventive Care</span>
+              <span class="badge badge-teal">Hypertension</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </div>
-</div>
 
-<!-- ═══════════════════════ MODALS ═══════════════════════ -->
-
-<!-- Book Appointment Modal -->
-<div id="bookApptModal" class="modal-overlay">
-  <div class="modal">
-    <div class="modal-header"><h3>📅 Book Appointment</h3><button class="modal-close" onclick="closeModal('bookApptModal')">✕</button></div>
-    <div class="form-row">
-      <div class="form-group"><label>Doctor</label><select class="form-control"><option>Dr. Sarah Johnson – General Medicine</option><option>Dr. Raj Patel – Cardiology</option><option>Dr. Neha Kim – Endocrinology</option><option>Dr. Arun Mehta – Neurology</option></select></div>
-      <div class="form-group"><label>Appointment Type</label><select class="form-control"><option>Video Consultation</option><option>In-Clinic</option></select></div>
-    </div>
-    <div class="form-row">
-      <div class="form-group"><label>Date</label><input type="date" class="form-control"></div>
-      <div class="form-group"><label>Time</label><select class="form-control"><option>09:00 AM</option><option>10:00 AM</option><option>11:00 AM</option><option>02:00 PM</option><option>03:00 PM</option></select></div>
-    </div>
-    <div class="form-group"><label>Reason for Visit</label><textarea class="form-control" placeholder="Describe your symptoms or reason for consultation..."></textarea></div>
-    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('bookApptModal')">Cancel</button><button class="btn btn-primary" onclick="closeModal('bookApptModal');notify('Appointment booked successfully!','success')">Confirm Booking</button></div>
-  </div>
-</div>
-
-<!-- Prescription Modal -->
-<div id="prescModal" class="modal-overlay">
-  <div class="modal">
-    <div class="modal-header"><h3>💊 Issue Prescription</h3><button class="modal-close" onclick="closeModal('prescModal')">✕</button></div>
-    <div class="form-row">
-      <div class="form-group"><label>Patient</label><select class="form-control"><option>Alex Smith – P-10421</option><option>Priya Verma – P-10388</option><option>Rahul Sharma – P-10299</option></select></div>
-      <div class="form-group"><label>Date</label><input type="date" class="form-control"></div>
-    </div>
-    <div class="form-group"><label>Diagnosis</label><input type="text" class="form-control" placeholder="e.g. Type 2 Diabetes Mellitus"></div>
-    <div id="rxList">
-      <div class="form-row" style="align-items:end;">
-        <div class="form-group"><label>Medicine Name</label><input type="text" class="form-control" placeholder="e.g. Metformin 500mg"></div>
-        <div class="form-group"><label>Dosage & Frequency</label><input type="text" class="form-control" placeholder="e.g. 1 tablet twice daily"></div>
+  <!-- ═══════════════════════════════ ADMIN PANEL ═══════════════════════════════ -->
+  <div id="adminPanel" style="display:none;" class="app-shell">
+    <div class="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-text" style="display: flex; align-items: center; gap: 0.5rem; font-family: 'DM Sans', sans-serif; font-size: 1.3rem; font-weight: 800; color: #1e3a8a;">
+          <div style="width: 28px; height: 28px; border-radius: 8px; background: #f97316; color: white; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; font-weight: 800; box-shadow: 0 4px 6px -1px rgba(249,115,22,0.2);">X</div>
+          <span>Med<span style="color: #f97316;">X</span>pert</span>
+        </div>
+        <div class="role-badge">🛡️ Admin Panel</div>
+      </div>
+      <nav class="sidebar-nav" id="admin-nav">
+        <div class="nav-section">Main</div>
+        <div class="nav-item active" data-page="aDashboard"><span class="nav-icon">📊</span>Dashboard</div>
+        <div class="nav-item" data-page="aUsers"><span class="nav-icon">👥</span>Manage Users</div>
+        <div class="nav-item" data-page="aDoctors"><span class="nav-icon">👨‍⚕️</span>Manage Doctors</div>
+        <div class="nav-item" data-page="aAppointments"><span class="nav-icon">📅</span>Appointments</div>
+        <div class="nav-section">System</div>
+        <div class="nav-item" data-page="aReports"><span class="nav-icon">📈</span>Reports</div>
+        <div class="nav-item" data-page="aActivity"><span class="nav-icon">🔐</span>Activity Log</div>
+        <div class="nav-item" data-page="aSettings"><span class="nav-icon">⚙️</span>Settings</div>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-chip">
+          <div class="avatar avatar-orange">AD</div>
+          <div class="user-info"><div class="name">Admin</div><div class="role">System Administrator</div></div>
+        </div>
+        <div class="back-btn back-to-home">← Back to Home</div>
       </div>
     </div>
-    <button class="btn btn-ghost btn-sm" onclick="addRxRow()" style="margin-bottom:1rem;">+ Add Medicine</button>
-    <div class="form-group"><label>Special Instructions</label><textarea class="form-control" placeholder="e.g. Take with food. Avoid alcohol."></textarea></div>
-    <div class="form-group"><label>Duration</label><select class="form-control"><option>7 days</option><option>14 days</option><option>1 month</option><option>3 months</option><option>6 months</option></select></div>
-    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('prescModal')">Cancel</button><button class="btn btn-primary" onclick="closeModal('prescModal');notify('Prescription issued and sent to patient','success')">Issue Prescription</button></div>
-  </div>
-</div>
+    <div class="sidebar-mobile-overlay" id="a-sidebar-overlay"></div>
+    <div class="main-content">
+      <div class="topbar">
+        <button class="menu-toggle-btn" id="a-menu-toggle" aria-label="Toggle Menu">☰</button>
+        <h2 id="aPageTitle">Dashboard</h2>
+        <div class="topbar-actions">
+          <div class="icon-btn" id="a-notif-bell">🔔</div>
+          <button class="btn btn-primary btn-sm" id="btn-a-export-report">📥 Export Report</button>
+        </div>
+      </div>
 
-<!-- Add User Modal -->
-<div id="addUserModal" class="modal-overlay">
-  <div class="modal">
-    <div class="modal-header"><h3>👤 Add New User</h3><button class="modal-close" onclick="closeModal('addUserModal')">✕</button></div>
-    <div class="form-row">
-      <div class="form-group"><label>First Name</label><input type="text" class="form-control" placeholder="First name"></div>
-      <div class="form-group"><label>Last Name</label><input type="text" class="form-control" placeholder="Last name"></div>
+      <!-- ADMIN DASHBOARD -->
+      <div id="aDashboard" class="page active">
+        <div class="grid-4 mb-3">
+          <div class="stat-card"><div class="label">Total Patients</div><div class="value" id="a-stat-patients">3,842</div><div class="delta" id="a-stat-patients-delta">↑ 48 this week</div></div>
+          <div class="stat-card"><div class="label">Active Doctors</div><div class="value" id="a-stat-doctors">124</div><div class="delta" id="a-stat-doctors-delta">↑ 3 new this month</div></div>
+          <div class="stat-card"><div class="label">Consultations Today</div><div class="value">287</div><div class="delta">↑ 12% vs last Fri</div></div>
+          <div class="stat-card"><div class="label">System Uptime</div><div class="value">99.8%</div><div class="delta">30-day average</div></div>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="section-hd"><h3>Platform Overview</h3></div>
+            <div class="space-y">
+              <div><div class="flex justify-between text-sm mb-1"><span>Video Consultations</span><span>41% · 1,574</span></div><div class="progress-bar"><div class="progress-fill" style="width:41%"></div></div></div>
+              <div><div class="flex justify-between text-sm mb-1"><span>In-Clinic Appointments</span><span>35% · 1,344</span></div><div class="progress-bar"><div class="progress-fill" style="width:35%;background:var(--accent);"></div></div></div>
+              <div><div class="flex justify-between text-sm mb-1"><span>Prescriptions Issued</span><span>79% active rate</span></div><div class="progress-bar"><div class="progress-fill" style="width:79%"></div></div></div>
+              <div><div class="flex justify-between text-sm mb-1"><span>Lab Reports Uploaded</span><span>62%</span></div><div class="progress-bar"><div class="progress-fill" style="width:62%"></div></div></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="section-hd"><h3>Recent Activity</h3></div>
+            <div class="timeline" id="a-dashboard-logs">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </div>
+        <div class="card mt-3">
+          <div class="section-hd"><h3>System Health</h3></div>
+          <div class="vital-grid">
+            <div class="vital-card"><div class="v-val">12<span class="v-unit">ms</span></div><div class="v-label">API Latency</div><div class="v-status" style="color:var(--success)">Excellent</div></div>
+            <div class="vital-card"><div class="v-val">68<span class="v-unit">%</span></div><div class="v-label">DB Utilization</div><div class="v-status" style="color:var(--success)">Healthy</div></div>
+            <div class="vital-card"><div class="v-val">42<span class="v-unit">GB</span></div><div class="v-label">Storage Used</div><div class="v-status" style="color:var(--success)">Normal</div></div>
+            <div class="vital-card"><div class="v-val">99.8<span class="v-unit">%</span></div><div class="v-label">Uptime</div><div class="v-status" style="color:var(--success)">Normal</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MANAGE USERS -->
+      <div id="aUsers" class="page">
+        <div style="display:flex;justify-content:space-between;margin-bottom:1.5rem;align-items:center;">
+          <div class="search-wrap" style="max-width:320px;"><span class="search-icon">🔍</span><input type="text" id="a-users-search" class="form-control" placeholder="Search users..." style="padding-left:2.2rem;"></div>
+          <button class="btn btn-primary" id="btn-a-add-user">+ Add User</button>
+        </div>
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>User</th><th>Role</th><th>Email</th><th>Joined</th><th>Status</th><th>Action</th></tr></thead>
+              <tbody id="a-users-table-body">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- MANAGE DOCTORS -->
+      <div id="aDoctors" class="page">
+        <div class="card">
+          <div class="section-hd"><h3>All Doctors</h3></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Doctor</th><th>Specialty</th><th>Patients</th><th>Consultations</th><th>Rating</th><th>Status</th></tr></thead>
+              <tbody id="a-doctors-table-body">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ADMIN APPOINTMENTS -->
+      <div id="aAppointments" class="page">
+        <div class="grid-4 mb-3">
+          <div class="stat-card"><div class="label">Today's Total</div><div class="value">287</div></div>
+          <div class="stat-card"><div class="label">Video Calls</div><div class="value">118</div></div>
+          <div class="stat-card"><div class="label">Completed</div><div class="value">184</div></div>
+          <div class="stat-card"><div class="label">Cancelled</div><div class="value">12</div></div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-start;margin-bottom:1.5rem;align-items:center;gap:0.5rem;">
+          <button class="btn btn-sm btn-ghost active" id="btn-a-view-table" onclick="window.switchAppointmentView('a', 'table')">Table View</button>
+          <button class="btn btn-sm btn-ghost" id="btn-a-view-calendar" onclick="window.switchAppointmentView('a', 'calendar')">Calendar View</button>
+        </div>
+
+        <div id="a-appointments-table-container">
+          <div class="card">
+            <div class="section-hd"><h3>Recent Appointments</h3></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Patient</th><th>Doctor</th><th>Date</th><th>Type</th><th>Status</th></tr></thead>
+                <tbody id="a-appointments-table-body">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div id="a-appointments-calendar-container" style="display:none;">
+          <div class="grid-2">
+            <div class="card">
+              <div class="calendar-wrapper" id="a-calendar-wrapper">
+                <!-- Dynamically populated calendar -->
+              </div>
+            </div>
+            <div class="card">
+              <div class="section-hd"><h3 id="a-calendar-selected-date-label">Schedule for Selected Date</h3></div>
+              <div class="space-y" id="a-calendar-day-appointments">
+                <div class="text-muted text-center" style="padding: 2rem 0;">Click on a calendar day to view schedule</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ADMIN REPORTS -->
+      <div id="aReports" class="page">
+        <div class="grid-2">
+          <div class="card">
+            <div class="section-hd"><h3>Monthly Statistics</h3></div>
+            <div class="space-y" style="font-size:.88rem;" id="a-reports-stats">
+              <!-- Dynamically populated -->
+            </div>
+            <button class="btn btn-outline w-full mt-3" style="justify-content:center;" id="btn-a-export-pdf">Export PDF</button>
+          </div>
+          <div class="card">
+            <div class="section-hd"><h3>Top Performing Doctors</h3></div>
+            <div class="space-y" id="a-reports-top-doctors">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ACTIVITY LOG -->
+      <div id="aActivity" class="page">
+        <div class="card">
+          <div class="section-hd"><h3>System Activity Log</h3></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Time</th><th>User</th><th>Action</th><th>IP</th><th>Status</th></tr></thead>
+              <tbody id="a-activity-table-body">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- SETTINGS -->
+      <div id="aSettings" class="page">
+        <div class="grid-2">
+          <div class="card">
+            <div class="section-hd"><h3>Platform Settings</h3></div>
+            <div class="form-group"><label>Platform Name</label><input type="text" id="a-setting-name" class="form-control" value="MedXpert"></div>
+            <div class="form-group"><label>Support Email</label><input type="email" id="a-setting-email" class="form-control" value="support@medxpert.com"></div>
+            <div class="form-group"><label>Default Consultation Duration</label><select id="a-setting-duration" class="form-control"><option>15 minutes</option><option selected value="30 minutes">30 minutes</option><option>45 minutes</option><option>60 minutes</option></select></div>
+            <div class="form-group"><label>Max Patients per Doctor/Day</label><input type="number" id="a-setting-max-patients" class="form-control" value="20"></div>
+            <button class="btn btn-primary" id="btn-a-save-settings">Save Settings</button>
+          </div>
+          <div class="card">
+            <div class="section-hd"><h3>Security Settings</h3></div>
+            <div class="space-y">
+              <label style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;"><div><div class="text-sm font-semibold">Two-Factor Authentication</div><div class="text-muted">Require 2FA for all users</div></div><input type="checkbox" id="a-setting-2fa" checked></label>
+              <hr class="divider" style="margin:.5rem 0;">
+              <label style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;"><div><div class="text-sm font-semibold">Auto Session Timeout</div><div class="text-muted">Logout after 30 min inactivity</div></div><input type="checkbox" id="a-setting-timeout" checked></label>
+              <hr class="divider" style="margin:.5rem 0;">
+              <label style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;"><div><div class="text-sm font-semibold">Audit Logging</div><div class="text-muted">Log all user actions</div></div><input type="checkbox" id="a-setting-audit" checked></label>
+              <hr class="divider" style="margin:.5rem 0;">
+              <label style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;"><div><div class="text-sm font-semibold">End-to-End Encryption</div><div class="text-muted">For all video consultations</div></div><input type="checkbox" id="a-setting-encryption" checked></label>
+            </div>
+            <button class="btn btn-primary mt-3" id="btn-a-update-security">Update Security</button>
+          </div>
+        </div>
+      </div>
     </div>
-    <div class="form-group"><label>Email Address</label><input type="email" class="form-control" placeholder="email@example.com"></div>
-    <div class="form-row">
-      <div class="form-group"><label>Role</label><select class="form-control"><option>Patient</option><option>Doctor</option><option>Admin</option></select></div>
-      <div class="form-group"><label>Phone</label><input type="tel" class="form-control" placeholder="+91 XXXXX XXXXX"></div>
-    </div>
-    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('addUserModal')">Cancel</button><button class="btn btn-primary" onclick="closeModal('addUserModal');notify('User added and invitation sent','success')">Add User</button></div>
   </div>
-</div>
 
-<!-- VIDEO CALL OVERLAY -->
-<div id="videoCallOverlay" class="video-overlay" style="display:none;">
-  <div style="padding:1rem 2rem;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,.08);">
-    <div style="color:white;font-family:'Playfair Display',serif;font-size:1.2rem;">Med<span style="color:#f97316;">X</span>pert · Live Consultation</div>
-    <div style="display:flex;gap:.5rem;align-items:center;"><div style="width:8px;height:8px;border-radius:50%;background:#22c55e;"></div><span style="color:#22c55e;font-size:.85rem;font-weight:600;">LIVE</span><span id="callTimer" style="color:rgba(255,255,255,.6);font-size:.85rem;margin-left:.5rem;">00:00</span></div>
-  </div>
-  <div class="video-main">
-    <div class="video-feed">
-      <div class="pulse-ring"></div>
-      <div style="color:rgba(255,255,255,.7);">Dr. Sarah Johnson · Connecting...</div>
-      <div style="color:rgba(255,255,255,.4);font-size:.8rem;margin-top:.5rem;">Secure end-to-end encrypted call</div>
-      <div class="video-self">You (Camera Off)</div>
+  <!-- ═══════════════════════ MODALS ═══════════════════════ -->
+
+  <!-- Book Appointment Modal -->
+  <div id="bookApptModal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header"><h3>📅 Book Appointment</h3><button class="modal-close modal-cancel" data-modal="bookApptModal">✕</button></div>
+      <div class="form-row">
+        <div class="form-group"><label>Doctor</label><select class="form-control" id="book-appt-doctor-select" onchange="window.loadAvailableBookingSlots()"></select></div>
+        <div class="form-group"><label>Appointment Type</label><select class="form-control" id="book-appt-type"><option>Video Consultation</option><option>In-Clinic</option></select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Date</label><input type="date" class="form-control" id="book-appt-date" onchange="window.loadAvailableBookingSlots()"></div>
+        <div class="form-group"><label>Time</label><select class="form-control" id="book-appt-time"><option value="">Select doctor & date first...</option></select></div>
+      </div>
+      <div class="form-group"><label>Reason for Visit</label><textarea class="form-control" id="book-appt-reason" placeholder="Describe your symptoms or reason for consultation..."></textarea></div>
+      <div class="modal-footer"><button class="btn btn-ghost modal-cancel" data-modal="bookApptModal">Cancel</button><button class="btn btn-primary" id="btn-book-appt-submit">Confirm Booking</button></div>
     </div>
   </div>
-  <div class="video-controls">
-    <button class="ctrl-btn ctrl-normal" title="Toggle Mic" onclick="this.style.opacity=this.style.opacity=='0.5'?'1':'0.5'">🎤</button>
-    <button class="ctrl-btn ctrl-normal" title="Toggle Camera" onclick="this.style.opacity=this.style.opacity=='0.5'?'1':'0.5'">📷</button>
-    <button class="ctrl-btn ctrl-normal" title="Share Screen">🖥️</button>
-    <button class="ctrl-btn ctrl-normal" title="Chat">💬</button>
-    <button class="ctrl-btn ctrl-end" title="End Call" onclick="closeVideoCall()">📵</button>
+
+  <!-- Reschedule Appointment Modal -->
+  <div id="rescheduleApptModal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header"><h3>🔄 Reschedule Appointment</h3><button class="modal-close modal-cancel" data-modal="rescheduleApptModal">✕</button></div>
+      <input type="hidden" id="reschedule-appt-id">
+      <input type="hidden" id="reschedule-appt-doctor-id">
+      <div class="form-group">
+        <label>Doctor</label>
+        <input type="text" class="form-control" id="reschedule-appt-doctor-name" readonly style="background:var(--surface2);">
+      </div>
+      <div class="form-group"><label>New Date</label><input type="date" class="form-control" id="reschedule-appt-date" onchange="window.loadAvailableRescheduleSlots()"></div>
+      <div class="form-group"><label>Available Slots</label><select class="form-control" id="reschedule-appt-time"><option value="">Select date first...</option></select></div>
+      <div class="modal-footer"><button class="btn btn-ghost modal-cancel" data-modal="rescheduleApptModal">Cancel</button><button class="btn btn-primary" id="btn-reschedule-submit" onclick="window.submitRescheduleAppointment()">Confirm Reschedule</button></div>
+    </div>
   </div>
-</div>
 
-<script>
-  let currentRole = '';
-  let callInterval = null;
-  let callSeconds = 0;
+  <!-- Prescription Modal -->
+  <div id="prescModal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header"><h3>💊 Issue Prescription</h3><button class="modal-close modal-cancel" data-modal="prescModal">✕</button></div>
+      <div class="form-row">
+        <div class="form-group"><label>Patient</label><select class="form-control" id="presc-patient-select"><option value="P-10421">Aarav Mehta – P-10421</option><option value="P-10388">Priya Verma – P-10388</option><option value="P-10299">Rahul Sharma – P-10299</option></select></div>
+        <div class="form-group"><label>Date</label><input type="date" class="form-control" id="presc-date"></div>
+      </div>
+      <div class="form-group"><label>Diagnosis</label><input type="text" class="form-control" id="presc-diagnosis" placeholder="e.g. Type 2 Diabetes Mellitus"></div>
+      <div id="rxList">
+        <div class="form-row flex-rx-row" style="align-items:end;">
+          <div class="form-group flex-1"><label>Medicine Name</label><input type="text" class="form-control rx-med-name" placeholder="e.g. Metformin 500mg"></div>
+          <div class="form-group flex-1"><label>Dosage & Frequency</label><input type="text" class="form-control rx-med-dose" placeholder="e.g. 1 tablet twice daily"></div>
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="btn-add-rx-row" style="margin-bottom:1rem;">+ Add Medicine</button>
+      <div class="form-group"><label>Special Instructions</label><textarea class="form-control" id="presc-instructions" placeholder="e.g. Take with food. Avoid alcohol."></textarea></div>
+      <div class="form-group"><label>Duration</label><select class="form-control" id="presc-duration"><option>7 days</option><option>14 days</option><option>1 month</option><option>3 months</option><option>6 months</option></select></div>
+      <div class="modal-footer"><button class="btn btn-ghost modal-cancel" data-modal="prescModal">Cancel</button><button class="btn btn-primary" id="btn-issue-presc-submit">Issue Prescription</button></div>
+    </div>
+  </div>
 
-  function openLogin(role) {
-    currentRole = role;
-    const titles = {patient:'Patient Login',doctor:'Doctor Login',admin:'Admin Login'};
-    document.getElementById('loginSubtitle').textContent = titles[role];
-    document.getElementById('loginOverlay').style.display = 'flex';
-  }
+  <!-- Add User Modal -->
+  <div id="addUserModal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header"><h3>👤 Add New User</h3><button class="modal-close modal-cancel" data-modal="addUserModal">✕</button></div>
+      <div class="form-row">
+        <div class="form-group"><label>First Name</label><input type="text" class="form-control" id="addUser-first" placeholder="First name"></div>
+        <div class="form-group"><label>Last Name</label><input type="text" class="form-control" id="addUser-last" placeholder="Last name"></div>
+      </div>
+      <div class="form-group"><label>Email Address</label><input type="email" class="form-control" id="addUser-email" placeholder="email@example.com"></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Role</label>
+          <select class="form-control" id="addUser-role" onchange="window.toggleAddUserRoleFields(this.value)">
+            <option value="Patient">Patient</option>
+            <option value="Doctor">Doctor</option>
+            <option value="Admin">Admin</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Phone</label><input type="tel" class="form-control" id="addUser-phone" placeholder="+91 XXXXX XXXXX"></div>
+      </div>
 
-  function closeLogin() {
-    document.getElementById('loginOverlay').style.display = 'none';
-  }
+      <!-- Patient Specific Fields (Add) -->
+      <div id="addUser-patient-fields">
+        <hr class="divider" style="margin: 1rem 0;">
+        <h4 style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.8rem; color: var(--primary);">Patient Details</h4>
+        <div class="form-row">
+          <div class="form-group"><label>Age</label><input type="number" class="form-control" id="addUser-patient-age" placeholder="e.g. 30" value="30"></div>
+          <div class="form-group">
+            <label>Blood Type</label>
+            <select class="form-control" id="addUser-patient-blood">
+              <option value="O+">O+</option>
+              <option value="A+">A+</option>
+              <option value="A-">A-</option>
+              <option value="B+">B+</option>
+              <option value="B-">B-</option>
+              <option value="AB+">AB+</option>
+              <option value="AB-">AB-</option>
+              <option value="O-">O-</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group"><label>Chronic Conditions</label><input type="text" class="form-control" id="addUser-patient-conditions" placeholder="e.g. None" value="None"></div>
+      </div>
 
-  function doLogin() {
-    closeLogin();
-    document.getElementById('landing').style.display = 'none';
-    document.getElementById('patientPanel').style.display = 'none';
-    document.getElementById('doctorPanel').style.display = 'none';
-    document.getElementById('adminPanel').style.display = 'none';
-    if(currentRole === 'patient') document.getElementById('patientPanel').style.display = 'flex';
-    else if(currentRole === 'doctor') document.getElementById('doctorPanel').style.display = 'flex';
-    else document.getElementById('adminPanel').style.display = 'flex';
-    notify('Welcome to MedXpert! You are now logged in.','success');
-  }
+      <!-- Doctor Specific Fields (Add) -->
+      <div id="addUser-doctor-fields" style="display:none;">
+        <hr class="divider" style="margin: 1rem 0;">
+        <h4 style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.8rem; color: var(--primary);">Doctor Details</h4>
+        <div class="form-row">
+          <div class="form-group"><label>Specialty</label><input type="text" class="form-control" id="addUser-doctor-specialty" placeholder="e.g. General Medicine" value="General Medicine"></div>
+          <div class="form-group"><label>Experience</label><input type="text" class="form-control" id="addUser-doctor-exp" placeholder="e.g. 5 yrs" value="5 yrs"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Consultation Fee</label><input type="text" class="form-control" id="addUser-doctor-fee" placeholder="e.g. ₹500" value="₹500"></div>
+          <div class="form-group"><label>Hospital</label><input type="text" class="form-control" id="addUser-doctor-hospital" placeholder="e.g. City Medical Center" value="City Medical Center"></div>
+        </div>
+      </div>
 
-  function goLanding() {
-    document.getElementById('landing').style.display = 'flex';
-    document.getElementById('patientPanel').style.display = 'none';
-    document.getElementById('doctorPanel').style.display = 'none';
-    document.getElementById('adminPanel').style.display = 'none';
-  }
+      <div class="modal-footer"><button class="btn btn-ghost modal-cancel" data-modal="addUserModal">Cancel</button><button class="btn btn-primary" id="btn-add-user-submit">Add User</button></div>
+    </div>
+  </div>
 
-  function showPage(prefix, pageId, el) {
-    const panel = prefix === 'p' ? 'patientPanel' : prefix === 'd' ? 'doctorPanel' : 'adminPanel';
-    document.querySelectorAll(`#${panel} .page`).forEach(p => p.classList.remove('active'));
-    document.getElementById(pageId).classList.add('active');
-    document.querySelectorAll(`#${panel} .nav-item`).forEach(n => n.classList.remove('active'));
-    if(el) el.classList.add('active');
-    const titles = {
-      pDashboard:'Dashboard',pAppointments:'My Appointments',pDoctors:'Find Doctors',
-      pConsultation:'Video Consultation',pRecords:'Medical Records',pPrescriptions:'Prescriptions',
-      pReports:'Lab Reports',pProfile:'My Profile',
-      dDashboard:'Dashboard',dAppointments:'Appointments',dPatients:'My Patients',
-      dConsultation:'Consultation Room',dPrescriptions:'Prescriptions',dReports:'Patient Reports',dProfile:'My Profile',
-      aDashboard:'Dashboard',aUsers:'Manage Users',aDoctors:'Manage Doctors',aAppointments:'All Appointments',
-      aReports:'Reports & Analytics',aActivity:'Activity Log',aSettings:'System Settings'
-    };
-    const titleEl = document.getElementById(prefix+'PageTitle');
-    if(titleEl && titles[pageId]) titleEl.textContent = titles[pageId];
-  }
+  <!-- Admin Edit User Modal -->
+  <div id="adminEditUserModal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header"><h3>📝 Edit User Account</h3><button class="modal-close modal-cancel" data-modal="adminEditUserModal">✕</button></div>
+      <input type="hidden" id="editUser-id">
+      
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" class="form-control" id="editUser-name" placeholder="Full name">
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group"><label>Email Address</label><input type="email" class="form-control" id="editUser-email" placeholder="email@example.com"></div>
+        <div class="form-group"><label>Phone</label><input type="tel" class="form-control" id="editUser-phone" placeholder="+91 XXXXX XXXXX"></div>
+      </div>
 
-  function openModal(id) {
-    document.getElementById(id).classList.add('open');
-  }
-  function closeModal(id) {
-    document.getElementById(id).classList.remove('open');
-  }
+      <!-- Patient Specific Fields (Edit) -->
+      <div id="editUser-patient-fields" style="display:none;">
+        <hr class="divider" style="margin: 1rem 0;">
+        <h4 style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.8rem; color: var(--primary);">Patient Details</h4>
+        <div class="form-row">
+          <div class="form-group"><label>Age</label><input type="number" class="form-control" id="editUser-patient-age" placeholder="e.g. 35"></div>
+          <div class="form-group">
+            <label>Blood Type</label>
+            <select class="form-control" id="editUser-patient-blood">
+              <option value="A+">A+</option>
+              <option value="A-">A-</option>
+              <option value="B+">B+</option>
+              <option value="B-">B-</option>
+              <option value="AB+">AB+</option>
+              <option value="AB-">AB-</option>
+              <option value="O+">O+</option>
+              <option value="O-">O-</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group"><label>Chronic Conditions</label><input type="text" class="form-control" id="editUser-patient-conditions" placeholder="e.g. Hypertension, Diabetes"></div>
+      </div>
 
-  function openVideoCall() {
-    document.getElementById('videoCallOverlay').style.display = 'flex';
-    callSeconds = 0;
-    if(callInterval) clearInterval(callInterval);
-    callInterval = setInterval(() => {
-      callSeconds++;
-      const m = String(Math.floor(callSeconds/60)).padStart(2,'0');
-      const s = String(callSeconds%60).padStart(2,'0');
-      document.getElementById('callTimer').textContent = m+':'+s;
-    }, 1000);
-  }
-  function closeVideoCall() {
-    document.getElementById('videoCallOverlay').style.display = 'none';
-    clearInterval(callInterval);
-    notify('Consultation ended. Duration: '+document.getElementById('callTimer').textContent,'success');
-    openModal('prescModal');
-  }
+      <!-- Doctor Specific Fields (Edit) -->
+      <div id="editUser-doctor-fields" style="display:none;">
+        <hr class="divider" style="margin: 1rem 0;">
+        <h4 style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.8rem; color: var(--primary);">Doctor Details</h4>
+        <div class="form-row">
+          <div class="form-group"><label>Specialty</label><input type="text" class="form-control" id="editUser-doctor-specialty" placeholder="e.g. Cardiology"></div>
+          <div class="form-group"><label>Experience</label><input type="text" class="form-control" id="editUser-doctor-exp" placeholder="e.g. 8 years"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Consultation Fee</label><input type="text" class="form-control" id="editUser-doctor-fee" placeholder="e.g. ₹600"></div>
+          <div class="form-group"><label>Hospital</label><input type="text" class="form-control" id="editUser-doctor-hospital" placeholder="e.g. City Medical Center"></div>
+        </div>
+      </div>
 
-  function notify(msg, type) {
-    const n = document.getElementById('notification');
-    n.textContent = msg;
-    n.className = 'notification' + (type === 'success' ? ' success' : '');
-    n.classList.add('show');
-    setTimeout(() => n.classList.remove('show'), 3500);
-  }
+      <div class="modal-footer"><button class="btn btn-ghost modal-cancel" data-modal="adminEditUserModal">Cancel</button><button class="btn btn-primary" id="btn-edit-user-submit">Save Changes</button></div>
+    </div>
+  </div>
 
-  function addRxRow() {
-    const list = document.getElementById('rxList');
-    const row = document.createElement('div');
-    row.className = 'form-row';
-    row.style.alignItems = 'end';
-    row.innerHTML = `<div class="form-group"><input type="text" class="form-control" placeholder="Medicine name"></div><div class="form-group"><input type="text" class="form-control" placeholder="Dosage & frequency"></div>`;
-    list.appendChild(row);
-  }
+  <!-- Edit Patient Profile Modal -->
+  <div id="editProfileModal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>👤 Edit Patient Profile</h3>
+        <button class="modal-close modal-cancel" data-modal="editProfileModal">✕</button>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Phone Number</label>
+          <input type="tel" class="form-control" id="edit-p-phone" placeholder="+91 XXXXX XXXXX">
+        </div>
+        <div class="form-group">
+          <label>Date of Birth</label>
+          <input type="date" class="form-control" id="edit-p-dob">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Blood Type</label>
+          <select class="form-control" id="edit-p-blood">
+            <option value="A+">A+</option>
+            <option value="A-">A-</option>
+            <option value="B+">B+</option>
+            <option value="B-">B-</option>
+            <option value="AB+">AB+</option>
+            <option value="AB-">AB-</option>
+            <option value="O+">O+</option>
+            <option value="O-">O-</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>City</label>
+          <input type="text" class="form-control" id="edit-p-city" placeholder="e.g. Mumbai">
+        </div>
+      </div>
+      <div class="section-hd mt-3"><h3>Emergency Contact</h3></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Contact Name</label>
+          <input type="text" class="form-control" id="edit-p-emerg-name" placeholder="Contact Name">
+        </div>
+        <div class="form-group">
+          <label>Contact Relation</label>
+          <input type="text" class="form-control" id="edit-p-emerg-relation" placeholder="e.g. Spouse, Parent">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Contact Phone</label>
+        <input type="tel" class="form-control" id="edit-p-emerg-phone" placeholder="+91 XXXXX XXXXX">
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost modal-cancel" data-modal="editProfileModal">Cancel</button>
+        <button class="btn btn-primary" id="btn-edit-p-profile-submit">Save Changes</button>
+      </div>
+    </div>
+  </div>
 
-  // Close modal on overlay click
-  document.querySelectorAll('.modal-overlay').forEach(overlay => {
-    overlay.addEventListener('click', e => { if(e.target === overlay) overlay.classList.remove('open'); });
-  });
-</script>
+  <!-- Edit Doctor Profile Modal -->
+  <div id="editDoctorProfileModal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>👨‍⚕️ Edit Doctor Profile</h3>
+        <button class="modal-close modal-cancel" data-modal="editDoctorProfileModal">✕</button>
+      </div>
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" class="form-control" id="edit-d-name" placeholder="Full name">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Specialty</label>
+          <input type="text" class="form-control" id="edit-d-specialty" placeholder="e.g. General Medicine">
+        </div>
+        <div class="form-group">
+          <label>Degree(s)</label>
+          <input type="text" class="form-control" id="edit-d-degree" placeholder="e.g. MBBS, MD">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Experience</label>
+          <input type="text" class="form-control" id="edit-d-exp" placeholder="e.g. 12 yrs">
+        </div>
+        <div class="form-group">
+          <label>Consultation Fee</label>
+          <input type="text" class="form-control" id="edit-d-fee" placeholder="e.g. 500">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>License No.</label>
+          <input type="text" class="form-control" id="edit-d-license" placeholder="e.g. MCI-2014-08821">
+        </div>
+        <div class="form-group">
+          <label>Affiliated Hospital</label>
+          <input type="text" class="form-control" id="edit-d-hospital" placeholder="e.g. City Medical Center">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Availability Status</label>
+        <input type="text" class="form-control" id="edit-d-availability" placeholder="e.g. Available Today">
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost modal-cancel" data-modal="editDoctorProfileModal">Cancel</button>
+        <button class="btn btn-primary" id="btn-edit-d-profile-submit">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- View Doctor Profile Modal -->
+  <div id="viewDocProfileModal" class="modal-overlay">
+    <div class="modal" style="max-width: 600px;">
+      <div class="modal-header" style="border-bottom: 1px solid var(--border); padding-bottom: 1rem; margin-bottom: 1rem;">
+        <h3 id="doc-profile-title">👨‍⚕️ Doctor Profile Details</h3>
+        <button class="modal-close modal-cancel" data-modal="viewDocProfileModal">✕</button>
+      </div>
+      <div id="doc-profile-details-content">
+        <!-- Dynamically populated -->
+      </div>
+      <div class="modal-footer" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); margin-bottom: 0;">
+        <button class="btn btn-ghost modal-cancel" data-modal="viewDocProfileModal">Close</button>
+        <button class="btn btn-primary" id="btn-doc-profile-book">Book Appointment</button>
+      </div>
+    </div>
+  </div>
+  <!-- Spotlight Search Modal -->
+  <div id="pSearchModal" class="modal-overlay">
+    <div class="modal" style="max-width: 650px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-xl); border-radius: var(--radius);">
+      <div class="modal-header" style="border-bottom: 1px solid var(--border); padding-bottom: 1rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="margin: 0; color: var(--text);">🔍 Search MedXpert</h3>
+        <button class="modal-close modal-cancel" data-modal="pSearchModal" style="background: transparent; border: none; font-size: 1.25rem; color: var(--text3); cursor: pointer;">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 0;">
+        <input type="text" id="global-search-input" class="form-control" placeholder="Search doctors, appointments, prescriptions, reports..." style="font-size: 1.1rem; padding: 0.75rem; margin-bottom: 1rem; width: 100%; box-sizing: border-box; background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: var(--radius-sm);">
+        <div id="global-search-results" style="max-height: 400px; overflow-y: auto;">
+          <div class="text-muted text-center" style="padding: 2rem 0; text-align: center; color: var(--text3);">Type to start searching...</div>
+        </div>
+      </div>
+      <div class="modal-footer" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); margin-bottom: 0; display: flex; justify-content: flex-end;">
+        <button class="btn btn-ghost modal-cancel" data-modal="pSearchModal">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notifications Modal -->
+  <div id="pNotifModal" class="modal-overlay">
+    <div class="modal" style="max-width: 500px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-xl); border-radius: var(--radius);">
+      <div class="modal-header" style="border-bottom: 1px solid var(--border); padding-bottom: 1rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="margin: 0; color: var(--text);">🔔 Notifications</h3>
+        <button class="modal-close modal-cancel" data-modal="pNotifModal" style="background: transparent; border: none; font-size: 1.25rem; color: var(--text3); cursor: pointer;">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 0;">
+        <div id="notifications-list" class="space-y" style="max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem;">
+          <!-- Dynamically populated notifications -->
+        </div>
+      </div>
+      <div class="modal-footer" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); margin-bottom: 0; display: flex; justify-content: space-between; width: 100%; box-sizing: border-box;">
+        <button class="btn btn-ghost" id="btn-clear-notifications">Clear All</button>
+        <button class="btn btn-primary modal-cancel" data-modal="pNotifModal">Close</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- VIDEO CALL OVERLAY (GOOGLE MEET EXACT REPLICA) -->
+  <div id="videoCallOverlay" class="video-overlay" style="display:none;">
+    
+    <!-- Top-Right: Self preview bubble / people indicator (matches screenshot) -->
+    <div class="meet-top-right-preview">
+      <div class="meet-people-bubble">
+        <div class="meet-self-avatar-circle">AS</div>
+        <span class="meet-people-count">1</span>
+      </div>
+    </div>
+
+    <!-- Main call screen tile (matches screenshot) -->
+    <div class="video-main">
+      <div class="video-feed-wrapper">
+        <div class="video-feed meet-main-tile">
+          <!-- The main participant video feed (camera active) -->
+          <video id="partnerVideo" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover; display: none; position: absolute; inset: 0; z-index: 1;"></video>
+          <img id="partnerVideoImage" style="width: 100%; height: 100%; object-fit: cover; display: none; position: absolute; inset: 0; z-index: 1;" alt="Webcam">
+          
+          <!-- Screen Share Viewport -->
+          <video id="mainScreenShareVideo" autoplay playsinline style="width: 100%; height: 100%; object-fit: contain; display: none; position: absolute; inset: 0; z-index: 2; background: #000;"></video>
+          
+          <!-- Centered Profile Avatar (when remote camera is off, matches screenshot) -->
+          <div class="meet-avatar-center-container" id="partnerAvatarCenter">
+            <div class="meet-avatar-circle">
+              <!-- Animated cartoon avatar from Dicebear for Ashad Saifi style -->
+              <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=Ashad" id="partnerAvatarImg" class="meet-avatar-img" alt="Avatar">
+            </div>
+          </div>
+          
+          <!-- Top-Right Muted Microphone Indicator inside the tile -->
+          <div class="meet-tile-mic-indicator">
+            <span class="meet-mic-slashed-icon">🔇</span>
+          </div>
+
+          <!-- Bottom-Left Name Tag -->
+          <div class="meet-tile-name-tag">
+            <span id="video-partner-name">Ashad Saifi</span>
+          </div>
+
+          <!-- Recording Overlay Badge -->
+          <div class="rec-indicator" id="recIndicatorBadge" style="display: none; align-items: center; gap: 0.4rem; background: rgba(0,0,0,0.6); padding: 0.35rem 0.65rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700; color: white; position: absolute; top: 1rem; left: 1rem; z-index: 4;">
+            <span style="width: 8px; height: 8px; border-radius: 50%; background: #ef4444;" class="rec-dot"></span>
+            <span>REC</span>
+            <span id="recTimer">00:00</span>
+          </div>
+          
+          <!-- Emoji Reactions Animation Layer -->
+          <div class="reactions-layer" id="videoReactionsLayer" style="position: absolute; inset: 0; pointer-events: none; z-index: 5; overflow: hidden;"></div>
+          
+          <div class="pulse-ring" id="videoPulseRing"></div>
+          <div style="display:none;" id="video-partner-name-wrapper"></div>
+          <div style="display:none;" id="partner-audio-bars"></div>
+          <div style="display:none;" id="video-partner-sub"></div>
+          
+          <!-- Local Video Tile / PiP Preview (minimized/hidden or standard PiP) -->
+          <div class="video-self" style="display:none; z-index: 3;">
+            <video id="localVideo" autoplay muted playsinline style="width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1);"></video>
+            <span id="localVideoPlaceholder">Camera Off</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Tabbed Call Sidebar (Google Meet Styled Right Drawer) -->
+      <div class="call-sidebar" id="videoCallSidebar" style="display: none;">
+        <div class="sidebar-tabs">
+          <button class="tab-btn active" id="tab-btn-chat" onclick="window.switchCallTab('chat')">Chat</button>
+          <button class="tab-btn" id="tab-btn-ehr" onclick="window.switchCallTab('ehr')">EHR & Notes</button>
+        </div>
+        
+        <!-- Tab Content: Chat -->
+        <div class="tab-panel-content active" id="call-tab-chat">
+          <div class="chat-messages" id="videoChatMessages">
+            <div class="chat-msg system">
+              <span class="text">Chat session started. All messages are encrypted.</span>
+            </div>
+          </div>
+          <div class="chat-input-area">
+            <button id="btn-attach-file" title="Attach Document" style="background:transparent;border:none;color:rgba(255,255,255,0.6);font-size:1.1rem;cursor:pointer;padding:0.25rem;">📎</button>
+            <input type="text" id="videoChatInput" placeholder="Send a message to everyone...">
+            <button id="btn-send-video-message">Send</button>
+          </div>
+        </div>
+        
+        <!-- Tab Content: EHR & Clinical Notes -->
+        <div class="tab-panel-content" id="call-tab-ehr" style="display: none;">
+          <!-- Content dynamically rendered depending on role -->
+          <div id="ehr-doctor-view" style="display:none; flex-direction:column; gap:1rem; height:100%; overflow-y:auto; padding:1rem;">
+            <div class="ehr-section">
+              <h4 style="color:var(--primary-light);font-size:0.85rem;margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:0.05em;">Patient Vitals</h4>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
+                <div class="sidebar-vital-card">
+                  <div class="label">BP</div>
+                  <div class="value" id="val-bp">118/76</div>
+                </div>
+                <div class="sidebar-vital-card">
+                  <div class="label">Heart Rate</div>
+                  <div class="value" id="val-hr">72 bpm</div>
+                </div>
+                <div class="sidebar-vital-card">
+                  <div class="label">SpO2</div>
+                  <div class="value" id="val-spo2">98%</div>
+                </div>
+                <div class="sidebar-vital-card">
+                  <div class="label">Temp</div>
+                  <div class="value" id="val-temp">36.7°C</div>
+                </div>
+              </div>
+              <button class="btn btn-outline btn-sm w-full mt-2" id="btn-request-vitals" style="color:white;border-color:rgba(255,255,255,0.2);background:rgba(255,255,255,0.05);justify-content:center;">Refresh Vitals</button>
+            </div>
+            
+            <div class="ehr-section" style="display:flex;flex-direction:column;gap:0.75rem;">
+              <h4 style="color:var(--primary-light);font-size:0.85rem;margin-bottom:0.1rem;text-transform:uppercase;letter-spacing:0.05em;">Consultation Notes</h4>
+              <div class="form-group" style="margin-bottom:0.5rem;">
+                <label style="color:rgba(255,255,255,0.7);font-size:0.75rem;">Chief Complaint</label>
+                <input type="text" class="form-control" id="call-note-complaint" style="background:#262c3e;color:white;border-color:rgba(255,255,255,0.1);padding:0.4rem 0.6rem;font-size:0.85rem;" placeholder="e.g. Cough for 3 days">
+              </div>
+              <div class="form-group" style="margin-bottom:0.5rem;">
+                <label style="color:rgba(255,255,255,0.7);font-size:0.75rem;">Clinical Notes / Advice</label>
+                <textarea class="form-control" id="call-note-clinical" rows="3" style="background:#262c3e;color:white;border-color:rgba(255,255,255,0.1);padding:0.4rem 0.6rem;font-size:0.85rem;" placeholder="Findings, diagnosis, rest instructions..."></textarea>
+              </div>
+              <div style="display:flex;gap:0.5rem;">
+                <button class="btn btn-primary btn-sm flex-1" id="btn-call-save-notes" style="justify-content:center;">Save Advice</button>
+                <button class="btn btn-outline btn-sm" id="btn-call-share-rx" style="justify-content:center;color:white;border-color:var(--primary-light);background:transparent;" title="Send Prescription to Chat">💊 Share Rx</button>
+              </div>
+            </div>
+          </div>
+          
+          <div id="ehr-patient-view" style="display:none; flex-direction:column; gap:1rem; height:100%; overflow-y:auto; padding:1rem;">
+            <div class="ehr-section" style="background:rgba(20,184,166,0.06);border:1px solid rgba(20,184,166,0.15);border-radius:var(--radius-sm);padding:0.85rem;">
+              <h4 style="color:var(--primary-light);font-size:0.85rem;margin-bottom:0.25rem;">Doctor Details</h4>
+              <div style="font-size:0.9rem;font-weight:600;">Dr. Shreya Joshi</div>
+              <div style="font-size:0.75rem;color:rgba(255,255,255,0.5);">General Medicine · License MCI-2014-08821</div>
+            </div>
+            
+            <div class="ehr-section">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+                <h4 style="color:var(--primary-light);font-size:0.85rem;margin:0;text-transform:uppercase;letter-spacing:0.05em;">My Vitals</h4>
+                <button class="btn btn-outline btn-sm" id="btn-share-vitals" style="color:white;font-size:0.7rem;padding:2px 8px;border-color:rgba(255,255,255,0.2);background:rgba(255,255,255,0.05);">Share Live Vitals</button>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
+                <div class="sidebar-vital-card">
+                  <div class="label">BP</div>
+                  <div class="value" id="p-val-bp">118/76</div>
+                </div>
+                <div class="sidebar-vital-card">
+                  <div class="label">Pulse</div>
+                  <div class="value" id="p-val-hr">72 bpm</div>
+                </div>
+                <div class="sidebar-vital-card">
+                  <div class="label">SpO2</div>
+                  <div class="value" id="p-val-spo2">98%</div>
+                </div>
+                <div class="sidebar-vital-card">
+                  <div class="label">Temp</div>
+                  <div class="value" id="p-val-temp">36.7°C</div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="ehr-section">
+              <h4 style="color:var(--primary-light);font-size:0.85rem;margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:0.05em;">Doctor's Advice (Live Sync)</h4>
+              <div id="patient-live-advice-box" style="padding:1rem;background:#1e293b;border-radius:var(--radius-sm);border-left:3px solid var(--primary-light);min-height:100px;font-size:0.85rem;line-height:1.4;">
+                <span style="color:rgba(255,255,255,0.4);font-style:italic;">No advice recorded yet. The doctor's advice will update here in real-time.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Floating Emoji Reactions Bar (matches screenshot) -->
+    <div class="meet-emoji-reactions-bar">
+      <button class="meet-emoji-btn" onclick="window.sendReaction('💖', event)">💖</button>
+      <button class="meet-emoji-btn" onclick="window.sendReaction('👍', event)">👍</button>
+      <button class="meet-emoji-btn" onclick="window.sendReaction('🎉', event)">🎉</button>
+      <button class="meet-emoji-btn" onclick="window.sendReaction('👏', event)">👏</button>
+      <button class="meet-emoji-btn" onclick="window.sendReaction('😂', event)">😂</button>
+      <button class="meet-emoji-btn" onclick="window.sendReaction('😮', event)">😮</button>
+      <button class="meet-emoji-btn" onclick="window.sendReaction('😢', event)">😢</button>
+      <button class="meet-emoji-btn" onclick="window.sendReaction('🤔', event)">🤔</button>
+      <button class="meet-emoji-btn" onclick="window.sendReaction('👎', event)">👎</button>
+    </div>
+
+    <!-- Google Meet Bottom Control Bar -->
+    <div class="meet-bottom-bar">
+      <!-- Left: Meet Meeting Info & Clock -->
+      <div class="meet-bar-info">
+        <span class="meet-time-clock" id="meetClock">16:39</span>
+        <span class="meet-info-divider">|</span>
+        <span class="meet-code-label">wfm-iagh-aoi</span>
+      </div>
+
+      <!-- Center: Call Actions -->
+      <div class="meet-bar-controls">
+        <!-- Mic Toggle with Caret -->
+        <div class="meet-control-pill mic-control-pill">
+          <button class="meet-caret-btn">▲</button>
+          <button class="ctrl-btn ctrl-normal mic-toggle" title="Toggle Microphone">🎤</button>
+        </div>
+
+        <!-- Camera Toggle with Caret -->
+        <div class="meet-control-pill camera-control-pill">
+          <button class="meet-caret-btn">▲</button>
+          <button class="ctrl-btn ctrl-normal camera-toggle" title="Toggle Camera">📷</button>
+        </div>
+
+        <!-- Present Screen -->
+        <button class="ctrl-btn ctrl-normal screen-share-toggle" title="Share Screen">📤</button>
+
+        <!-- Reactions (Highlighted in blue in Google Meet) -->
+        <button class="ctrl-btn ctrl-normal reaction-toggle meet-reaction-active" id="btn-reaction-toggle" title="Send Reaction">
+          😊
+        </button>
+
+        <!-- Captions -->
+        <button class="ctrl-btn ctrl-normal cc-toggle" title="Toggle Captions" style="font-weight:700;font-size:0.85rem;letter-spacing:1px;color:rgba(255,255,255,0.7);">CC</button>
+
+        <!-- Hand Raise -->
+        <button class="ctrl-btn ctrl-normal hand-toggle" title="Raise Hand">✋</button>
+
+        <!-- More Options -->
+        <button class="ctrl-btn ctrl-normal record-toggle" id="btn-record-toggle" title="Start Recording">︙</button>
+
+        <!-- End Call (Red Pill Shape) -->
+        <button class="ctrl-btn ctrl-end" title="End Call" id="btn-end-video-call">📵</button>
+      </div>
+
+      <!-- Right: Meeting Drawer Toggles -->
+      <div class="meet-bar-utilities">
+        <button class="meet-util-btn info-toggle" title="Meeting Details">ⓘ</button>
+        <button class="meet-util-btn chat-toggle" title="Chat & EHR">💬</button>
+        <button class="meet-util-btn" title="People (2)">👥</button>
+        <button class="meet-util-btn" title="Activities">⬔</button>
+        <button class="meet-util-btn host-toggle" title="Host Controls">🛡️</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
 </body>
 </html>

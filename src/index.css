@@ -4,12 +4,12 @@
 
 @layer base {
   :root {
-    --primary: #0f766e;
-    --primary-light: #14b8a6;
-    --primary-dark: #0d9488;
-    --accent: #f97316;
-    --accent-light: #fed7aa;
-    --bg: #f0fdf9;
+    --primary: #2563eb;
+    --primary-light: #3b82f6;
+    --primary-dark: #1d4ed8;
+    --accent: #2563eb;
+    --accent-light: #dbeafe;
+    --bg: #f0f9ff;
     --bg2: #ffffff;
     --surface: #ffffff;
     --surface2: #f8fafc;
@@ -46,8 +46,8 @@
 /* ── LANDING ── */
 .landing {
   min-height: 100vh;
-  background: linear-gradient(135deg, #0f766e 0%, #0d9488 40%, #115e59 100%);
-  color: white;
+  background: linear-gradient(135deg, #f0f9ff 0%, #ffffff 50%, #e0f2fe 100%);
+  color: #0f172a;
   display: flex;
   flex-direction: column;
 }
@@ -58,14 +58,17 @@
   padding: 1.5rem 3rem;
 }
 .land-logo {
-  font-family: 'Playfair Display', serif;
+  font-family: 'DM Sans', sans-serif;
   font-size: 1.6rem;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: -0.5px;
-  color: white;
+  color: #1e3a8a;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 .land-logo span {
-  color: #f97316;
+  color: #3b82f6;
 }
 .land-hero {
   flex: 1;
@@ -77,62 +80,65 @@
   padding: 4rem 2rem;
 }
 .land-hero h1 {
-  font-family: 'Playfair Display', serif;
+  font-family: 'Outfit', sans-serif;
   font-size: 3.5rem;
-  font-weight: 700;
+  font-weight: 800;
   line-height: 1.15;
   margin-bottom: 1.25rem;
+  color: #0f172a;
 }
 .land-hero h1 em {
-  color: #f97316;
+  color: #2563eb;
   font-style: normal;
 }
 .land-hero p {
   font-size: 1.15rem;
-  opacity: 0.85;
+  color: #475569;
   max-width: 520px;
   line-height: 1.7;
   margin-bottom: 3rem;
 }
 .role-cards {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 1.5rem;
-  max-width: 860px;
+  max-width: 580px;
   width: 100%;
 }
 .role-card {
-  background: rgba(255,255,255,0.12);
-  border: 1px solid rgba(255,255,255,0.2);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: var(--radius);
-  padding: 2rem 1.5rem;
+  padding: 2.5rem 2rem;
   cursor: pointer;
-  transition: all .25s;
+  transition: all .25s ease;
   text-align: center;
-  backdrop-filter: blur(4px);
+  color: #0f172a;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
 }
 .role-card:hover {
-  background: rgba(255,255,255,0.22);
+  border-color: #3b82f6;
   transform: translateY(-4px);
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 20px 25px -5px rgba(59, 130, 246, 0.12), 0 10px 10px -5px rgba(59, 130, 246, 0.04);
 }
 .role-card .icon {
   font-size: 2.8rem;
   margin-bottom: 1rem;
 }
 .role-card h3 {
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin-bottom: .4rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: .5rem;
+  color: #1e3a8a;
 }
 .role-card p {
-  font-size: .85rem;
-  opacity: .75;
+  font-size: .88rem;
+  color: #475569;
 }
 .land-footer {
   text-align: center;
   padding: 1.5rem;
-  opacity: .5;
+  color: #64748b;
   font-size: .85rem;
 }
 
@@ -205,7 +211,7 @@
   color: var(--primary);
 }
 .nav-item.active {
-  background: #e6fffa;
+  background: #eff6ff;
   color: var(--primary);
   font-weight: 600;
 }
@@ -251,7 +257,7 @@
   flex-shrink: 0;
 }
 .avatar-teal {
-  background: #ccfbf1;
+  background: #dbeafe;
   color: var(--primary);
 }
 .avatar-orange {

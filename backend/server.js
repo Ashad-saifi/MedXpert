@@ -3,6 +3,8 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import http from 'http';
 import { WebSocketServer } from 'ws';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import connectDB from './config/db.js';
 import userRoutes from './routes/userRoutes.js';
 import doctorRoutes from './routes/doctorRoutes.js';
@@ -14,6 +16,9 @@ import adminRoutes from './routes/adminRoutes.js';
 import { loginUser } from './controllers/userController.js';
 
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Connect to MongoDB
 connectDB();
@@ -35,6 +40,17 @@ app.use("/api/admin", adminRoutes);
 
 // Compatibility route for Vite client authentication
 app.post('/api/auth/login', loginUser);
+
+// Serve static files from the React frontend build
+app.use(express.static(path.join(__dirname, '../dist')));
+
+// Fallback to index.html for non-API client routes
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api')) {
+    return next();
+  }
+  res.sendFile(path.join(__dirname, '../dist/index.html'));
+});
 
 // Create HTTP server
 const server = http.createServer(app);
