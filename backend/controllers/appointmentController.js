@@ -242,6 +242,12 @@ const updateAppointmentStatus = async (req, res) => {
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
+    const validStatus = [
+  "Pending",
+  "Approved",
+  "Completed",
+  "Cancelled"
+];
 };
 
 export {
