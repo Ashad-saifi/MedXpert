@@ -19,6 +19,7 @@ let screenStream = null;
 let peerConnection = null;
 let signalingSocket = null;
 let currentReplyIndex = 0;
+let dashboardPollInterval = null;
 
 let notificationsData = [
   { id: 1, text: "Welcome to MedXpert! Set up your profile to get started.", time: "1 hour ago", read: false, type: "info" },
@@ -39,6 +40,53 @@ let isRecording = false;
 let recordInterval = null;
 let recordSeconds = 0;
 let activeCallPartnerName = '';
+
+function toggleRecording() {
+  const recordToggle = document.getElementById('btn-record-toggle');
+  isRecording = !isRecording;
+  
+  if (isRecording) {
+    recordSeconds = 0;
+    if (recordToggle) {
+      recordToggle.innerHTML = '🔴';
+      recordToggle.style.background = '#ef4444';
+      recordToggle.style.color = '#ffffff';
+      recordToggle.title = 'Stop Recording';
+    }
+    notify('Consultation recording started', 'success');
+    
+    recordInterval = setInterval(() => {
+      recordSeconds++;
+    }, 1000);
+  } else {
+    if (recordInterval) {
+      clearInterval(recordInterval);
+      recordInterval = null;
+    }
+    if (recordToggle) {
+      recordToggle.innerHTML = '︙';
+      recordToggle.style.background = '';
+      recordToggle.style.color = '';
+      recordToggle.title = 'Start Recording';
+    }
+    notify('Consultation recording saved successfully', 'success');
+  }
+}
+
+function requestVitals() {
+  notify('Requesting live health vitals from patient...', '');
+  if (signalingSocket && signalingSocket.readyState === WebSocket.OPEN) {
+    signalingSocket.send(JSON.stringify({ type: 'request-vitals' }));
+  }
+}
+
+function shareVitals() {
+  shareVitalsWebSocket();
+}
+
+function saveCallNotes() {
+  notify('Consultation notes saved successfully', 'success');
+}
 
 const doctorChatReplies = [
   "Hello! I am reviewing Your health records. How have you been feeling since your last appointment?",
@@ -61,6 +109,7 @@ const patientChatReplies = [
 document.addEventListener('DOMContentLoaded', () => {
   initEventListeners();
   startMeetClock();
+  checkStoredSession();
 });
 
 function initEventListeners() {
@@ -239,6 +288,9 @@ function initEventListeners() {
   document.getElementById('btn-edit-p-profile-submit')?.addEventListener('click', submitEditPatientProfile);
 
   // Doctor features
+  document.getElementById('d-availability-toggle')?.addEventListener('click', toggleDoctorOnlineStatus);
+  document.getElementById('btn-d-upload-report')?.addEventListener('click', openDoctorUploadReportModal);
+  document.getElementById('btn-d-upload-report-submit')?.addEventListener('click', submitDoctorUploadReport);
   document.getElementById('btn-add-rx-row')?.addEventListener('click', addRxRow);
   document.getElementById('btn-d-new-rx')?.addEventListener('click', () => openModal('prescModal'));
   document.getElementById('btn-issue-presc-submit')?.addEventListener('click', submitIssuePrescription);
@@ -334,7 +386,7 @@ function initEventListeners() {
     notify('Meeting Details: Code wfm-iagh-aoi | Encryption Active', 'success');
   });
   document.querySelector('.meet-bar-utilities button[title*="People"]')?.addEventListener('click', () => {
-    notify('Participants (2): Aarav Mehta, Dr. Shreya Joshi', 'success');
+    notify('Participants (2): Ashad saifi, Dr. Shreya Joshi', 'success');
   });
   document.querySelector('.meet-bar-utilities button[title*="Activities"]')?.addEventListener('click', () => {
     notify('Activities: Whiteboard and Polls are available', 'success');
@@ -569,6 +621,9 @@ async function doSignUp() {
     if (currentUser) {
       currentUser.profile = data.profile || (role === 'patient' ? { id: `P-${Math.floor(Math.random()*10000)}`, name } : { id: `D-${Math.floor(Math.random()*100)}`, name });
     }
+    sessionStorage.setItem('medxpert_user', JSON.stringify(currentUser));
+    sessionStorage.setItem('medxpert_role', role);
+    startDashboardPolling();
     
     closeLogin();
 
@@ -608,7 +663,7 @@ function openLogin(role) {
   const pwdInput = document.getElementById('loginPwd');
   if (emailInput && pwdInput) {
     if (role === 'patient') {
-      emailInput.value = 'aarav@email.com';
+      emailInput.value = 'ashad@email.com';
     } else if (role === 'doctor') {
       emailInput.value = 'shreya@hospital.com';
     } else {
@@ -688,6 +743,9 @@ async function doLogin() {
 
     currentUser = data.user;
     if (currentUser) currentUser.profile = data.profile;
+    sessionStorage.setItem('medxpert_user', JSON.stringify(currentUser));
+    sessionStorage.setItem('medxpert_role', currentRole);
+    startDashboardPolling();
     closeLogin();
 
     // Hide all panel screens
@@ -724,6 +782,51 @@ function goLanding() {
   document.getElementById('adminPanel').style.display = 'none';
   currentUser = null;
   currentRole = '';
+  sessionStorage.removeItem('medxpert_user');
+  sessionStorage.removeItem('medxpert_role');
+  if (dashboardPollInterval) {
+    clearInterval(dashboardPollInterval);
+    dashboardPollInterval = null;
+  }
+}
+
+async function checkStoredSession() {
+  const storedUser = sessionStorage.getItem('medxpert_user');
+  const storedRole = sessionStorage.getItem('medxpert_role');
+  if (storedUser && storedRole) {
+    try {
+      currentUser = JSON.parse(storedUser);
+      currentRole = storedRole;
+
+      // Hide all panel screens
+      document.getElementById('landing').style.display = 'none';
+      document.getElementById('patientPanel').style.display = 'none';
+      document.getElementById('doctorPanel').style.display = 'none';
+      document.getElementById('adminPanel').style.display = 'none';
+
+      // Display dashboard
+      if (currentRole === 'patient') {
+        document.getElementById('patientPanel').style.display = 'flex';
+        await loadPatientData();
+        await showPage('p', 'pDashboard', document.querySelector('#patient-nav [data-page="pDashboard"]'));
+      } else if (currentRole === 'doctor') {
+        document.getElementById('doctorPanel').style.display = 'flex';
+        await loadDoctorData();
+        await showPage('d', 'dDashboard', document.querySelector('#doctor-nav [data-page="dDashboard"]'));
+      } else {
+        document.getElementById('adminPanel').style.display = 'flex';
+        await loadAdminData();
+        await showPage('a', 'aDashboard', document.querySelector('#admin-nav [data-page="aDashboard"]'));
+      }
+      
+      notify(`Logged in as ${currentUser?.name || ''}`, 'success');
+      startDashboardPolling();
+    } catch (e) {
+      console.error('Error parsing stored session:', e);
+      sessionStorage.removeItem('medxpert_user');
+      sessionStorage.removeItem('medxpert_role');
+    }
+  }
 }
 
 async function showPage(prefix, pageId, el) {
@@ -919,7 +1022,7 @@ function createPeerConnection() {
     const pulseRing = document.getElementById('videoPulseRing');
     const audioBars = document.getElementById('partner-audio-bars');
     const partnerEl = document.getElementById('video-partner-name');
-    const partnerName = activeCallPartnerName || (currentRole === 'doctor' ? 'Aarav Mehta' : 'Dr. Shreya Joshi');
+    const partnerName = activeCallPartnerName || (currentRole === 'doctor' ? 'Ashad saifi' : 'Dr. Shreya Joshi');
 
     if (partnerEl) {
       partnerEl.textContent = `${partnerName} (Connected)`;
@@ -1000,7 +1103,7 @@ function handleSignalingMessage(data) {
       console.log(`Peer joined: ${data.role}`);
       notify(`${data.role === 'doctor' ? 'Doctor' : 'Patient'} has joined the video consultation`, 'success');
       const partnerEl = document.getElementById('video-partner-name');
-      const partnerName = activeCallPartnerName || (currentRole === 'doctor' ? 'Aarav Mehta' : 'Dr. Shreya Joshi');
+      const partnerName = activeCallPartnerName || (currentRole === 'doctor' ? 'Ashad saifi' : 'Dr. Shreya Joshi');
       if (partnerEl) {
         partnerEl.textContent = `${partnerName} (Connected)`;
       }
@@ -1014,7 +1117,7 @@ function handleSignalingMessage(data) {
       console.log(`Peer left: ${data.role}`);
       notify(`${data.role === 'doctor' ? 'Doctor' : 'Patient'} has left the video consultation`, 'warning');
       const partnerElLeft = document.getElementById('video-partner-name');
-      const partnerNameLeft = activeCallPartnerName || (currentRole === 'doctor' ? 'Aarav Mehta' : 'Dr. Shreya Joshi');
+      const partnerNameLeft = activeCallPartnerName || (currentRole === 'doctor' ? 'Ashad saifi' : 'Dr. Shreya Joshi');
       if (partnerElLeft) {
         partnerElLeft.textContent = `${partnerNameLeft} · Disconnected`;
       }
@@ -1739,7 +1842,7 @@ function sendVideoChatMessage() {
   const text = input.value.trim();
   if (!text) return;
 
-  const myName = currentRole === 'doctor' ? 'Dr. Shreya Joshi' : 'Aarav Mehta';
+  const myName = currentRole === 'doctor' ? 'Dr. Shreya Joshi' : 'Ashad saifi';
   appendChatMessage(myName, text, 'self');
   input.value = '';
 
@@ -1843,6 +1946,13 @@ async function loadPatientData() {
     if (Array.isArray(docs)) doctorsData = docs;
     renderDoctorsList();
 
+    // 6. Load notifications from MongoDB
+    const resNotif = await fetch(`${API_BASE}/notifications?userId=${patId}`);
+    const notifs = await safeJson(resNotif);
+    if (Array.isArray(notifs)) {
+      notificationsData = notifs;
+    }
+
     // Update UI profile and dashboard stats
     updatePatientProfileUI();
     updateNotificationsBadge();
@@ -1871,6 +1981,21 @@ function updatePatientProfileUI() {
   const profId = document.getElementById('p-profile-id');
   if (profName) profName.textContent = patientData.name;
   if (profId) profId.textContent = `Patient ID: ${patientData.id}`;
+
+  // Update sidebar profile card
+  const sideName = document.getElementById('p-user-display-name');
+  const sideId = document.getElementById('p-user-display-id');
+  const sideAvatar = document.getElementById('p-user-display-avatar');
+
+  if (sideName) sideName.textContent = patientData.name;
+  if (sideId) sideId.textContent = `Patient ID: ${patientData.id}`;
+  if (sideAvatar) {
+    const nameParts = patientData.name.split(' ');
+    const initials = (nameParts.length > 1 
+      ? nameParts.slice(0, 2).map(n => n[0]).join('') 
+      : nameParts[0].substring(0, 2)).toUpperCase();
+    sideAvatar.textContent = initials;
+  }
 
   // Profile detailed parameters
   const detailsContainer = document.getElementById('p-profile-details');
@@ -2112,7 +2237,7 @@ function renderPatientReports() {
         <td><span class="badge badge-blue">Lab Report</span></td>
         <td>${formattedDate}</td>
         <td>${rep.lab}</td>
-        <td><button class="btn btn-sm btn-ghost" onclick="window.viewDocument('${rep.testName}')">View</button></td>
+        <td><button class="btn btn-sm btn-ghost" onclick="window.viewDocument('${rep.id}')">View</button></td>
       `;
       docTable.appendChild(tr);
     }
@@ -2125,7 +2250,7 @@ function renderPatientReports() {
         <td>${formattedDate}</td>
         <td>${rep.lab}</td>
         <td><span class="badge ${badgeClass}">${rep.result}</span></td>
-        <td><button class="btn btn-sm btn-ghost" onclick="window.viewDocument('${rep.testName}')">View</button></td>
+        <td><button class="btn btn-sm btn-ghost" onclick="window.viewDocument('${rep.id}')">View</button></td>
       `;
       repTable.appendChild(tr);
     }
@@ -2156,8 +2281,9 @@ function renderDoctorsList() {
         : nameParts[0].substring(0, 2) || 'Dr').toUpperCase();
       
       const availabilityStr = doc.availability || (doc.status === 'Active' ? 'Today' : 'Tomorrow');
-      const statusBadge = availabilityStr.includes('Today') || doc.status === 'Active' ? 'badge-green' : 'badge-yellow';
-      const statusText = doc.status === 'Active' ? 'Available Today' : 'Tomorrow';
+      const isOffline = availabilityStr === 'Offline';
+      const statusBadge = isOffline ? 'badge-red' : (availabilityStr.includes('Today') || doc.status === 'Active' ? 'badge-green' : 'badge-yellow');
+      const statusText = isOffline ? 'Offline' : (doc.status === 'Active' ? 'Available Today' : 'Tomorrow');
       
       const specialtyStr = doc.specialty || 'General Medicine';
       const borderClass = specialtyStr === 'General Medicine' ? 'avatar-teal' : specialtyStr === 'Cardiology' ? 'avatar-blue' : 'avatar-orange';
@@ -2216,6 +2342,36 @@ async function submitBookAppointment() {
     return;
   }
 
+  const doc = doctorsData.find(d => d.id === doctorId);
+  if (doc && doc.availability === 'Offline') {
+    const warningDiv = document.getElementById('book-appt-offline-warning');
+    if (warningDiv) {
+      warningDiv.style.display = 'block';
+      const otherDocs = doctorsData.filter(d => d.specialty === doc.specialty && d.id !== doc.id && d.availability !== 'Offline' && d.status === 'Active');
+      let suggestionsHTML = `⚠️ <strong>${doc.name}</strong> is currently Offline / Unavailable. You cannot book an appointment with them right now.`;
+      if (otherDocs.length > 0) {
+        suggestionsHTML += `<div style="margin-top: 0.75rem; font-weight: 600; color: #0f172a;">Suggested available doctors in ${doc.specialty}:</div><div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem;">`;
+        otherDocs.forEach(od => {
+          suggestionsHTML += `
+            <div style="display: flex; justify-content: space-between; align-items: center; background: #ffffff; border: 1px solid var(--border); padding: 0.5rem; border-radius: var(--radius-sm);">
+              <div>
+                <span style="font-weight: 600; color: #0f172a;">${od.name}</span>
+                <span style="font-size: 0.75rem; color: #64748b; margin-left: 0.5rem;">Exp: ${od.exp} · Fee: ${od.fee}</span>
+              </div>
+              <button class="btn btn-sm btn-primary" style="padding: 2px 8px; font-size: 0.75rem;" onclick="window.selectAlternativeDoctor('${od.id}')">Book instead</button>
+            </div>
+          `;
+        });
+        suggestionsHTML += `</div>`;
+      } else {
+        suggestionsHTML += `<br><span style="font-size: 0.8rem; opacity: 0.8;">No other active doctors found in the same specialty department.</span>`;
+      }
+      warningDiv.innerHTML = suggestionsHTML;
+    }
+    notify(`${doc.name} is currently offline`, 'error');
+    return;
+  }
+
   try {
     // Parse time string (e.g. "10:30 AM" or "14:00") into a proper 24h HH:MM string
     let timeStr = time || '10:00';
@@ -2259,16 +2415,6 @@ async function cancelAppointment(id) {
     const res = await fetch(`${API_BASE}/appointments/cancel/${id}`, { method: 'POST' });
     if (!res.ok) throw new Error('Cancellation failed');
 
-    // Add unread notification
-    notificationsData.unshift({
-      id: Date.now(),
-      text: `Your appointment with Dr. ${docName} has been cancelled successfully.`,
-      time: "Just now",
-      read: false,
-      type: "warning",
-      page: "pAppointments"
-    });
-
     notify('Appointment cancelled', '');
     
     if (currentRole === 'patient') {
@@ -2310,8 +2456,185 @@ async function triggerReportUpload() {
   }
 }
 
-function downloadRecords() {
-  notify('All medical records downloaded as PDF', 'success');
+async function downloadRecords() {
+  const patId = patientData ? patientData.id : (currentUser && currentUser.profile ? currentUser.profile.id : "P-10421");
+  notify('Generating comprehensive medical records PDF...', 'info');
+  try {
+    const res = await fetch(`${API_BASE}/reports/download-all/${patId}`);
+    if (!res.ok) throw new Error('Failed to generate PDF');
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `health_records_${patId}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+    notify('All medical records downloaded as PDF', 'success');
+  } catch (err) {
+    notify(err.message, 'error');
+  }
+}
+
+function viewDocument(idOrName) {
+  const rep = reportsData.find(r => r.id === idOrName) || reportsData.find(r => r.testName === idOrName);
+  if (!rep) {
+    notify('Lab report not found.', 'error');
+    return;
+  }
+
+  const titleEl = document.getElementById('viewReportTitle');
+  const bodyEl = document.getElementById('viewReportBody');
+  if (!titleEl || !bodyEl) return;
+
+  titleEl.textContent = `🧪 Report Details: ${rep.testName}`;
+
+  // Compile panel metrics based on the type of report
+  let metricsHTML = '';
+  const testNameLower = rep.testName.toLowerCase();
+
+  if (testNameLower.includes('blood count') || testNameLower.includes('cbc') || testNameLower.includes('blood test')) {
+    metricsHTML = `
+      <div class="flex justify-between py-2 border-b border-[var(--border)]">
+        <span class="font-semibold">Hemoglobin</span>
+        <span>14.2 g/dL <span class="badge badge-green ml-2" style="font-size:0.7rem;">Normal</span></span>
+      </div>
+      <div class="flex justify-between py-2 border-b border-[var(--border)]">
+        <span class="font-semibold">White Blood Cells (WBC)</span>
+        <span>6.5 x10³/µL <span class="badge badge-green ml-2" style="font-size:0.7rem;">Normal</span></span>
+      </div>
+      <div class="flex justify-between py-2 border-b border-[var(--border)]">
+        <span class="font-semibold">Red Blood Cells (RBC)</span>
+        <span>4.8 x10⁶/µL <span class="badge badge-green ml-2" style="font-size:0.7rem;">Normal</span></span>
+      </div>
+      <div class="flex justify-between py-2">
+        <span class="font-semibold">Platelets</span>
+        <span>250 x10³/µL <span class="badge badge-green ml-2" style="font-size:0.7rem;">Normal</span></span>
+      </div>
+    `;
+  } else if (testNameLower.includes('hba1c')) {
+    metricsHTML = `
+      <div class="flex justify-between py-2 border-b border-[var(--border)]">
+        <span class="font-semibold">Hemoglobin A1c</span>
+        <span>${rep.result} <span class="badge ${rep.result.includes('Borderline') || rep.result.includes('High') ? 'badge-yellow' : 'badge-green'} ml-2" style="font-size:0.7rem;">${rep.status}</span></span>
+      </div>
+      <div class="flex justify-between py-2">
+        <span class="font-semibold">Estimated Average Glucose (eAG)</span>
+        <span>148 mg/dL <span class="badge badge-yellow ml-2" style="font-size:0.7rem;">Elevated</span></span>
+      </div>
+    `;
+  } else if (testNameLower.includes('lipid') || testNameLower.includes('cholesterol')) {
+    metricsHTML = `
+      <div class="flex justify-between py-2 border-b border-[var(--border)]">
+        <span class="font-semibold">Total Cholesterol</span>
+        <span>185 mg/dL <span class="badge badge-green ml-2" style="font-size:0.7rem;">Normal</span></span>
+      </div>
+      <div class="flex justify-between py-2 border-b border-[var(--border)]">
+        <span class="font-semibold">HDL Cholesterol</span>
+        <span>52 mg/dL <span class="badge badge-green ml-2" style="font-size:0.7rem;">Normal</span></span>
+      </div>
+      <div class="flex justify-between py-2 border-b border-[var(--border)]">
+        <span class="font-semibold">LDL Cholesterol</span>
+        <span>105 mg/dL <span class="badge badge-yellow ml-2" style="font-size:0.7rem;">Borderline</span></span>
+      </div>
+      <div class="flex justify-between py-2">
+        <span class="font-semibold">Triglycerides</span>
+        <span>140 mg/dL <span class="badge badge-green ml-2" style="font-size:0.7rem;">Normal</span></span>
+      </div>
+    `;
+  } else if (testNameLower.includes('thyroid') || testNameLower.includes('tsh')) {
+    metricsHTML = `
+      <div class="flex justify-between py-2 border-b border-[var(--border)]">
+        <span class="font-semibold">TSH</span>
+        <span>2.1 mIU/L <span class="badge badge-green ml-2" style="font-size:0.7rem;">Normal</span></span>
+      </div>
+      <div class="flex justify-between py-2">
+        <span class="font-semibold">Free T4</span>
+        <span>1.2 ng/dL <span class="badge badge-green ml-2" style="font-size:0.7rem;">Normal</span></span>
+      </div>
+    `;
+  } else if (testNameLower.includes('creatinine')) {
+    metricsHTML = `
+      <div class="flex justify-between py-2 border-b border-[var(--border)]">
+        <span class="font-semibold">Serum Creatinine</span>
+        <span>1.8 mg/dL <span class="badge badge-red ml-2" style="font-size:0.7rem;">High</span></span>
+      </div>
+      <div class="flex justify-between py-2">
+        <span class="font-semibold">eGFR</span>
+        <span>45 mL/min/1.73m² <span class="badge badge-red ml-2" style="font-size:0.7rem;">Decreased</span></span>
+      </div>
+    `;
+  } else if (testNameLower.includes('pulmonary') || testNameLower.includes('lung')) {
+    metricsHTML = `
+      <div class="flex justify-between py-2 border-b border-[var(--border)]">
+        <span class="font-semibold">FEV1</span>
+        <span>72% predicted <span class="badge badge-yellow ml-2" style="font-size:0.7rem;">Mild Obstructive</span></span>
+      </div>
+      <div class="flex justify-between py-2 border-b border-[var(--border)]">
+        <span class="font-semibold">FVC</span>
+        <span>85% predicted <span class="badge badge-green ml-2" style="font-size:0.7rem;">Normal</span></span>
+      </div>
+      <div class="flex justify-between py-2">
+        <span class="font-semibold">FEV1/FVC Ratio</span>
+        <span>68% <span class="badge badge-yellow ml-2" style="font-size:0.7rem;">Mild Obstructive</span></span>
+      </div>
+    `;
+  } else {
+    metricsHTML = `
+      <div class="flex justify-between py-2">
+        <span class="font-semibold">Diagnostic Result</span>
+        <span>${rep.result || 'Normal'}</span>
+      </div>
+    `;
+  }
+
+  const badgeClass = rep.status === 'Action Required' ? 'badge-yellow' : 'badge-green';
+
+  let pdfBtnHTML = '';
+  if (rep.pdfData) {
+    pdfBtnHTML = `
+      <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px dashed var(--border); text-align: center;">
+        <button class="btn btn-primary" onclick="window.downloadReportPdf('${rep.id}')" style="display: inline-flex; align-items: center; gap: 0.5rem; margin: 0 auto;">
+          📄 Download Attached PDF
+        </button>
+      </div>
+    `;
+  }
+
+  bodyEl.innerHTML = `
+    <div style="font-family: 'DM Sans', sans-serif; padding: 1.5rem; color: var(--text);">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; background: var(--bg); padding: 1rem; border-radius: var(--radius); border: 1px solid var(--border);">
+        <div>
+          <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text3); font-weight:600; margin-bottom:0.25rem;">Report ID</div>
+          <div style="font-weight: 700; color: var(--text);">${rep.id}</div>
+        </div>
+        <div style="text-align: right;">
+          <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text3); font-weight:600; margin-bottom:0.25rem;">Date & Lab</div>
+          <div style="font-weight: 600; color: var(--text);">${new Date(rep.date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+          <div style="font-size: 0.85rem; color: var(--text2);">${rep.lab}</div>
+        </div>
+      </div>
+
+      <div style="margin-bottom: 1.5rem;">
+        <div style="font-size: 0.9rem; font-weight: 700; color: var(--text); margin-bottom: 0.5rem; border-bottom: 2px solid var(--primary); padding-bottom: 0.25rem; display: inline-block;">Diagnostic Summary</div>
+        <div style="display: flex; align-items: center; gap: 0.75rem; margin-top: 0.5rem;">
+          <span style="font-size: 1.1rem; font-weight: 700; color: ${rep.status === 'Action Required' ? '#ef4444' : '#10b981'};">${rep.result}</span>
+          <span class="badge ${badgeClass}" style="text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px;">${rep.status}</span>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-size: 0.9rem; font-weight: 700; color: var(--text); margin-bottom: 0.5rem; border-bottom: 2px solid var(--primary); padding-bottom: 0.25rem; display: inline-block;">Test Panel Measurements</div>
+        <div style="display: flex; flex-direction: column; gap: 0.25rem; margin-top: 0.5rem;">
+          ${metricsHTML}
+        </div>
+      </div>
+      ${pdfBtnHTML}
+    </div>
+  `;
+
+  openModal('viewReportModal');
 }
 
 function setFieldError(fieldId, errorMsg) {
@@ -2484,10 +2807,6 @@ async function submitEditPatientProfile() {
   }
 }
 
-function viewDocument(name) {
-  notify(`Viewing report details: ${name}`, 'success');
-}
-
 function filterDoctors() {
   const q = document.getElementById('p-doctors-search').value.toLowerCase();
   const spec = document.getElementById('p-doctors-specialty-filter').value;
@@ -2528,6 +2847,31 @@ function updateDoctorProfileUI() {
   if (hospitalEl) hospitalEl.textContent = profile.hospital || '';
   if (feeEl) feeEl.textContent = `₹${profile.fee || ''}`.replace('₹₹', '₹');
   if (availabilityEl) availabilityEl.textContent = profile.availability || 'Available Today';
+
+  // Update Topbar Status Toggle Button
+  const toggleBtn = document.getElementById('d-availability-toggle');
+  if (toggleBtn) {
+    const isOffline = profile.availability === 'Offline';
+    toggleBtn.textContent = isOffline ? '🔴 Status: Offline' : '🟢 Status: Online';
+    if (isOffline) {
+      toggleBtn.style.borderColor = '#ef4444';
+      toggleBtn.style.color = '#ef4444';
+      toggleBtn.style.background = 'rgba(239, 68, 68, 0.05)';
+    } else {
+      toggleBtn.style.borderColor = '#10b981';
+      toggleBtn.style.color = '#10b981';
+      toggleBtn.style.background = 'rgba(16, 185, 129, 0.05)';
+    }
+  }
+
+  // Update sidebar profile card
+  const sideName = document.getElementById('d-user-display-name');
+  const sideRole = document.getElementById('d-user-display-role');
+  const sideAvatar = document.getElementById('d-user-display-avatar');
+
+  if (sideName) sideName.textContent = profile.name || '';
+  if (sideRole) sideRole.textContent = profile.specialty || 'General Medicine';
+  if (sideAvatar) sideAvatar.textContent = initials;
 }
 
 function openEditDoctorProfileModal() {
@@ -2616,6 +2960,10 @@ async function loadDoctorData() {
     const prescSelect = document.getElementById('presc-patient-select');
     if (prescSelect) {
       prescSelect.innerHTML = validPatients.map(p => `<option value="${p.id}">${p.name} – ${p.id}</option>`).join('');
+    }
+    const reportSelect = document.getElementById('d-upload-report-patient');
+    if (reportSelect) {
+      reportSelect.innerHTML = validPatients.map(p => `<option value="${p.id}">${p.name} – ${p.id}</option>`).join('');
     }
 
     // 3. Fetch all prescriptions
@@ -2812,7 +3160,7 @@ function renderDoctorReports() {
   tableBody.innerHTML = '';
 
   reportsData.forEach(rep => {
-    const pat = patients.find(p => p.id === rep.patientId) || { name: 'Aarav Mehta' };
+    const pat = patients.find(p => p.id === rep.patientId) || { name: 'Ashad saifi' };
     const badgeClass = rep.result.includes('Normal') ? 'badge-green' : 'badge-yellow';
 
     const tr = document.createElement('tr');
@@ -2820,9 +3168,10 @@ function renderDoctorReports() {
       <td class="font-semibold">${pat.name}</td>
       <td>${rep.testName}</td>
       <td>${rep.date}</td>
+      <td>${rep.lab || 'CityPath Lab'}</td>
       <td><span class="badge ${badgeClass}">${rep.result}</span></td>
       <td>
-        <button class="btn btn-sm btn-ghost" onclick="window.viewDocument('${rep.testName}')">Review</button>
+        <button class="btn btn-sm btn-ghost" onclick="window.viewDocument('${rep.id}')">Review</button>
       </td>
     `;
     tableBody.appendChild(tr);
@@ -3010,6 +3359,19 @@ async function loadAdminData() {
     if (!data) throw new Error('Admin logs endpoint unavailable');
 
     // Update stats counters
+    const sideName = document.getElementById('a-user-display-name');
+    const sideAvatar = document.getElementById('a-user-display-avatar');
+    if (currentUser) {
+      if (sideName) sideName.textContent = currentUser.name || 'Admin';
+      if (sideAvatar) {
+        const nameParts = (currentUser.name || 'Admin').split(' ');
+        const initials = (nameParts.length > 1 
+          ? nameParts.slice(0, 2).map(n => n[0]).join('') 
+          : nameParts[0].substring(0, 2)).toUpperCase();
+        sideAvatar.textContent = initials;
+      }
+    }
+
     const statPat = document.getElementById('a-stat-patients');
     const statDoc = document.getElementById('a-stat-doctors');
     if (statPat && data.stats) statPat.textContent = data.stats.totalPatients.toLocaleString();
@@ -3686,6 +4048,110 @@ async function joinVideoRoom(appointmentId, partnerName) {
   openVideoCall(partnerName, appointmentId);
 }
 
+async function toggleDoctorOnlineStatus() {
+  const profile = currentUser && currentUser.profile ? currentUser.profile : null;
+  if (!profile) return;
+
+  const currentAvailability = profile.availability || 'Available Today';
+  const newAvailability = currentAvailability === 'Offline' ? 'Available Today' : 'Offline';
+
+  try {
+    const res = await fetch(`${API_BASE}/doctors/${profile.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ availability: newAvailability })
+    });
+
+    if (!res.ok) throw new Error('Failed to update status');
+
+    const data = await safeJson(res);
+    if (data && data.doctor) {
+      currentUser.profile = data.doctor;
+      updateDoctorProfileUI();
+      notify(`Status updated to: ${newAvailability === 'Offline' ? 'Offline' : 'Online'}`, 'success');
+    }
+  } catch (err) {
+    notify(err.message, 'error');
+  }
+}
+
+function openDoctorUploadReportModal() {
+  openModal('doctorUploadReportModal');
+}
+
+async function submitDoctorUploadReport() {
+  const patientId = document.getElementById('d-upload-report-patient').value;
+  const testName = document.getElementById('d-upload-report-name').value;
+  const lab = document.getElementById('d-upload-report-lab').value;
+  const result = document.getElementById('d-upload-report-result').value;
+  const status = document.getElementById('d-upload-report-status').value;
+  const fileInput = document.getElementById('d-upload-report-file');
+
+  if (!testName) {
+    notify('Please enter a test name', 'error');
+    return;
+  }
+
+  const upload = async (pdfData = "", pdfName = "") => {
+    try {
+      const res = await fetch(`${API_BASE}/reports/upload`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ patientId, testName, lab, result, status, pdfData, pdfName })
+      });
+
+      if (!res.ok) throw new Error('Upload failed');
+
+      closeModal('doctorUploadReportModal');
+      notify('Report uploaded successfully', 'success');
+      
+      // Reset inputs
+      document.getElementById('d-upload-report-name').value = '';
+      document.getElementById('d-upload-report-result').value = '';
+      if (fileInput) fileInput.value = '';
+
+      await loadDoctorData();
+    } catch (err) {
+      notify(err.message, 'error');
+    }
+  };
+
+  if (fileInput && fileInput.files && fileInput.files[0]) {
+    const file = fileInput.files[0];
+    const reader = new FileReader();
+    reader.onload = async function() {
+      await upload(reader.result, file.name);
+    };
+    reader.readAsDataURL(file);
+  } else {
+    await upload();
+  }
+}
+
+window.selectAlternativeDoctor = function(id) {
+  const select = document.getElementById('book-appt-doctor-select');
+  if (select) {
+    select.value = id;
+    const warningDiv = document.getElementById('book-appt-offline-warning');
+    if (warningDiv) {
+      warningDiv.style.display = 'none';
+      warningDiv.innerHTML = '';
+    }
+    window.loadAvailableBookingSlots();
+  }
+};
+
+window.downloadReportPdf = function(id) {
+  const rep = reportsData.find(r => r.id === id);
+  if (!rep || !rep.pdfData) return;
+  const link = document.createElement('a');
+  link.href = rep.pdfData;
+  link.download = rep.pdfName || `${rep.testName}.pdf`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+};
+
 // ── GLOBAL EXPOSURES FOR ONCLICK HANDLERS ──
 window.joinVideoRoom = joinVideoRoom;
 window.cancelAppointment = cancelAppointment;
@@ -3730,15 +4196,48 @@ function openSearchModal() {
   setTimeout(() => input?.focus(), 100);
 }
 
-function openNotificationsModal() {
+async function openNotificationsModal() {
   renderNotificationsList();
   openModal('pNotifModal');
+
+  // Mark all notifications as read in database
+  const patId = patientData ? patientData.id : (currentUser && currentUser.profile ? currentUser.profile.id : null);
+  if (patId) {
+    try {
+      const res = await fetch(`${API_BASE}/notifications/read-all?userId=${patId}`, {
+        method: 'PUT'
+      });
+      if (res.ok) {
+        notificationsData.forEach(n => n.read = true);
+        updateNotificationsBadge();
+      }
+    } catch (err) {
+      console.error("Error marking notifications as read:", err);
+    }
+  }
 }
 
-function clearNotifications() {
-  notificationsData = [];
-  updateNotificationsBadge();
-  renderNotificationsList();
+async function clearNotifications() {
+  const patId = patientData ? patientData.id : (currentUser && currentUser.profile ? currentUser.profile.id : null);
+  if (patId) {
+    try {
+      const res = await fetch(`${API_BASE}/notifications/clear?userId=${patId}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        notificationsData = [];
+        updateNotificationsBadge();
+        renderNotificationsList();
+        notify('Notifications cleared successfully', 'success');
+      }
+    } catch (err) {
+      console.error("Error clearing notifications:", err);
+    }
+  } else {
+    notificationsData = [];
+    updateNotificationsBadge();
+    renderNotificationsList();
+  }
 }
 
 function updateNotificationsBadge() {
@@ -3932,7 +4431,7 @@ function handleGlobalSearch(e) {
           <div class="font-semibold" style="color: var(--text);">${rep.testName}</div>
           <div class="text-muted" style="font-size: 0.75rem;">${rep.date} • ${rep.lab}</div>
         </div>
-        <button class="btn btn-sm btn-ghost" onclick="closeModal('pSearchModal'); window.viewDocument('${rep.testName}')">View</button>
+        <button class="btn btn-sm btn-ghost" onclick="closeModal('pSearchModal'); window.viewDocument('${rep.id}')">View</button>
       `;
       resultsContainer.appendChild(item);
     });
@@ -4174,6 +4673,12 @@ window.loadAvailableBookingSlots = async function() {
   const date = document.getElementById('book-appt-date')?.value;
   const timeSelect = document.getElementById('book-appt-time');
 
+  const warningDiv = document.getElementById('book-appt-offline-warning');
+  if (warningDiv) {
+    warningDiv.style.display = 'none';
+    warningDiv.innerHTML = '';
+  }
+
   if (!timeSelect) return;
 
   if (!doctorId || !date) {
@@ -4303,18 +4808,6 @@ window.submitRescheduleAppointment = async function() {
     closeModal('rescheduleApptModal');
     notify('Appointment rescheduled successfully!', 'success');
 
-    const appt = appointmentsData.find(a => String(a.id) === String(id));
-    const docName = appt ? appt.doctorName : 'Doctor';
-    const statusLabel = currentRole === 'patient' ? 'pending doctor approval' : 'confirmed';
-    notificationsData.unshift({
-      id: Date.now(),
-      text: `Your appointment with Dr. ${docName} has been rescheduled and is now ${statusLabel}.`,
-      time: "Just now",
-      read: false,
-      type: "info",
-      page: "pAppointments"
-    });
-
     if (currentRole === 'patient') {
       await loadPatientData();
       if (document.getElementById('p-appointments-calendar-container').style.display === 'block') {
@@ -4348,18 +4841,6 @@ window.acceptAppointment = async function(id) {
 
     notify('Appointment confirmed successfully!', 'success');
 
-    const appt = appointmentsData.find(a => String(a.id) === String(id));
-    if (appt) {
-      notificationsData.unshift({
-        id: Date.now(),
-        text: `Your appointment with Dr. ${appt.doctorName} on ${appt.date} at ${appt.time} has been confirmed.`,
-        time: "Just now",
-        read: false,
-        type: "success",
-        page: "pAppointments"
-      });
-    }
-
     await loadDoctorData();
     if (document.getElementById('d-appointments-calendar-container').style.display === 'block') {
       window.renderCalendar('d');
@@ -4382,18 +4863,6 @@ window.rejectAppointment = async function(id) {
 
     notify('Appointment rejected/cancelled successfully', '');
 
-    const appt = appointmentsData.find(a => String(a.id) === String(id));
-    if (appt) {
-      notificationsData.unshift({
-        id: Date.now(),
-        text: `Your appointment request with Dr. ${appt.doctorName} has been rejected/cancelled.`,
-        time: "Just now",
-        read: false,
-        type: "danger",
-        page: "pAppointments"
-      });
-    }
-
     await loadDoctorData();
     if (document.getElementById('d-appointments-calendar-container').style.display === 'block') {
       window.renderCalendar('d');
@@ -4402,3 +4871,54 @@ window.rejectAppointment = async function(id) {
     notify(err.message, 'error');
   }
 };
+
+function startDashboardPolling() {
+  if (dashboardPollInterval) clearInterval(dashboardPollInterval);
+  dashboardPollInterval = setInterval(async () => {
+    try {
+      if (currentUser && currentRole === 'patient') {
+        const patId = patientData ? patientData.id : (currentUser.profile ? currentUser.profile.id : null);
+        if (patId) {
+          const res = await fetch(`${API_BASE}/notifications?userId=${patId}`);
+          const notifs = await safeJson(res);
+          if (Array.isArray(notifs)) {
+            const oldIds = notificationsData.map(n => n._id || n.id);
+            const newUnread = notifs.filter(n => !n.read && !oldIds.includes(n._id || n.id));
+            if (newUnread.length > 0) {
+              newUnread.forEach(n => {
+                notify(n.text, 'success');
+              });
+            }
+            notificationsData = notifs;
+            updateNotificationsBadge();
+            renderNotificationsList();
+          }
+
+          const resAppt = await fetch(`${API_BASE}/appointments`);
+          const appts = await safeJson(resAppt);
+          if (Array.isArray(appts)) {
+            appointmentsData = appts;
+            renderPatientAppointments();
+          }
+        }
+      } else if (currentUser && currentRole === 'doctor') {
+        const docId = currentUser.profile ? currentUser.profile.id : null;
+        if (docId) {
+          const resAppt = await fetch(`${API_BASE}/appointments`);
+          const appts = await safeJson(resAppt);
+          if (Array.isArray(appts)) {
+            const oldApptsCount = appointmentsData.filter(a => a.doctorId === docId).length;
+            const newAppts = appts.filter(a => a.doctorId === docId);
+            if (newAppts.length > oldApptsCount) {
+              notify('You have received a new appointment booking!', 'success');
+            }
+            appointmentsData = appts;
+            renderDoctorAppointments();
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Dashboard polling error:", err);
+    }
+  }, 10000);
+}

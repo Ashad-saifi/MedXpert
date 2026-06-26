@@ -10,6 +10,7 @@ import "../models/Prescription.js";
 import "../models/LabReport.js";
 import "../models/ActivityLog.js";
 import "../models/SystemSetting.js";
+import "../models/ContactRequest.js";
 
 dotenv.config();
 
@@ -25,7 +26,7 @@ const connectDB = async () => {
     } catch (error) {
         console.warn(`⚠️  MongoDB Connection failed: ${error.message}`);
         console.warn(`👉 Activating ultra-fast, zero-dependency In-Memory JS Database Mock...`);
-        
+
         await setupInMemoryMock();
     }
 };
@@ -101,9 +102,9 @@ async function setupInMemoryMock() {
                 if (!matchesAny) return false;
                 continue;
             }
-            
+
             let itemVal = item[key];
-            
+
             if (val && typeof val === 'object' && val.$regex !== undefined) {
                 const pattern = val.$regex;
                 const options = val.$options || '';
@@ -118,7 +119,7 @@ async function setupInMemoryMock() {
                 }
                 continue;
             }
-            
+
             let filterVal = val;
             if (itemVal && typeof itemVal === 'object' && itemVal._id) {
                 itemVal = itemVal._id.toString();
@@ -156,7 +157,7 @@ async function setupInMemoryMock() {
                 }
             }
         }
-        inst.save = async function() {
+        inst.save = async function () {
             const index = memDB[name].findIndex(x => String(x._id) === String(inst._id));
             if (index >= 0) {
                 // Merge all current instance fields back into the stored entry
@@ -178,22 +179,22 @@ async function setupInMemoryMock() {
         memDB[name] = [];
         const Model = mongoose.models[name];
 
-        Model.find = function(filter) {
+        Model.find = function (filter) {
             const matched = memDB[name].filter(x => matchFilter(x, filter)).map(x => wrapDoc(x, Model, name));
             return new MockQuery(matched);
         };
 
-        Model.findOne = function(filter) {
+        Model.findOne = function (filter) {
             const found = memDB[name].find(x => matchFilter(x, filter));
             return new MockQuery(wrapDoc(found, Model, name));
         };
 
-        Model.findById = function(id) {
+        Model.findById = function (id) {
             const found = memDB[name].find(x => String(x._id) === String(id));
             return new MockQuery(wrapDoc(found, Model, name));
         };
 
-        Model.findByIdAndDelete = async function(id) {
+        Model.findByIdAndDelete = async function (id) {
             const index = memDB[name].findIndex(x => String(x._id) === String(id));
             if (index >= 0) {
                 const deleted = memDB[name][index];
@@ -203,7 +204,7 @@ async function setupInMemoryMock() {
             return null;
         };
 
-        Model.findOneAndDelete = async function(filter) {
+        Model.findOneAndDelete = async function (filter) {
             const index = memDB[name].findIndex(x => matchFilter(x, filter));
             if (index >= 0) {
                 const deleted = memDB[name][index];
@@ -213,7 +214,7 @@ async function setupInMemoryMock() {
             return null;
         };
 
-        Model.findOneAndUpdate = async function(filter, update, options = {}) {
+        Model.findOneAndUpdate = async function (filter, update, options = {}) {
             const index = memDB[name].findIndex(x => matchFilter(x, filter));
             if (index < 0) return null;
 
@@ -226,7 +227,7 @@ async function setupInMemoryMock() {
             return wrapDoc(existing, Model, name);
         };
 
-        Model.findByIdAndUpdate = async function(id, update, options = {}) {
+        Model.findByIdAndUpdate = async function (id, update, options = {}) {
             const index = memDB[name].findIndex(x => String(x._id) === String(id));
             if (index < 0) return null;
 
@@ -239,7 +240,7 @@ async function setupInMemoryMock() {
             return wrapDoc(existing, Model, name);
         };
 
-        Model.create = async function(docs) {
+        Model.create = async function (docs) {
             const isArray = Array.isArray(docs);
             const docList = isArray ? docs : [docs];
             const created = [];
@@ -254,7 +255,7 @@ async function setupInMemoryMock() {
                         inst[key] = doc[key];
                     }
                 }
-                inst.save = async function() {
+                inst.save = async function () {
                     const index = memDB[name].findIndex(x => String(x._id) === String(inst._id));
                     if (index >= 0) {
                         memDB[name][index] = inst;
@@ -269,11 +270,11 @@ async function setupInMemoryMock() {
             return isArray ? created : created[0];
         };
 
-        Model.countDocuments = async function(filter) {
+        Model.countDocuments = async function (filter) {
             return memDB[name].filter(x => matchFilter(x, filter)).length;
         };
 
-        Model.deleteOne = async function(filter) {
+        Model.deleteOne = async function (filter) {
             const index = memDB[name].findIndex(x => matchFilter(x, filter));
             if (index >= 0) {
                 memDB[name].splice(index, 1);
@@ -281,7 +282,7 @@ async function setupInMemoryMock() {
             return { deletedCount: index >= 0 ? 1 : 0 };
         };
 
-        Model.deleteMany = async function(filter) {
+        Model.deleteMany = async function (filter) {
             const initialLength = memDB[name].length;
             memDB[name] = memDB[name].filter(x => !matchFilter(x, filter));
             return { deletedCount: initialLength - memDB[name].length };

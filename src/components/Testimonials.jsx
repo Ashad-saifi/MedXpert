@@ -10,7 +10,7 @@ export default function Testimonials() {
     {
       name: 'Aarav Mehta',
       role: 'Chronic Patient (Diabetes)',
-      text: "The integration of online consultations and instant health records has changed how I manage my diabetes. Dr. Neha Kim answers my follow-ups via video in minutes, and I don't have to wait in queues for prescriptions.",
+      text: "The integration of online consultations and instant health records has changed how I manage my diabetes. Dr. Neha Kapoor answers my follow-ups via video in minutes, and I don't have to wait in queues for prescriptions.",
       rating: 5,
       avatar: 'AM',
       avatarBg: 'bg-teal-100 text-teal-700',

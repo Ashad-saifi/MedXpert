@@ -59,7 +59,7 @@ const registerUser = async (req, res) => {
                 license: additionalFields.license || "MCI-PENDING",
                 hospital: additionalFields.hospital || "City Medical Center",
                 rating: additionalFields.rating || 5.0,
-                status: additionalFields.status || "Available Today"
+                status: additionalFields.status || "Active"
             });
         } else if (user.role === "patient") {
             const count = await Patient.countDocuments();

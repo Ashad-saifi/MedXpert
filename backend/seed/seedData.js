@@ -11,6 +11,7 @@ import Prescription from "../models/Prescription.js";
 import LabReport from "../models/LabReport.js";
 import ActivityLog from "../models/ActivityLog.js";
 import SystemSetting from "../models/SystemSetting.js";
+import ContactRequest from "../models/ContactRequest.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -33,6 +34,7 @@ const seedDatabase = async () => {
         await LabReport.deleteMany({});
         await ActivityLog.deleteMany({});
         await SystemSetting.deleteMany({});
+        await ContactRequest.deleteMany({});
         console.log("Collections cleared successfully.");
 
         const salt = await bcrypt.genSalt(10);
@@ -164,7 +166,7 @@ const seedDatabase = async () => {
                 email: "admin@medxpert.com",
                 password: hashedPassword,
                 role: "admin",
-                phone: "+1 (555) 000-1111"
+                phone: "+91 98765 00000"
             }
         ];
 
@@ -897,6 +899,25 @@ const seedDatabase = async () => {
             e2eEncryptionEnabled: true
         });
         console.log("Seeded system settings.");
+
+        console.log("Seeding Contact Requests...");
+        await ContactRequest.create([
+            {
+                name: "Rahul Sharma",
+                email: "rahul@email.com",
+                phone: "+91 99999 88888",
+                specialty: "Cardiology",
+                message: "Need to book a follow-up consultation for my father next week."
+            },
+            {
+                name: "Aditi Rao",
+                email: "aditi@email.com",
+                phone: "+91 99999 77777",
+                specialty: "Dermatology",
+                message: "Looking for an appointment regarding skin allergy treatment."
+            }
+        ]);
+        console.log("Seeded contact requests.");
 
         console.log("Database seeded successfully!");
         process.exit(0);

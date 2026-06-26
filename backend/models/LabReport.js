@@ -35,6 +35,14 @@ const labReportSchema = new mongoose.Schema({
         type: String,
         enum: ["Reviewed", "Action Required", "Pending"],
         default: "Reviewed"
+    },
+    pdfData: {
+        type: String,
+        default: ""
+    },
+    pdfName: {
+        type: String,
+        default: ""
     }
 }, {
     timestamps: true

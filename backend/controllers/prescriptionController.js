@@ -124,7 +124,7 @@ const downloadPrescriptionPDF = async (req, res) => {
         doc.fillColor("#ffffff")
            .fontSize(8)
            .text("Email: care@medxpert.com", 430, 35, { align: "right" })
-           .text("Support: +1 (800) 555-0199", 430, 48, { align: "right" })
+           .text("Support: +91 1800 123 4567", 430, 48, { align: "right" })
            .text("Website: medxpert.health", 430, 61, { align: "right" });
 
         doc.moveDown(4);

@@ -11,7 +11,7 @@ export default function Hero() {
     e.preventDefault();
     const element = document.getElementById('contact');
     if (element) {
-      const yOffset = -80; 
+      const yOffset = -80;
       const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
       window.scrollTo({ top: y, behavior: 'smooth' });
     }
@@ -28,10 +28,10 @@ export default function Hero() {
 
       <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-          
+
           {/* Hero Content Column */}
           <div className="lg:col-span-7 space-y-6 md:space-y-8 text-center lg:text-left animate-fadeIn">
-            
+
             {/* Health indicators pill */}
             <div className="inline-flex items-center space-x-2 bg-orange-50 border border-orange-200/60 rounded-full px-4 py-1.5 shadow-sm">
               <span className="flex h-2.5 w-2.5 relative">
@@ -99,7 +99,7 @@ export default function Hero() {
           <div className="lg:col-span-5 relative w-full flex justify-center lg:justify-end animate-fadeIn">
             {/* Backdrop Blur circle */}
             <div className="absolute inset-0 m-auto w-[90%] h-[90%] rounded-full bg-blue-600/5 blur-[40px] pointer-events-none" />
-            
+
             {/* Image frame */}
             <div className="relative border-4 border-white shadow-2xl rounded-3xl overflow-hidden max-w-sm sm:max-w-md w-full bg-gradient-to-b from-blue-100/50 to-white/90">
               <img
@@ -107,7 +107,7 @@ export default function Hero() {
                 alt="Expert Doctor"
                 className="w-full h-auto object-cover object-center transform hover:scale-102 transition-transform duration-300"
               />
-              
+
               {/* Doctor Status overlay card */}
               <div className="absolute bottom-4 left-4 right-4 glass-panel rounded-2xl p-4 shadow-xl border border-white/60">
                 <div className="flex items-center space-x-3">

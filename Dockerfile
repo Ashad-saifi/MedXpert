@@ -17,28 +17,15 @@ COPY src/ ./src/
 RUN npm run build
 
 # ==========================================
-# Stage 2: Full-Stack Production Runtime
+# Stage 2: Frontend Production Web Server
 # ==========================================
-FROM node:20-alpine AS runtime
+FROM nginx:alpine AS runtime
 
-WORKDIR /app
+# Copy compiled frontend assets from build stage to Nginx public folder
+COPY --from=build /app/dist /usr/share/nginx/html
 
-# Set production flags
-ENV NODE_ENV=production
-ENV PORT=5000
+# Expose port 80 for traffic
+EXPOSE 80
 
-# Install backend dependencies
-COPY backend/package.json backend/package-lock.json ./backend/
-RUN cd backend && npm install --omit=dev
-
-# Copy backend source files
-COPY backend/ ./backend/
-
-# Copy compiled frontend assets from build stage
-COPY --from=build /app/dist ./dist
-
-# Expose production port
-EXPOSE 5000
-
-# Start unified Full-Stack MedXpert application
-CMD ["node", "backend/server.js"]
+# Start Nginx server
+CMD ["nginx", "-g", "daemon off;"]

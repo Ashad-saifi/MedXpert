@@ -4,27 +4,27 @@
 
 @layer base {
   :root {
-    --primary: #2563eb;
-    --primary-light: #3b82f6;
-    --primary-dark: #1d4ed8;
-    --accent: #2563eb;
-    --accent-light: #dbeafe;
-    --bg: #f0f9ff;
-    --bg2: #ffffff;
-    --surface: #ffffff;
-    --surface2: #f8fafc;
-    --border: #e2e8f0;
-    --text: #0f172a;
-    --text2: #475569;
-    --text3: #94a3b8;
+    --primary: #3b82f6;
+    --primary-light: #60a5fa;
+    --primary-dark: #2563eb;
+    --accent: #3b82f6;
+    --accent-light: #1e293b;
+    --bg: #090d16;              /* Deep dark blue/slate */
+    --bg2: #111827;             /* Card background */
+    --surface: #111827;
+    --surface2: #1f2937;
+    --border: #1f2937;
+    --text: #f9fafb;            /* High contrast off-white text */
+    --text2: #e5e7eb;           /* Slate 200 */
+    --text3: #9ca3af;           /* Slate 400 */
     --danger: #ef4444;
-    --danger-bg: #fef2f2;
+    --danger-bg: #2d1f1f;       /* Dark danger background */
     --success: #22c55e;
-    --success-bg: #f0fdf4;
+    --success-bg: #142d1f;      /* Dark success background */
     --warning: #f59e0b;
-    --warning-bg: #fffbeb;
+    --warning-bg: #2d2414;      /* Dark warning background */
     --info: #3b82f6;
-    --info-bg: #eff6ff;
+    --info-bg: #14222d;         /* Dark info background */
     --radius: 12px;
     --radius-sm: 8px;
     --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
@@ -46,29 +46,61 @@
 /* ── LANDING ── */
 .landing {
   min-height: 100vh;
-  background: linear-gradient(135deg, #f0f9ff 0%, #ffffff 50%, #e0f2fe 100%);
-  color: #0f172a;
+  background: linear-gradient(135deg, #091530 0%, #0a0e17 50%, #051613 100%);
+  color: var(--text);
   display: flex;
   flex-direction: column;
+  position: relative;
+  overflow: hidden;
 }
+
+/* Add glowing backdrop highlights */
+.landing::before {
+  content: '';
+  position: absolute;
+  top: -15%;
+  left: -15%;
+  width: 50%;
+  height: 50%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.landing::after {
+  content: '';
+  position: absolute;
+  bottom: -15%;
+  right: -15%;
+  width: 50%;
+  height: 50%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(20, 184, 166, 0.15) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 1;
+}
+
 .land-nav {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 1.5rem 3rem;
+  position: relative;
+  z-index: 2;
 }
 .land-logo {
   font-family: 'DM Sans', sans-serif;
   font-size: 1.6rem;
   font-weight: 800;
   letter-spacing: -0.5px;
-  color: #1e3a8a;
+  color: #ffffff;
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 .land-logo span {
-  color: #3b82f6;
+  color: #ffffff;
 }
 .land-hero {
   flex: 1;
@@ -78,6 +110,8 @@
   justify-content: center;
   text-align: center;
   padding: 4rem 2rem;
+  position: relative;
+  z-index: 2;
 }
 .land-hero h1 {
   font-family: 'Outfit', sans-serif;
@@ -85,15 +119,17 @@
   font-weight: 800;
   line-height: 1.15;
   margin-bottom: 1.25rem;
-  color: #0f172a;
+  color: var(--text);
 }
 .land-hero h1 em {
-  color: #2563eb;
+  background: linear-gradient(135deg, #60a5fa 0%, #2dd4bf 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
   font-style: normal;
 }
 .land-hero p {
   font-size: 1.15rem;
-  color: #475569;
+  color: #94a3b8;
   max-width: 520px;
   line-height: 1.7;
   margin-bottom: 3rem;
@@ -106,34 +142,56 @@
   width: 100%;
 }
 .role-card {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
   border-radius: var(--radius);
   padding: 2.5rem 2rem;
   cursor: pointer;
-  transition: all .25s ease;
   text-align: center;
-  color: #0f172a;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  color: var(--text);
+  box-shadow: var(--shadow);
 }
-.role-card:hover {
+#btn-patient-login {
+  background: rgba(13, 27, 61, 0.45);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+#btn-patient-login:hover {
   border-color: #3b82f6;
-  transform: translateY(-4px);
-  box-shadow: 0 20px 25px -5px rgba(59, 130, 246, 0.12), 0 10px 10px -5px rgba(59, 130, 246, 0.04);
+  background: rgba(13, 27, 61, 0.65);
+  transform: translateY(-6px);
+  box-shadow: 0 12px 30px rgba(59, 130, 246, 0.25);
+}
+#btn-patient-login h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: .5rem;
+  color: #60a5fa;
+  transition: color 0.3s;
+}
+#btn-doctor-login {
+  background: rgba(15, 34, 31, 0.45);
+  border: 1px solid rgba(20, 184, 166, 0.3);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+#btn-doctor-login:hover {
+  border-color: #14b8a6;
+  background: rgba(15, 34, 31, 0.65);
+  transform: translateY(-6px);
+  box-shadow: 0 12px 30px rgba(20, 184, 166, 0.25);
+}
+#btn-doctor-login h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: .5rem;
+  color: #2dd4bf;
+  transition: color 0.3s;
 }
 .role-card .icon {
   font-size: 2.8rem;
   margin-bottom: 1rem;
 }
-.role-card h3 {
-  font-size: 1.25rem;
-  font-weight: 700;
-  margin-bottom: .5rem;
-  color: #1e3a8a;
-}
 .role-card p {
   font-size: .88rem;
-  color: #475569;
+  color: #94a3b8;
 }
 .land-footer {
   text-align: center;
@@ -321,7 +379,7 @@
   height: 36px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
-  background: white;
+  background: var(--surface2);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -480,7 +538,7 @@
   background: var(--primary-dark);
 }
 .btn-outline {
-  background: white;
+  background: transparent;
   color: var(--primary);
   border: 1.5px solid var(--primary);
 }
@@ -560,7 +618,7 @@ tr:hover td {
   font-family: 'DM Sans', sans-serif;
   font-size: .9rem;
   color: var(--text);
-  background: white;
+  background: var(--surface2);
   transition: border .2s;
   outline: none;
 }
@@ -600,7 +658,7 @@ select.form-control {
   pointer-events: all;
 }
 .modal {
-  background: white;
+  background: var(--surface);
   border-radius: var(--radius);
   padding: 2rem;
   max-width: 560px;
@@ -761,8 +819,8 @@ select.form-control {
   position: fixed;
   bottom: 1.5rem;
   right: 1.5rem;
-  background: var(--text);
-  color: white;
+  background: #1e293b;        /* Slate 800 for high contrast */
+  color: #ffffff;             /* Crisp white text */
   padding: 1rem 1.5rem;
   border-radius: var(--radius);
   box-shadow: var(--shadow-lg);
@@ -772,13 +830,21 @@ select.form-control {
   opacity: 0;
   transition: all .3s;
   max-width: 320px;
+  border: 1px solid var(--border);
 }
 .notification.show {
   transform: translateY(0);
   opacity: 1;
 }
 .notification.success {
-  background: var(--primary);
+  background: #10b981;        /* Emerald 500 */
+  color: #ffffff;
+  border-color: #059669;
+}
+.notification.error {
+  background: #ef4444;        /* Red 500 */
+  color: #ffffff;
+  border-color: #dc2626;
 }
 
 /* ── VITAL CARD ── */
@@ -820,14 +886,15 @@ select.form-control {
 .login-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15,118,110,.92);
+  background: rgba(9,13,22,.95);
   z-index: 500;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 .login-box {
-  background: white;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 2.5rem;
   max-width: 420px;
@@ -2032,7 +2099,7 @@ select.form-control {
   align-items: flex-end;
   cursor: pointer;
   transition: all 0.2s;
-  background: white;
+  background: var(--surface);
 }
 .calendar-day:hover {
   background: var(--bg);
@@ -2096,4 +2163,367 @@ select.form-control {
   box-shadow: var(--shadow);
 }
 
+/* ══════════════════ DOCTOR PANEL PREMIUM THEMING ══════════════════ */
+#doctorPanel {
+  /* Teal/Emerald-based theme variables */
+  --primary: #0d9488;         /* Primary Teal */
+  --primary-light: #14b8a6;   /* Teal 500 */
+  --primary-dark: #0f766e;    /* Teal 700 */
+  --accent: #f97316;          /* Keeping the Orange accent for logo contrast */
+  --accent-light: #2a2015;
+  --bg: #081311;              /* Distinct Deep Emerald/Forest background */
+  --bg2: #0f221f;             /* Forest green card background */
+  --surface: #0f221f;         /* Forest green card surface */
+  --surface2: #183531;        /* Dark forest highlight */
+  --border: #1d3d38;          /* Dark forest border */
+  --text: #f0fdfa;            /* Light minty text */
+  --text2: #ccfbf1;           /* Light teal text */
+  --text3: #5eead4;           /* Soft mint green text */
+}
 
+/* Dark Premium Sidebar for Doctor Panel */
+#doctorPanel .sidebar {
+  background: #060e0c;        /* Darkest Forest Black */
+  border-right: 1px solid #142a26;
+}
+
+#doctorPanel .sidebar-logo {
+  border-bottom: 1px solid #142a26;
+}
+
+#doctorPanel .sidebar-logo .logo-text {
+  color: #ffffff !important;
+}
+
+#doctorPanel .sidebar-logo .role-badge {
+  color: #2dd4bf;             /* Teal accent for role badge */
+  font-weight: 700;
+  border-radius: 4px;
+}
+
+#doctorPanel .nav-section {
+  color: #3f625c;
+}
+
+#doctorPanel .nav-item {
+  color: #8faea9;
+}
+
+#doctorPanel .nav-item:hover {
+  background: #142a26;
+  color: #14b8a6;
+}
+
+#doctorPanel .nav-item.active {
+  background: #0d9488;        /* Active item uses teal primary */
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(13, 148, 136, 0.25);
+}
+
+#doctorPanel .sidebar-footer {
+  border-top: 1px solid #142a26;
+}
+
+#doctorPanel .user-chip {
+  background: #0f221f;
+}
+
+#doctorPanel .user-chip:hover {
+  background: #183531;
+}
+
+#doctorPanel .user-info .name {
+  color: #ffffff;
+}
+
+#doctorPanel .user-info .role {
+  color: #5eead4;
+}
+
+#doctorPanel .back-btn {
+  color: #3f625c;
+}
+
+#doctorPanel .back-btn:hover {
+  color: #14b8a6;
+}
+
+/* Main Content area enhancements */
+#doctorPanel .main-content {
+  background-color: var(--bg);
+}
+
+#doctorPanel .topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+#doctorPanel .card {
+  border-color: var(--border);
+  box-shadow: 0 4px 6px -1px rgba(13, 148, 136, 0.05), 0 2px 4px -1px rgba(13, 148, 136, 0.03);
+}
+
+#doctorPanel .stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+}
+
+#doctorPanel .btn-primary {
+  background: var(--primary);
+  border-color: var(--primary-dark);
+}
+
+#doctorPanel .btn-primary:hover {
+  background: var(--primary-dark);
+  box-shadow: 0 4px 12px rgba(13, 148, 136, 0.2);
+}
+
+#doctorPanel .btn-outline {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+#doctorPanel .btn-outline:hover {
+  background: var(--bg);
+}
+
+#doctorPanel .badge-teal {
+  background: #183531;
+  color: #2dd4bf;
+}
+
+#doctorPanel .calendar-day.active {
+  background: #183531;
+  border-color: var(--primary);
+}
+
+/* ══════════════════ PATIENT PANEL PREMIUM THEMING ══════════════════ */
+#patientPanel {
+  /* Blue/Navy-based theme variables */
+  --primary: #2563eb;
+  --primary-light: #3b82f6;
+  --primary-dark: #1d4ed8;
+  --accent: #2563eb;
+  --accent-light: #1e293b;
+  --bg: #0a1128;              /* Distinct Deep Royal Navy background */
+  --bg2: #131b31;             /* Royal navy card background */
+  --surface: #131b31;         /* Royal navy card surface */
+  --surface2: #1b2644;        /* Navy highlight */
+  --border: #23325c;          /* Navy border */
+  --text: #f0f4ff;            /* Light blue-tinged text */
+  --text2: #dbeafe;           /* Light blue text */
+  --text3: #93c5fd;           /* Soft blue text */
+}
+
+/* Dark Premium Sidebar for Patient Panel */
+#patientPanel .sidebar {
+  background: #070c1b;        /* Darkest Navy Black */
+  border-right: 1px solid #1a2745;
+}
+
+#patientPanel .sidebar-logo {
+  border-bottom: 1px solid #1a2745;
+}
+
+#patientPanel .sidebar-logo .logo-text {
+  color: #ffffff !important;
+}
+
+#patientPanel .sidebar-logo .role-badge {
+  color: #38bdf8;             /* Sky blue accent for role badge */
+  font-weight: 700;
+  border-radius: 4px;
+}
+
+#patientPanel .nav-section {
+  color: #3b4e7a;
+}
+
+#patientPanel .nav-item {
+  color: #9ab4e9;
+}
+
+#patientPanel .nav-item:hover {
+  background: #1a2745;
+  color: #3b82f6;
+}
+
+#patientPanel .nav-item.active {
+  background: #2563eb;        /* Active item uses primary blue */
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+}
+
+#patientPanel .sidebar-footer {
+  border-top: 1px solid #1a2745;
+}
+
+#patientPanel .user-chip {
+  background: #131b31;
+}
+
+#patientPanel .user-chip:hover {
+  background: #1b2644;
+}
+
+#patientPanel .user-info .name {
+  color: #ffffff;
+}
+
+#patientPanel .user-info .role {
+  color: #93c5fd;
+}
+
+#patientPanel .back-btn {
+  color: #3b4e7a;
+}
+
+#patientPanel .back-btn:hover {
+  color: #3b82f6;
+}
+
+#patientPanel .main-content {
+  background-color: var(--bg);
+}
+
+#patientPanel .topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+#patientPanel .card {
+  border-color: var(--border);
+  box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.05), 0 2px 4px -1px rgba(37, 99, 235, 0.03);
+}
+
+#patientPanel .stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+}
+
+#patientPanel .btn-primary {
+  background: var(--primary);
+  border-color: var(--primary-dark);
+}
+
+#patientPanel .btn-primary:hover {
+  background: var(--primary-dark);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+}
+
+#patientPanel .btn-outline {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+#patientPanel .btn-outline:hover {
+  background: var(--bg);
+}
+
+#patientPanel .badge-blue {
+  background: #1b2644;
+  color: #60a5fa;
+}
+
+#patientPanel .calendar-day.active {
+  background: #1b2644;
+  border-color: var(--primary);
+}
+
+/* ══════════════════ LANDING PAGE PREMIUM DARK OVERRIDES ══════════════════ */
+.dark-mode-landing {
+  background: linear-gradient(135deg, #091530 0%, #0c0f17 50%, #051613 100%) !important;
+  color: #f8fafc !important;
+}
+
+/* Force transparent backgrounds on sections so the gradient flows behind them */
+.dark-mode-landing section {
+  background: transparent !important;
+  background-image: none !important;
+}
+
+/* Alternate section tints to provide clean layout division */
+.dark-mode-landing section:nth-of-type(even) {
+  background-color: rgba(9, 15, 30, 0.45) !important;
+}
+
+/* Force premium glass backgrounds on cards & wrapper divs */
+.dark-mode-landing .bg-white,
+.dark-mode-landing .bg-blue-50,
+.dark-mode-landing .bg-sky-50\/40,
+.dark-mode-landing .bg-slate-50,
+.dark-mode-landing .bg-slate-100 {
+  background-color: rgba(17, 24, 39, 0.6) !important;
+  backdrop-filter: blur(12px) !important;
+  background-image: none !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Force text colors */
+.dark-mode-landing h1,
+.dark-mode-landing h2,
+.dark-mode-landing h3,
+.dark-mode-landing h4,
+.dark-mode-landing .text-blue-900,
+.dark-mode-landing .text-slate-900,
+.dark-mode-landing .text-slate-800 {
+  color: #f8fafc !important;
+}
+
+.dark-mode-landing p,
+.dark-mode-landing .text-slate-600,
+.dark-mode-landing .text-slate-700,
+.dark-mode-landing .text-slate-500 {
+  color: #9ca3af !important;
+}
+
+/* Keep gradient headings working */
+.dark-mode-landing .bg-clip-text {
+  background-image: linear-gradient(to right, var(--tw-gradient-stops)) !important;
+  color: transparent !important;
+}
+
+/* Navbar overrides */
+.dark-mode-landing nav {
+  background-color: rgba(9, 13, 22, 0.8) !important;
+  backdrop-filter: blur(12px) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.35) !important;
+}
+.dark-mode-landing nav a {
+  color: #d1d5db !important;
+}
+.dark-mode-landing nav a:hover {
+  color: #f97316 !important;
+}
+
+/* Footer overrides */
+.dark-mode-landing footer {
+  background-color: #050a14 !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+.dark-mode-landing footer,
+.dark-mode-landing footer *,
+.dark-mode-landing footer span {
+  color: #9ca3af !important;
+}
+
+/* Input fields in Contact section */
+.dark-mode-landing input,
+.dark-mode-landing textarea,
+.dark-mode-landing select {
+  background-color: #1f2937 !important;
+  color: #f9fafb !important;
+  border-color: #374151 !important;
+}
+
+/* Buttons outline */
+.dark-mode-landing .border-slate-300 {
+  border-color: #374151 !important;
+  background-color: #1f2937 !important;
+  color: #f9fafb !important;
+}

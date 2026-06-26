@@ -20,7 +20,7 @@ export default function LandingPage() {
   const [isLoginOpen, setIsLoginOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-white text-slate-800 flex flex-col justify-between selection:bg-blue-600 selection:text-white">
+    <div className="min-h-screen bg-white text-slate-800 flex flex-col justify-between selection:bg-blue-600 selection:text-white dark-mode-landing">
       
       {/* 1. Navbar Navigation Bar */}
       <Navbar onOpenLogin={() => window.location.href = '/medxpert.html'} />

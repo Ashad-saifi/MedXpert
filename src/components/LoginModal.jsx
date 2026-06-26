@@ -37,7 +37,7 @@ export default function LoginModal({ isOpen, onClose }) {
     handleAutofill(selectedRole);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
     setSuccessMsg('');
@@ -54,15 +54,49 @@ export default function LoginModal({ isOpen, onClose }) {
 
     setLoading(true);
 
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      let res;
+      if (isSignUp) {
+        // Sign Up
+        res = await fetch('/api/users/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password, phone, role }),
+        });
+      } else {
+        // Sign In
+        res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password, role }),
+        });
+      }
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || data.error || 'Authentication failed');
+      }
+
+      // Store credentials in sessionStorage
+      const currentUser = {
+        ...data.user,
+        profile: data.profile || (role === 'patient' ? { id: `P-${Math.floor(Math.random()*10000)}`, name: data.user.name } : { id: `D-${Math.floor(Math.random()*100)}`, name: data.user.name })
+      };
+      sessionStorage.setItem('medxpert_user', JSON.stringify(currentUser));
+      sessionStorage.setItem('medxpert_role', role);
+
       setSuccessMsg('Authentication Successful! Redirecting to MedXpert portals...');
-      
+      setLoading(false);
+
       // Redirect to the vanilla app portals (medxpert.html)
       setTimeout(() => {
         window.location.href = '/medxpert.html';
       }, 1500);
-    }, 1200);
+    } catch (err) {
+      setErrorMsg(err.message || 'Something went wrong. Please check if the server is running.');
+      setLoading(false);
+    }
   };
 
   return (
@@ -195,7 +229,7 @@ export default function LoginModal({ isOpen, onClose }) {
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="John Doe"
+                    placeholder="Aarav Mehta"
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/10 text-sm text-slate-800 transition-all duration-200"
                     required
                   />

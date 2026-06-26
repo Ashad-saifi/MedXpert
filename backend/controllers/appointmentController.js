@@ -2,6 +2,7 @@ import Appointment from "../models/Appointment.js";
 import Doctor from "../models/Doctor.js";
 import Patient from "../models/Patient.js";
 import ActivityLog from "../models/ActivityLog.js";
+import Notification from "../models/Notification.js";
 
 const addLog = async (user, action, status = "Success", ip = "127.0.0.1") => {
     const time = new Date().toTimeString().split(' ')[0];
@@ -149,6 +150,17 @@ const rescheduleAppointment = async (req, res) => {
         const logMsg = `Rescheduled appointment slot ID: ${appointment.id} to ${date} at ${time}`;
         await addLog(appointment.patientName, logMsg);
 
+        // Save Notification in database
+        const docName = appointment.doctorName.startsWith('Dr.') ? appointment.doctorName : `Dr. ${appointment.doctorName}`;
+        const statusLabel = rescheduledBy === "patient" ? 'pending doctor approval' : 'confirmed';
+        await Notification.create({
+            userId: appointment.patientId,
+            text: `Your appointment with ${docName} has been rescheduled and is now ${statusLabel}.`,
+            type: 'info',
+            page: 'pAppointments',
+            read: false
+        });
+
         const allAppointments = await Appointment.find({});
         res.json({ success: true, message: "Appointment rescheduled successfully", appointments: allAppointments });
     } catch (error) {
@@ -170,6 +182,16 @@ const cancelAppointment = async (req, res) => {
         await appointment.save();
 
         await addLog(appointment.patientName, `Cancelled appointment with ${appointment.doctorName}`);
+
+        // Save Notification in database
+        const docName = appointment.doctorName.startsWith('Dr.') ? appointment.doctorName : `Dr. ${appointment.doctorName}`;
+        await Notification.create({
+            userId: appointment.patientId,
+            text: `Your appointment with ${docName} has been cancelled.`,
+            type: 'warning',
+            page: 'pAppointments',
+            read: false
+        });
 
         const allAppointments = await Appointment.find({});
         res.json({ success: true, message: "Appointment cancelled successfully", appointments: allAppointments });
@@ -236,6 +258,26 @@ const updateAppointmentStatus = async (req, res) => {
         }
 
         await addLog(appt.patientName, `Updated appointment slot ID: ${appt.id} status to: ${status}`);
+
+        // Save notification in database for patient
+        const docName = appt.doctorName.startsWith('Dr.') ? appt.doctorName : `Dr. ${appt.doctorName}`;
+        if (status === 'Confirmed') {
+            await Notification.create({
+                userId: appt.patientId,
+                text: `Your appointment with ${docName} on ${appt.date} at ${appt.time} has been confirmed.`,
+                type: 'success',
+                page: 'pAppointments',
+                read: false
+            });
+        } else if (status === 'Cancelled') {
+            await Notification.create({
+                userId: appt.patientId,
+                text: `Your appointment request with ${docName} has been rejected/cancelled.`,
+                type: 'danger',
+                page: 'pAppointments',
+                read: false
+            });
+        }
 
         const allAppointments = await Appointment.find({});
         res.json({ success: true, message: `Appointment status updated to ${status}`, appointments: allAppointments });
