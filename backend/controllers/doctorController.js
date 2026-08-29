@@ -2,6 +2,7 @@ import Doctor from "../models/Doctor.js";
 import ActivityLog from "../models/ActivityLog.js";
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
+import { broadcastGlobalEvent } from "../server.js";
 
 const addLog = async (user, action, status = "Success", ip = "127.0.0.1") => {
     const time = new Date().toTimeString().split(' ')[0];
@@ -45,7 +46,7 @@ const getDoctorById = async (req, res) => {
 // @access  Private/Admin
 const addDoctor = async (req, res) => {
     try {
-        const { name, email, password, specialty, exp, fee, license, hospital, phone } = req.body;
+        const { name, email, password, specialty, exp, fee, license, hospital, phone, gender } = req.body;
         if (!name || !email || !password) {
             return res.status(400).json({ error: "Name, email, and password are required" });
         }
@@ -74,6 +75,7 @@ const addDoctor = async (req, res) => {
             id: nextId,
             name,
             email,
+            gender: gender || "Not Specified",
             specialty: specialty || "General Medicine",
             exp: exp || "5 years",
             fee: fee || "₹500",
@@ -84,6 +86,14 @@ const addDoctor = async (req, res) => {
         });
 
         await addLog("Admin", `Added new doctor: ${name}`);
+
+        broadcastGlobalEvent({
+            type: 'db-sync',
+            entity: 'doctor',
+            action: 'create',
+            doctorId: doctor.id,
+            message: `New doctor added: ${doctor.name}`
+        });
 
         res.status(201).json({ success: true, message: "Doctor added successfully", doctor });
     } catch (error) {
@@ -107,6 +117,15 @@ const updateDoctor = async (req, res) => {
         }
 
         await addLog("Admin", `Updated doctor profile for ${doctor.name}`);
+
+        broadcastGlobalEvent({
+            type: 'db-sync',
+            entity: 'doctor',
+            action: 'update',
+            doctorId: doctor.id,
+            message: `Doctor profile updated: ${doctor.name}`
+        });
+
         res.json({ success: true, message: "Doctor profile updated", doctor });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -128,6 +147,15 @@ const deleteDoctor = async (req, res) => {
         await Doctor.findByIdAndDelete(doctor._id);
 
         await addLog("Admin", `Deleted doctor profile for ${doctor.name}`);
+
+        broadcastGlobalEvent({
+            type: 'db-sync',
+            entity: 'doctor',
+            action: 'delete',
+            doctorId: req.params.id,
+            message: `Doctor profile deleted: ${doctor.name}`
+        });
+
         res.json({ success: true, message: "Doctor profile deleted successfully" });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -149,6 +177,14 @@ const approveDoctor = async (req, res) => {
 
         await addLog("Admin", `Approved doctor credentials for ${doctor.name}`);
 
+        broadcastGlobalEvent({
+            type: 'db-sync',
+            entity: 'doctor',
+            action: 'approve',
+            doctorId: doctor.id,
+            message: `Doctor credentials approved: ${doctor.name}`
+        });
+
         const allDoctors = await Doctor.find({});
         res.json({ success: true, message: "Doctor approved", doctors: allDoctors });
     } catch (error) {
@@ -167,9 +203,20 @@ const rejectDoctor = async (req, res) => {
         }
 
         const doctorName = doctor.name;
+        if (doctor.user) {
+            await User.findByIdAndDelete(doctor.user);
+        }
         await Doctor.deleteOne({ id: req.params.id });
 
-        await addLog("Admin", `Rejected doctor application ID: ${req.params.id}`);
+        await addLog("Admin", `Rejected doctor application for ${doctorName} (ID: ${req.params.id})`);
+
+        broadcastGlobalEvent({
+            type: 'db-sync',
+            entity: 'doctor',
+            action: 'reject',
+            doctorId: req.params.id,
+            message: `Doctor application rejected: ${doctorName}`
+        });
 
         const allDoctors = await Doctor.find({});
         res.json({ success: true, message: "Doctor application rejected", doctors: allDoctors });

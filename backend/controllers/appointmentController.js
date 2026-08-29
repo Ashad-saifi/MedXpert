@@ -3,6 +3,7 @@ import Doctor from "../models/Doctor.js";
 import Patient from "../models/Patient.js";
 import ActivityLog from "../models/ActivityLog.js";
 import Notification from "../models/Notification.js";
+import { broadcastGlobalEvent } from "../server.js";
 
 const addLog = async (user, action, status = "Success", ip = "127.0.0.1") => {
     const time = new Date().toTimeString().split(' ')[0];
@@ -28,21 +29,23 @@ const bookAppointment = async (req, res) => {
     try {
         const { doctorId, patientId, dateTime, type, reason } = req.body;
 
-        // Find doctor
+        // Escape regex special characters to prevent regex injection crashes
+        const escapedDoctorId = doctorId ? String(doctorId).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : "";
         const doctor = await Doctor.findOne({
             $or: [
                 { id: doctorId },
-                { name: { $regex: doctorId, $options: "i" } }
+                { name: { $regex: escapedDoctorId, $options: "i" } }
             ]
         });
 
         // Find patient
-        const patient = await Patient.findOne({
-            $or: [
-                { id: patientId || "P-10421" },
-                { id: "P-10421" } // fallback
-            ]
-        });
+        let patient = null;
+        if (patientId) {
+            patient = await Patient.findOne({ id: patientId });
+        }
+        if (!patient) {
+            patient = await Patient.findOne({ id: "P-10421" }); // fallback
+        }
 
         if (!doctor) {
             return res.status(400).json({ error: "Invalid doctor selected" });
@@ -72,6 +75,14 @@ const bookAppointment = async (req, res) => {
         });
 
         await addLog(patient.name, `Booked appointment with ${doctor.name} (${type || "Video Consultation"})`);
+
+        broadcastGlobalEvent({
+            type: 'db-sync',
+            entity: 'appointment',
+            action: 'create',
+            appointmentId: appointment.id,
+            message: `New appointment booked: ${appointment.patientName} with ${appointment.doctorName}`
+        });
 
         const allAppointments = await Appointment.find({});
         res.json({ success: true, message: "Appointment booked successfully", appointments: allAppointments });
@@ -161,6 +172,14 @@ const rescheduleAppointment = async (req, res) => {
             read: false
         });
 
+        broadcastGlobalEvent({
+            type: 'db-sync',
+            entity: 'appointment',
+            action: 'update',
+            appointmentId: appointment.id,
+            message: `Appointment ${appointment.id} rescheduled by ${rescheduledBy || 'user'}`
+        });
+
         const allAppointments = await Appointment.find({});
         res.json({ success: true, message: "Appointment rescheduled successfully", appointments: allAppointments });
     } catch (error) {
@@ -193,12 +212,22 @@ const cancelAppointment = async (req, res) => {
             read: false
         });
 
+        broadcastGlobalEvent({
+            type: 'db-sync',
+            entity: 'appointment',
+            action: 'cancel',
+            appointmentId: appointment.id,
+            message: `Appointment cancelled: ${appointment.patientName} (${appointment.id})`
+        });
+
         const allAppointments = await Appointment.find({});
         res.json({ success: true, message: "Appointment cancelled successfully", appointments: allAppointments });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
+
+import { activeCallSessions } from "../server.js";
 
 // @desc    Verify if patient/doctor has a valid slot for signaling token
 // @route   POST /api/appointments/verify-room
@@ -210,23 +239,96 @@ const verifyRoomAccess = async (req, res) => {
             return res.status(400).json({ error: "Missing required verification fields (appointmentId, userId, role)" });
         }
 
-        const appt = await Appointment.findOne({ id: appointmentId });
+        // 1. Doctors have provider privileges to start the consultation room at any time
+        if (role === 'doctor') {
+            return res.json({
+                success: true,
+                token: `token_webrtc_${appointmentId}_${userId}_${Date.now()}`,
+                message: "Doctor verified. Video consultation session initiated."
+            });
+        }
+
+        // 2. For patients: Check if doctor has already initiated / opened this room
+        const hasActiveDoctorSession = activeCallSessions && (
+            activeCallSessions.has(appointmentId) || 
+            activeCallSessions.has(appointmentId.replace('room-', '')) ||
+            activeCallSessions.has(`room-${appointmentId}`)
+        );
+
+        if (hasActiveDoctorSession) {
+            return res.json({
+                success: true,
+                token: `token_webrtc_${appointmentId}_${userId}_${Date.now()}`,
+                message: "Doctor has initiated the consultation. Joining call now."
+            });
+        }
+
+        // 3. Find the appointment in database
+        let appt = await Appointment.findOne({ id: appointmentId });
         if (!appt) {
-            return res.status(404).json({ error: "No appointment scheduled with this ID" });
+            // Check by patientId if available
+            appt = await Appointment.findOne({ 
+                $or: [{ id: appointmentId }, { patientId: userId }],
+                type: { $in: ["Video", "Video Consultation"] },
+                status: "Confirmed"
+            }).sort({ dateTime: 1 });
         }
 
-        if (appt.status !== 'Confirmed') {
-            return res.status(400).json({ error: `Appointment session is ${appt.status}. Can only join confirmed slots.` });
+        if (appt) {
+            if (appt.status === "Cancelled") {
+                return res.status(403).json({
+                    error: "This appointment was cancelled. Please book a new consultation.",
+                    notAllowedEarly: true
+                });
+            }
+
+            if (appt.status === "Completed") {
+                return res.status(403).json({
+                    error: "This consultation has already been completed.",
+                    notAllowedEarly: true
+                });
+            }
+
+            // Parse scheduled appointment datetime
+            let scheduledDate = null;
+            if (appt.dateTime) {
+                scheduledDate = new Date(appt.dateTime);
+            } else if (appt.date && appt.time) {
+                scheduledDate = new Date(`${appt.date} ${appt.time}`);
+            }
+
+            if (scheduledDate && !isNaN(scheduledDate.getTime())) {
+                const now = Date.now();
+                const scheduledTime = scheduledDate.getTime();
+                const diffMinutes = (scheduledTime - now) / (1000 * 60);
+
+                // If appointment is more than 15 minutes in the future
+                if (diffMinutes > 15) {
+                    const formattedTime = scheduledDate.toLocaleString([], {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                    return res.status(403).json({
+                        error: `Cannot start video call before scheduled time. Your appointment with ${appt.doctorName || 'the doctor'} is scheduled for ${formattedTime}. Please wait for your slot or wait for the doctor to initiate the call.`,
+                        notAllowedEarly: true,
+                        scheduledTime: appt.dateTime || appt.date
+                    });
+                }
+
+                // If appointment was more than 24 hours ago
+                if (diffMinutes < -1440) {
+                    return res.status(403).json({
+                        error: "This appointment slot has passed. Please schedule a new video consultation.",
+                        notAllowedEarly: true
+                    });
+                }
+            }
         }
 
-        // Verify user ID role bound permissions
-        if (role === 'patient' && appt.patientId !== userId) {
-            return res.status(403).json({ error: "Unauthorized access: You are not the scheduled patient for this slot." });
-        }
-        if (role === 'doctor' && appt.doctorId !== userId) {
-            return res.status(403).json({ error: "Unauthorized access: You are not the scheduled doctor for this slot." });
-        }
-
+        // Permit access if within valid time window
         res.json({
             success: true,
             token: `token_webrtc_${appointmentId}_${userId}_${Date.now()}`,
@@ -242,9 +344,19 @@ const verifyRoomAccess = async (req, res) => {
 // @access  Private
 const updateAppointmentStatus = async (req, res) => {
     try {
-        const { status } = req.body;
+        let { status } = req.body;
         if (!status) {
             return res.status(400).json({ error: "Status field is required" });
+        }
+
+        // Map "Approved" to "Confirmed" if passed from legacy client
+        if (status === "Approved") {
+            status = "Confirmed";
+        }
+
+        const validStatuses = ["Confirmed", "Pending", "Cancelled", "Completed"];
+        if (!validStatuses.includes(status)) {
+            return res.status(400).json({ error: `Invalid status. Must be one of: ${validStatuses.join(", ")}` });
         }
 
         const appt = await Appointment.findOneAndUpdate(
@@ -279,17 +391,19 @@ const updateAppointmentStatus = async (req, res) => {
             });
         }
 
+        broadcastGlobalEvent({
+            type: 'db-sync',
+            entity: 'appointment',
+            action: 'update',
+            appointmentId: appt.id,
+            message: `Appointment ${appt.id} status updated to: ${status}`
+        });
+
         const allAppointments = await Appointment.find({});
         res.json({ success: true, message: `Appointment status updated to ${status}`, appointments: allAppointments });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
-    const validStatus = [
-  "Pending",
-  "Approved",
-  "Completed",
-  "Cancelled"
-];
 };
 
 export {

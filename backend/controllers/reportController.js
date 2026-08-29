@@ -1,7 +1,9 @@
 import LabReport from "../models/LabReport.js";
 import Patient from "../models/Patient.js";
+import Doctor from "../models/Doctor.js";
 import Prescription from "../models/Prescription.js";
 import ActivityLog from "../models/ActivityLog.js";
+import { broadcastGlobalEvent } from "../server.js";
 
 const addLog = async (user, action, status = "Success", ip = "127.0.0.1") => {
     const time = new Date().toTimeString().split(' ')[0];
@@ -27,10 +29,26 @@ const uploadReport = async (req, res) => {
     try {
         const { testName, patientId, lab, result, status, pdfData, pdfName } = req.body;
 
-        const patient = await Patient.findOne({ id: patientId || "P-10421" });
-        const patientObjectId = patient ? patient._id : null;
-        const finalPatientId = patient ? patient.id : "P-10421";
-        const patientName = patient ? patient.name : "Aarav Mehta";
+        let patient = await Patient.findOne({ id: patientId });
+        if (!patient) {
+            patient = await Patient.findOne({ id: "P-10421" }) || await Patient.findOne({});
+        }
+        if (!patient) {
+            return res.status(400).json({ error: "Valid patient record not found for lab report" });
+        }
+        const patientObjectId = patient._id;
+        const finalPatientId = patient.id;
+        const patientName = patient.name;
+
+        let doctorObjectId = null;
+        let doctorName = null;
+        if (req.user && req.user.role === "doctor") {
+            const doctor = await Doctor.findOne({ user: req.user._id });
+            if (doctor) {
+                doctorObjectId = doctor._id;
+                doctorName = doctor.name;
+            }
+        }
 
         const count = await LabReport.countDocuments();
         const nextId = `L-${300 + count + 1}`;
@@ -45,10 +63,20 @@ const uploadReport = async (req, res) => {
             result: result || "Normal",
             status: status || "Reviewed",
             pdfData: pdfData || "",
-            pdfName: pdfName || ""
+            pdfName: pdfName || "",
+            doctor: doctorObjectId,
+            doctorName: doctorName
         });
 
         await addLog(patientName, `Uploaded lab report: ${testName || "Blood Test"}`);
+
+        broadcastGlobalEvent({
+            type: 'db-sync',
+            entity: 'report',
+            action: 'create',
+            patientId: finalPatientId,
+            message: `New lab report uploaded for ${patientName}: ${testName || "Blood Test"}`
+        });
 
         const allReports = await LabReport.find({});
         res.json({ success: true, message: "Report uploaded successfully", labReports: allReports });
@@ -91,18 +119,18 @@ const downloadAllRecordsPDF = async (req, res) => {
         // Header banner
         doc.rect(0, 0, 612, 100).fill(primaryColor);
         doc.fillColor("#ffffff")
-           .font("Helvetica-Bold")
-           .fontSize(22)
-           .text("MEDXPERT TELEMEDICINE CLINIC", 50, 35, { characterSpacing: 1 });
+            .font("Helvetica-Bold")
+            .fontSize(22)
+            .text("MEDXPERT TELEMEDICINE CLINIC", 50, 35, { characterSpacing: 1 });
         doc.font("Helvetica")
-           .fontSize(10)
-           .text("COMPREHENSIVE ELECTRONIC HEALTH RECORD (EHR)", 50, 60, { characterSpacing: 1.5 });
+            .fontSize(10)
+            .text("COMPREHENSIVE ELECTRONIC HEALTH RECORD (EHR)", 50, 60, { characterSpacing: 1.5 });
 
         doc.fillColor("#ffffff")
-           .fontSize(8)
-           .text("Email: care@medxpert.com", 430, 35, { align: "right" })
-           .text("Support: +91 1800 123 4567", 430, 48, { align: "right" })
-           .text("Website: medxpert.health", 430, 61, { align: "right" });
+            .fontSize(8)
+            .text("Email: care@medxpert.com", 430, 35, { align: "right" })
+            .text("Support: +91 1800 123 4567", 430, 48, { align: "right" })
+            .text("Website: medxpert.health", 430, 61, { align: "right" });
 
         doc.moveDown(4);
 
@@ -110,31 +138,32 @@ const downloadAllRecordsPDF = async (req, res) => {
         doc.fillColor(primaryColor).font("Helvetica-Bold").fontSize(14).text("PATIENT DEMOGRAPHICS & CLINICAL SUMMARY", 50, 125);
         doc.strokeColor(secondaryColor).lineWidth(1.5).moveTo(50, 142).lineTo(562, 142).stroke();
 
-        doc.rect(50, 155, 512, 130).fill(lightBg);
-        doc.fillColor(textColor).font("Helvetica-Bold").fontSize(9);
+        doc.rect(50, 155, 512, 130).fill("#1e293b");
 
-        // Demographics Details
+        // Demographics Details (Labels: Light Gray, Values: White)
+        doc.fillColor("#94a3b8").font("Helvetica-Bold").fontSize(9);
         doc.text("Patient Name:", 65, 170).text("Patient ID:", 65, 185).text("Date of Birth / Age:", 65, 200).text("Gender:", 65, 215).text("Blood Type:", 65, 230);
-        doc.font("Helvetica");
+
+        doc.fillColor("#ffffff").font("Helvetica");
         doc.text(patient.name, 170, 170)
-           .text(patient.id, 170, 185)
-           .text(`${patient.dob || "N/A"} (${patient.age || "N/A"} years)`, 170, 200)
-           .text(patient.gender || "Not Specified", 170, 215)
-           .text(patient.bloodType || "N/A", 170, 230);
+            .text(patient.id, 170, 185)
+            .text(`${patient.dob || "N/A"} (${patient.age || "N/A"} years)`, 170, 200)
+            .text(patient.gender || "Not Specified", 170, 215)
+            .text(patient.bloodType || "N/A", 170, 230);
 
-        doc.font("Helvetica-Bold");
+        doc.fillColor("#94a3b8").font("Helvetica-Bold");
         doc.text("Height / Weight:", 320, 170).text("City:", 320, 185).text("Chronic Conditions:", 320, 200).text("Allergies:", 320, 215).text("Emergency Contact:", 320, 230);
-        doc.font("Helvetica");
-        doc.text(`${patient.height || "N/A"} / ${patient.weight || "N/A"}`, 430, 170)
-           .text(patient.city || "N/A", 430, 185)
-           .text(patient.chronicConditions || "None", 430, 200)
-           .text(patient.allergies || "None", 430, 215)
-           .text(patient.emergencyContact ? `${patient.emergencyContact.name || "N/A"} (${patient.emergencyContact.relation || ""}) - ${patient.emergencyContact.phone || ""}` : "None", 430, 230);
 
-        doc.moveDown(9);
+        doc.fillColor("#ffffff").font("Helvetica");
+        doc.text(`${patient.height || "N/A"} / ${patient.weight || "N/A"}`, 430, 170)
+            .text(patient.city || "N/A", 430, 185)
+            .text(patient.chronicConditions || "None", 430, 200)
+            .text(patient.allergies || "None", 430, 215)
+            .text(patient.emergencyContact ? `${patient.emergencyContact.name || "N/A"} (${patient.emergencyContact.relation || ""}) - ${patient.emergencyContact.phone || ""}` : "None", 430, 230);
 
         // Section 2: Active & History Prescriptions
-        let currentY = doc.y + 15;
+        let currentY = 292;
+        doc.y = currentY;
         doc.fillColor(primaryColor).font("Helvetica-Bold").fontSize(14).text("PRESCRIPTIONS LOG", 50, currentY);
         currentY += 17;
         doc.strokeColor(secondaryColor).lineWidth(1.5).moveTo(50, currentY).lineTo(562, currentY).stroke();
@@ -164,7 +193,7 @@ const downloadAllRecordsPDF = async (req, res) => {
                 doc.text(rx.dosage || "N/A", 250, currentY + 7);
                 doc.text(rx.duration || "N/A", 370, currentY + 7);
                 doc.text(rx.doctorName || "N/A", 460, currentY + 7);
-                
+
                 doc.strokeColor(borderColor).lineWidth(0.5).moveTo(50, currentY + 22).lineTo(562, currentY + 22).stroke();
                 currentY += 22;
             });
@@ -203,7 +232,7 @@ const downloadAllRecordsPDF = async (req, res) => {
 
                 const statusColor = rep.status === "Action Required" ? "#ef4444" : "#10b981";
                 doc.fillColor(statusColor).font("Helvetica-Bold").text(rep.status || "N/A", 500, currentY + 7).font("Helvetica").fillColor(textColor);
-                
+
                 doc.strokeColor(borderColor).lineWidth(0.5).moveTo(50, currentY + 22).lineTo(562, currentY + 22).stroke();
                 currentY += 22;
             });
@@ -212,7 +241,7 @@ const downloadAllRecordsPDF = async (req, res) => {
         // Global footer terms
         doc.strokeColor("#cbd5e1").lineWidth(0.5).moveTo(50, 700).lineTo(562, 700).stroke();
         doc.fillColor("#94a3b8").font("Helvetica").fontSize(7.5)
-           .text("This consolidated Electronic Health Record (EHR) report is generated automatically by MedXpert Health Systems. Information contained is compiled directly from authorized provider uploads and active prescriptions. All records are compliant with standard clinical storage safety measures.", 50, 715, { align: "center", width: 512 });
+            .text("This consolidated Electronic Health Record (EHR) report is generated automatically by MedXpert Health Systems. Information contained is compiled directly from authorized provider uploads and active prescriptions. All records are compliant with standard clinical storage safety measures.", 50, 715, { align: "center", width: 512 });
 
         doc.end();
         await addLog(patient.name, "Downloaded complete health records PDF summary");

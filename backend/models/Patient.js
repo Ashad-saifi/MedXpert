@@ -11,6 +11,10 @@ const patientSchema = new mongoose.Schema({
         ref: "User",
         required: true
     },
+    profileImage: {
+        type: String,
+        default: ""
+    },
     name: {
         type: String,
         required: true

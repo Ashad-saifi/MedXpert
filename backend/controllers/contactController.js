@@ -1,5 +1,6 @@
 import ContactRequest from "../models/ContactRequest.js";
 import ActivityLog from "../models/ActivityLog.js";
+import { broadcastGlobalEvent } from "../server.js";
 
 const addLog = async (user, action, status = "Success", ip = "127.0.0.1") => {
     const time = new Date().toTimeString().split(' ')[0];
@@ -26,6 +27,13 @@ export const submitContactRequest = async (req, res) => {
         });
 
         await addLog("Visitor", `Submitted contact/booking request: ${name} (${specialty})`);
+
+        broadcastGlobalEvent({
+            type: 'db-sync',
+            entity: 'contact',
+            action: 'create',
+            message: `New booking inquiry from ${name} (${specialty})`
+        });
 
         res.status(201).json({ success: true, message: "Request received successfully", data: newRequest });
     } catch (error) {

@@ -1,12 +1,12 @@
 import express from "express";
-import { 
-    getDoctors, 
-    getDoctorById, 
-    addDoctor, 
-    updateDoctor, 
-    deleteDoctor, 
-    approveDoctor, 
-    rejectDoctor 
+import {
+    getDoctors,
+    getDoctorById,
+    addDoctor,
+    updateDoctor,
+    deleteDoctor,
+    approveDoctor,
+    rejectDoctor
 } from "../controllers/doctorController.js";
 
 const router = express.Router();

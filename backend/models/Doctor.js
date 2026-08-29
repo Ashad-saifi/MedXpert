@@ -11,6 +11,10 @@ const doctorSchema = new mongoose.Schema({
         ref: "User",
         required: true
     },
+    profileImage: {
+        type: String,
+        default: ""
+    },
     name: {
         type: String,
         required: true
@@ -18,6 +22,9 @@ const doctorSchema = new mongoose.Schema({
     email: {
         type: String,
         required: true
+    },
+    gender: {
+        type: String
     },
     specialty: {
         type: String,

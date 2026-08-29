@@ -1,9 +1,9 @@
 import express from "express";
-import { 
-    getAllPatients, 
-    getPatientById, 
+import {
+    getAllPatients,
+    getPatientById,
     addPatient,
-    updatePatientProfile, 
+    updatePatientProfile,
     updateClinicalNotes,
     deletePatient
 } from "../controllers/patientController.js";

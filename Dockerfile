@@ -5,13 +5,14 @@ FROM node:20-alpine AS build
 
 WORKDIR /app
 
-# Copy root lockfiles & configurations
-COPY package.json package-lock.json ./
+# Copy frontend lockfiles & configurations
+COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 
 # Copy frontend source & configuration files
-COPY index.html vite.config.js postcss.config.js tailwind.config.js ./
-COPY src/ ./src/
+COPY frontend/index.html frontend/medxpert.html frontend/vite.config.js frontend/postcss.config.js frontend/tailwind.config.js ./
+COPY frontend/src/ ./src/
+COPY frontend/public/ ./public/
 
 # Compile high-performance, minified static bundle (generates /app/dist)
 RUN npm run build

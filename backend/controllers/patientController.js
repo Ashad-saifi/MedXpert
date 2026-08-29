@@ -2,6 +2,7 @@ import Patient from "../models/Patient.js";
 import ActivityLog from "../models/ActivityLog.js";
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
+import { broadcastGlobalEvent } from "../server.js";
 
 const addLog = async (user, action, status = "Success", ip = "127.0.0.1") => {
     const time = new Date().toTimeString().split(' ')[0];
@@ -21,6 +22,7 @@ const getAllPatients = async (req, res) => {
 };
 
 // @desc    Get patient profile by string ID
+// @desc    Get patient profile by string ID
 // @route   GET /api/patients/:id
 // @access  Private
 const getPatientById = async (req, res) => {
@@ -29,6 +31,16 @@ const getPatientById = async (req, res) => {
         if (!patient) {
             return res.status(404).json({ error: "Patient not found" });
         }
+
+        // IDOR Healthcare Protection: Patients can only access their own record
+        if (req.user && req.user.role === "patient") {
+            const isOwner = (patient.user && patient.user.toString() === req.user._id.toString()) || 
+                            (patient.email === req.user.email);
+            if (!isOwner) {
+                return res.status(403).json({ message: "403 Forbidden: Unauthorized access to another patient's medical record" });
+            }
+        }
+
         res.json(patient);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -85,6 +97,14 @@ const addPatient = async (req, res) => {
 
         await addLog("Admin", `Added new patient: ${name}`);
 
+        broadcastGlobalEvent({
+            type: 'db-sync',
+            entity: 'patient',
+            action: 'create',
+            patientId: patient.id,
+            message: `New patient registered: ${patient.name}`
+        });
+
         res.status(201).json({ success: true, message: "Patient added successfully", patient });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -101,11 +121,10 @@ const updatePatientProfile = async (req, res) => {
             return res.status(404).json({ error: "Patient not found" });
         }
 
-        // Update fields dynamically
         const allowedUpdates = [
             "name", "email", "age", "gender", "bloodType", "height", "weight",
             "chronicConditions", "allergies", "emergencyContact", "insurance",
-            "phone", "dob", "city"
+            "phone", "dob", "city", "profileImage"
         ];
 
         allowedUpdates.forEach(field => {
@@ -116,6 +135,14 @@ const updatePatientProfile = async (req, res) => {
 
         await patient.save();
         await addLog(patient.name, "Updated profile personal details");
+
+        broadcastGlobalEvent({
+            type: 'db-sync',
+            entity: 'patient',
+            action: 'update',
+            patientId: patient.id,
+            message: `Patient profile updated: ${patient.name}`
+        });
 
         res.json({ success: true, message: "Profile updated successfully", patient });
     } catch (error) {
@@ -136,8 +163,16 @@ const updateClinicalNotes = async (req, res) => {
         patient.clinicalNotes = req.body.clinicalNotes || "";
         patient.chiefComplaint = req.body.chiefComplaint || "";
 
-        await patient.save();
-        await addLog("Dr. Shreya Joshi", `Updated clinical notes for ${patient.name}`);
+        const performerName = (req.user && req.user.name) || "Doctor";
+        await addLog(performerName, `Updated clinical notes for ${patient.name}`);
+
+        broadcastGlobalEvent({
+            type: 'db-sync',
+            entity: 'patient',
+            action: 'update',
+            patientId: patient.id,
+            message: `Clinical notes updated for ${patient.name}`
+        });
 
         res.json({ success: true, message: "Clinical notes updated successfully", patient });
     } catch (error) {
@@ -160,6 +195,15 @@ const deletePatient = async (req, res) => {
         await Patient.findByIdAndDelete(patient._id);
 
         await addLog("Admin", `Deleted patient profile for ${patient.name}`);
+
+        broadcastGlobalEvent({
+            type: 'db-sync',
+            entity: 'patient',
+            action: 'delete',
+            patientId: req.params.id,
+            message: `Patient profile deleted: ${patient.name}`
+        });
+
         res.json({ success: true, message: "Patient profile deleted successfully" });
     } catch (error) {
         res.status(500).json({ message: error.message });

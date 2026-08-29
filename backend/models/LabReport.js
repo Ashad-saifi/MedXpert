@@ -43,6 +43,15 @@ const labReportSchema = new mongoose.Schema({
     pdfName: {
         type: String,
         default: ""
+    },
+    doctor: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Doctor",
+        required: false
+    },
+    doctorName: {
+        type: String,
+        required: false
     }
 }, {
     timestamps: true

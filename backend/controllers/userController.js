@@ -3,6 +3,10 @@ import Doctor from "../models/Doctor.js";
 import Patient from "../models/Patient.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { broadcastGlobalEvent } from "../server.js";
+
+import ActivityLog from "../models/ActivityLog.js";
+import { recordFailedLogin, resetLoginAttempts } from "../middleware/authMiddleware.js";
 
 // Generate JWT Helper
 const generateToken = (id) => {
@@ -23,11 +27,6 @@ const registerUser = async (req, res) => {
         if (!name || !email || !password) {
             return res.status(400).json({ message: "Please enter name, email, and password" });
         }
-        if (!name || !email || !password) {
-  return res.status(400).json({
-    message: "All fields are required"
-  });
-        }
 
         // Check if user already exists
         const userExists = await User.findOne({ email });
@@ -39,12 +38,15 @@ const registerUser = async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
+        // Security: Prevent unauthenticated users from creating admin accounts via public registration
+        const requestedRole = (role === "admin") ? "patient" : (role || "patient");
+
         // Create user in User collection
         const user = await User.create({
             name,
             email,
             password: hashedPassword,
-            role: role || "patient",
+            role: requestedRole,
             phone: phone || ""
         });
 
@@ -58,13 +60,14 @@ const registerUser = async (req, res) => {
                 user: user._id,
                 name: user.name,
                 email: user.email,
+                gender: additionalFields.gender || "Not Specified",
                 specialty: additionalFields.specialty || "General Medicine",
                 exp: additionalFields.exp || "0 years",
                 fee: additionalFields.fee || "₹500",
                 license: additionalFields.license || "MCI-PENDING",
                 hospital: additionalFields.hospital || "City Medical Center",
                 rating: additionalFields.rating || 5.0,
-                status: additionalFields.status || "Active"
+                status: "Pending" // Doctors start as Pending until verified by Admin
             });
         } else if (user.role === "patient") {
             const count = await Patient.countDocuments();
@@ -103,6 +106,31 @@ const registerUser = async (req, res) => {
             profile = await Patient.findOne({ user: user._id });
         }
 
+        const time = new Date().toTimeString().split(' ')[0];
+        const roleIcon = user.role === 'doctor' ? '👨‍⚕️ Doctor' : '🧑‍🤝‍🧑 Patient';
+        await ActivityLog.create({
+            time,
+            user: user.name,
+            action: `New ${roleIcon} Registered: ${user.name} (${user.email})`,
+            ip: req.ip || "127.0.0.1",
+            status: "Success"
+        }).catch(e => console.error("Audit log error:", e.message));
+
+        broadcastGlobalEvent({
+            type: 'user-registered',
+            role: user.role,
+            name: user.name,
+            email: user.email,
+            time: time,
+            message: `New ${roleIcon} ${user.name} registered successfully!`
+        });
+
+        broadcastGlobalEvent({
+            type: 'db-sync',
+            entity: 'dashboard',
+            action: 'register'
+        });
+
         res.status(201).json({
             user: {
                 id: user._id,
@@ -116,7 +144,7 @@ const registerUser = async (req, res) => {
         });
     } catch (error) {
         console.error("User Registration Error:", error);
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ message: "Registration processing failed" });
     }
 };
 
@@ -126,6 +154,7 @@ const registerUser = async (req, res) => {
  * @access  Public
  */
 const loginUser = async (req, res) => {
+    const ip = req.ip || req.headers["x-forwarded-for"] || req.socket.remoteAddress || "127.0.0.1";
     try {
         const { email, password } = req.body;
 
@@ -137,12 +166,41 @@ const loginUser = async (req, res) => {
         const user = await User.findOne({ email });
 
         if (user && (await bcrypt.compare(password, user.password))) {
+            resetLoginAttempts(ip);
+
             let profile = null;
             if (user.role === "doctor") {
                 profile = await Doctor.findOne({ user: user._id });
             } else if (user.role === "patient") {
                 profile = await Patient.findOne({ user: user._id });
             }
+
+            // Record audit log for all logins
+            const time = new Date().toTimeString().split(' ')[0];
+            const roleIcon = user.role === 'doctor' ? '👨‍⚕️ Doctor' : user.role === 'admin' ? '🛡️ Admin' : '🧑‍🤝‍🧑 Patient';
+            await ActivityLog.create({
+                time,
+                user: user.name || user.email,
+                action: `${roleIcon} logged in (${user.email})`,
+                ip,
+                status: "Success"
+            }).catch(e => console.error("Audit log error:", e.message));
+
+            // Real-time synchronization broadcast across all dashboards
+            broadcastGlobalEvent({
+                type: 'user-login',
+                role: user.role,
+                name: user.name,
+                email: user.email,
+                time: time,
+                message: `${roleIcon} ${user.name} logged in right now`
+            });
+
+            broadcastGlobalEvent({
+                type: 'db-sync',
+                entity: 'dashboard',
+                action: 'login'
+            });
 
             res.json({
                 user: {
@@ -156,11 +214,12 @@ const loginUser = async (req, res) => {
                 token: generateToken(user._id)
             });
         } else {
+            recordFailedLogin(ip);
             res.status(401).json({ message: "Invalid email or password" });
         }
     } catch (error) {
         console.error("User Login Error:", error);
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ message: "Authentication service error" });
     }
 };
 
@@ -230,6 +289,15 @@ const updateUserProfile = async (req, res) => {
                     { new: true }
                 );
             }
+
+            broadcastGlobalEvent({
+                type: 'db-sync',
+                entity: 'user',
+                action: 'update',
+                userId: updatedUser._id,
+                role: updatedUser.role,
+                message: `User profile updated: ${updatedUser.name}`
+            });
 
             res.json({
                 user: {

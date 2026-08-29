@@ -289,15 +289,8 @@ async function setupInMemoryMock() {
         };
     }
 
-    // Load and execute seeding function
-    console.log("🌱 Seeding in-memory database mock...");
-    try {
-        const { seedDatabaseForInMemory } = await import("../seed/seedDataHelper.js");
-        await seedDatabaseForInMemory();
-        console.log("✅ In-memory database mock seeded successfully!");
-    } catch (err) {
-        console.error("❌ Failed to seed in-memory mock:", err);
-    }
+    // In-memory database mock seeding is disabled as requested (only real data is allowed)
+    console.log("🌱 In-memory database mock initialized empty.");
 }
 
 export default connectDB;

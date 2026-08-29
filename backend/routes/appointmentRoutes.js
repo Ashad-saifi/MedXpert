@@ -1,8 +1,8 @@
 import express from "express";
-import { 
-    getAppointments, 
-    bookAppointment, 
-    cancelAppointment, 
+import {
+    getAppointments,
+    bookAppointment,
+    cancelAppointment,
     verifyRoomAccess,
     updateAppointmentStatus,
     getAvailableSlots,

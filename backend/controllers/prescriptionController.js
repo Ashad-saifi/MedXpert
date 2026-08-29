@@ -3,6 +3,7 @@ import Patient from "../models/Patient.js";
 import Doctor from "../models/Doctor.js";
 import ActivityLog from "../models/ActivityLog.js";
 import { signPrescription, verifyPrescription } from "../cryptoHelper.js";
+import { broadcastGlobalEvent } from "../server.js";
 
 const addLog = async (user, action, status = "Success", ip = "127.0.0.1") => {
     const time = new Date().toTimeString().split(' ')[0];
@@ -33,10 +34,19 @@ const issuePrescription = async (req, res) => {
             return res.status(400).json({ error: "Invalid patient selected" });
         }
 
-        // Hardcode active doctor context or find one
-        const doctor = await Doctor.findOne({ id: "D-101" }) || await Doctor.findOne({});
-        const doctorName = doctor ? doctor.name : "Dr. Shreya Joshi";
-        const doctorObjectId = doctor ? doctor._id : null;
+        // Find doctor associated with logged-in user or fallback to D-101/first doctor
+        let doctor = null;
+        if (req.user && req.user.role === "doctor") {
+            doctor = await Doctor.findOne({ user: req.user._id });
+        }
+        if (!doctor) {
+            doctor = await Doctor.findOne({ id: "D-101" }) || await Doctor.findOne({});
+        }
+        if (!doctor) {
+            return res.status(400).json({ error: "No authorized doctor profile found to issue prescription" });
+        }
+        const doctorName = doctor.name;
+        const doctorObjectId = doctor._id;
 
         const count = await Prescription.countDocuments();
         let indexOffset = 1;
@@ -74,6 +84,14 @@ const issuePrescription = async (req, res) => {
         }
 
         await addLog(doctorName, `Issued prescription for ${patient.name} - ${diagnosis}`);
+
+        broadcastGlobalEvent({
+            type: 'db-sync',
+            entity: 'prescription',
+            action: 'create',
+            patientId: patient.id,
+            message: `New prescription issued for ${patient.name} by ${doctorName}`
+        });
 
         const allPrescriptions = await Prescription.find({});
         res.json({ success: true, message: "Prescription issued and sent to patient", prescriptions: allPrescriptions });
