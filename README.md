@@ -188,9 +188,9 @@ sequenceDiagram
 
 <table align="center">
   <tr>
-    <td align="center"><strong>Priyanka Vanga</strong><br>React components & UX workflows</td>
-    <td align="center"><strong>Ashad Saifi</strong><br>Full-Stack & WebRTC WebSockets</td>
-    <td align="center"><strong>Siddhant Mohan Jha</strong><br>Security & Telemetry</td>
+    
+<td align="center"><strong>Ashad Saifi</strong><br>Full-Stack & WebRTC WebSockets</td>
+
   </tr>
 </table>
 
